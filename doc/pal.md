@@ -1,8 +1,8 @@
-# gPal -- Generic Pointer Analysis Library
+# pal -- Generic Pointer Analysis Library
 
 ## Goals
 
-The goal of gPal is to provide a library which can be used for different languages
+The goal of pal is to provide a library which can be used for different languages
 for effective pointer analysis.
 
 ### Effective pointer analysis
@@ -40,24 +40,24 @@ constructs will be created.
 
 ### Out of Scope
 
-gPal does not attempt to model specific programming language features, such as
+pal does not attempt to model specific programming language features, such as
 atomics, parallelism, volatility, or external registers.
 
-Rather, gPal should provide a small set of basic operations which, taken together,
+Rather, pal should provide a small set of basic operations which, taken together,
 can be used to model a variety of common programming language constructs.
 
 
 ## Architecture
 
-gPal will be provided as a library to support different language/application pairs
+pal will be provided as a library to support different language/application pairs
 of contexts, as in the diagram below.
 
 ```
-1. App maps lang/ast to gPal constraints and mems
-2. App uses gPal to get pointer results about the input lang.
+1. App maps lang/ast to pal constraints and mems
+2. App uses pal to get pointer results about the input lang.
 
 ---------------          ------           ----------------
-| Language/AST |>--1--->| gPal |>--2---> | Pointer Results|>--
+| Language/AST |>--1--->| pal |>--2---> | Pointer Results|>--
 ---------------          ------           ----------------    |
        ^                                                      |
        |                                                      | 
@@ -68,7 +68,7 @@ of contexts, as in the diagram below.
 For example, it may be used to create a sound dynamic call graph, or it may
 be used to detect or prove absence of null dereferences or buffer overflows.
 
-For a given input, gPal will operate according to the classical pattern of 
+For a given input, pal will operate according to the classical pattern of 
 separating _constraint generation_ from solving.  While these may be interleaved
 when the input is additively incremental, their roles will be kept distinct and
 a common workflow will be that of a pass generating constraints followed by
@@ -78,30 +78,30 @@ The back arrow is for optional incremental usage.
 
 ### Related Work
 
-gPal is fundamentally based on a Anderson analysis [3], however it introduces a
+pal is fundamentally based on a Anderson analysis [3], however it introduces a
 symbolic aspect for treatment of numerics, is designed to be retargeted and
 adaptable to different applications and languages, and provides a mechanism
 (_thunks_ + projection) for modular analysis.
 
 srcPtr [7] works on the AST is a framework for Anderson or Steensgaard analysis.
-gPal is completely agnostic of the input: it could be AST or some IR such as
-SSA or SSI.  gPal does not directly require a call graph or a control flow graph,
+pal is completely agnostic of the input: it could be AST or some IR such as
+SSA or SSI.  pal does not directly require a call graph or a control flow graph,
 it is lower level and only provides the pointer related operations.  Of course
 we anticipate that such operations are normally called during a traversal of a 
 program representation, but no assumptions are made about that representation.
 
 Infer [2] is a bug finding tool which performs compositional memory analysis 
-using _biabduction_.  Like Infer, gPal (atleast in compositional usage) uses
+using _biabduction_.  Like Infer, pal (atleast in compositional usage) uses
 meta-symbolic variables (variables whose values are program variables) to 
 reason about functions without knowing anything about call sites.  Unlike Infer, 
-gPal does not use separation logic, rather the heap is modelled as a graph
+pal does not use separation logic, rather the heap is modelled as a graph
 between memory locations. 
 
-Infer is also an application while gPal is a library to be used in a variety
+Infer is also an application while pal is a library to be used in a variety
 of applications.
 
 Gillian [5] is also language agnostic, however it is based on modelling full
-programs by symbolic execution in a given IR (GIL) whereas gPal only
+programs by symbolic execution in a given IR (GIL) whereas pal only
 symbolically executes the numeric _Values_ in pointer arithmetic, allowing the
 caller to model these values in many different ways.
 
@@ -117,7 +117,7 @@ dependency on an ssa package specific to Go.
 Memory locations are modelled as a set of nodes (as in nodes in a graph), called
 _mems_.  For example, mems may correspond to global variables, local variables,
 the result of calls to 'malloc', function declarations, etc.  Mems also be specific to
-control flow and/or call flow context.  However, gPal leaves this opaque to the
+control flow and/or call flow context.  However, pal leaves this opaque to the
 user.
 
 Sets of mems may or may not support non-constant values for their size.  For non-constant
@@ -186,7 +186,7 @@ type Mems interface {
 
 #### Role in Applications
 
-The relation between mems and target language under analysis is unspecified in gPal,
+The relation between mems and target language under analysis is unspecified in pal,
 in order to allow more flexible usage.  However, here we give some possible use cases.
 
 In a classial Anderson style analysis, Mems correspond to program variables
@@ -210,9 +210,9 @@ is represented  and used to create more nodes, one for each context.
 This can be done using counters, or traces, or in the most extreme case by 
 parameterizing each node on the state of the heap.
 
-gPal leaves such modelling to the client application.  This is a tradeoff: on
-the one hand, _any_ such modelling can use gPal, so it is more flexible.  On
-the other, some expertise and understanding is necessary to use gPal in
+pal leaves such modelling to the client application.  This is a tradeoff: on
+the one hand, _any_ such modelling can use pal, so it is more flexible.  On
+the other, some expertise and understanding is necessary to use pal in
 any practical context.
 
 
@@ -237,7 +237,7 @@ numerical analysis.  Often such analysis are useful because they can bootstrap a
 numerical analysis and they are usually much faster (albeit less precise) than
 methods which combine numerical and points-to analysis.
 
-gPal provides opaque support for numerical constraints in a _Values_ type, defined
+pal provides opaque support for numerical constraints in a _Values_ type, defined
 below.
 
 ```go
@@ -256,7 +256,7 @@ may be arbitrary expressions in the target language, which, over the
 set of all possible executions of the program, may contain any sort of
 concrete value.  
 
-A client of gPal must decide how to model these concrete values, however any such
+A client of pal must decide how to model these concrete values, however any such
 model will provide the Values interface above.
 
 #### Const Values
@@ -290,7 +290,7 @@ Suppose we have a program or a fragment of a program for which we have created
 Mems, Constraints, and Values.  We would like to compute the points to set of
 Mems  
 
-In gPal, all these scenarios share a common _Solver_ interface specified below.
+In pal, all these scenarios share a common _Solver_ interface specified below.
 
 
 ```go

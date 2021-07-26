@@ -1,6 +1,7 @@
-# gpal
-gPal -- generic pointer analysis library
+# pal
+pal -- generic pointer analysis library
+
 
 ## Design
 
-[design](doc/gpal.md)
+[design](doc/pal.md)
