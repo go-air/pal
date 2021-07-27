@@ -21,7 +21,7 @@ const (
 	Global
 	Local
 	Heap
-	Any
+	Opaque
 )
 
 func (c MemClass) String() string {
@@ -34,7 +34,7 @@ func (c MemClass) String() string {
 		return "g"
 	case Heap:
 		return "h"
-	case Any:
+	case Opaque:
 		return "?"
 	default:
 		panic("bad MemClass")
