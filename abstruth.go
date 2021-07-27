@@ -34,3 +34,34 @@ func (t AbsTruth) String() string {
 		panic("bad abstruth")
 	}
 }
+
+func (t AbsTruth) Or(o AbsTruth) AbsTruth {
+	if t == True || o == True {
+		return True
+	}
+	if t == Unknown || o == Unknown {
+		return Unknown
+	}
+	return False
+}
+
+func (t AbsTruth) And(o AbsTruth) AbsTruth {
+	if t == False || o == False {
+		return False
+	}
+	if t == Unknown || o == Unknown {
+		return Unknown
+	}
+	return True
+}
+
+func (t AbsTruth) Not() AbsTruth {
+	switch t {
+	case True:
+		return False
+	case False:
+		return True
+	case Unknown:
+		return Unknown
+	}
+}

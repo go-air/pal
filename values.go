@@ -14,11 +14,22 @@
 
 package pal
 
-type Value uint64
 
-type Values interface {
-	Const(v Value) (uint64, bool)
-	Plus(v Value) Value
-	Equal(a, b Value) AbsTruth
-	Less(a, b Value) AbsTruth
+type ValueKind int
+
+const (
+	Const ValueKind = iota
+	Var
+
+)
+
+type Value 
+
+
+type Values[V any]  interface {
+	Const(v V) (uint64, bool)
+	Var(v V) bool
+	Plus(v V) Value
+	Equal(a, b V) AbsTruth
+	Less(a, b V) AbsTruth
 }

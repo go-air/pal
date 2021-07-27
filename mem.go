@@ -14,35 +14,4 @@
 
 package pal
 
-import "fmt"
-
-type Mem uint64
-
-func (m Mem) Class() MemClass {
-	switch m & 7 {
-	case 0:
-		return Zero
-	case 1:
-		return Oob
-	case 2:
-		return Thunk
-	case 3:
-		return Global
-	case 4:
-		return Local
-	case 5:
-		return Alloc
-	case 6:
-		return Ext
-	default:
-		panic("bad Mem")
-	}
-}
-
-func (m Mem) Index() uint64 {
-	return uint64(m >> 3)
-}
-
-func (m Mem) String() string {
-	return fmt.Sprintf("%s%d", m.Class(), m.Index())
-}
+type Mem uint32

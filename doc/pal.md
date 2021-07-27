@@ -242,7 +242,7 @@ below.
 
 ```go
 type Values interface {
-	Const(v Value) (uint64, bool)
+	Const(v Value) (int, bool)
 	Plus(a, b Value) Value
 	Less(a, b Value) AbsTrue
 	Equal(a, b Value) AbsTruth
@@ -258,6 +258,13 @@ concrete value.
 
 A client of pal must decide how to model these concrete values, however any such
 model will provide the Values interface above.
+
+pal will provide some basic models
+
+#### All Const
+
+All maps and slices have constant size 1.
+
 
 #### Const Values
 
@@ -320,14 +327,12 @@ type Solver interface {
 	// m == n ?
 	Equal(m, n Mem) AbsTruth
 
-	// m < n ?
-	Less(m, n Mem) AbsTruth
 
 	// PointsTo place the points to set of m into dst, starting
 	// at offset from with a max of 'ext',
 	//
 	// return the resulting dst.
-	PointsTo(dst []Mem, m Mem, from, ext int) []Mem
+	PointsTo(dst []Mem, m Mem, ext Value) []Mem
 
 	// ReplaceThunk
 	// for every Mem in the underlying Mems whose points-to set

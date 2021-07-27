@@ -18,30 +18,24 @@ type MemClass uint64
 
 const (
 	Zero MemClass = iota
-	Oob
-	Thunk
 	Global
 	Local
-	Alloc
-	Ext
+	Heap
+	Any
 )
 
 func (c MemClass) String() string {
 	switch c {
 	case Zero:
 		return "z"
-	case Oob:
-		return "o"
-	case Thunk:
-		return "t"
 	case Local:
 		return "l"
 	case Global:
 		return "g"
-	case Alloc:
-		return "a"
-	case Ext:
-		return "x"
+	case Heap:
+		return "h"
+	case Any:
+		return "?"
 	default:
 		panic("bad MemClass")
 	}

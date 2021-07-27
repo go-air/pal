@@ -15,11 +15,17 @@
 package pal
 
 type mem struct {
-	root  *mem
-	class MemClass
-	sz    Value
+	class  MemClass
+	root   Mem
+	parent Mem
+
+	ty  *types.Type
+	vsz Value
 }
 
 type Mems struct {
 	mems []mem
+}
+
+func (m *Mems) Access(m Mem, vs ...Value) Mem {
 }
