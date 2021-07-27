@@ -14,29 +14,17 @@
 
 package pal
 
-type MemClass uint64
-
-const (
-	Zero MemClass = iota
-	Global
-	Local
-	Heap
-	Any
+import (
+	"golang.org/x/tools/go/ssa"
 )
 
-func (c MemClass) String() string {
-	switch c {
-	case Zero:
-		return "z"
-	case Local:
-		return "l"
-	case Global:
-		return "g"
-	case Heap:
-		return "h"
-	case Any:
-		return "?"
-	default:
-		panic("bad MemClass")
-	}
+type MemSSAInfo struct {
+	Pkg   *ssa.Pkg
+	Fn    *ssa.Function
+	Param *ssa.Parameter
+}
+
+type FromSSA struct {
+	mems mems
+	Info []MemSSAInfo
 }

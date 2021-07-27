@@ -1,4 +1,4 @@
-// Copyright 2021 Scott Cotton
+// Copyright 2021 The pal authors (see AUTHORS)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,17 @@
 
 package pal
 
-
 type ValueKind int
 
 const (
 	Const ValueKind = iota
 	Var
 	Op
-
 )
 
 type Value interface {
 	ValueKind() ValueKind
 }
-
 
 type Values interface {
 	Const(v Value) (int, bool)
