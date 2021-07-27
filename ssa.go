@@ -21,15 +21,66 @@ import (
 	"golang.org/x/tools/go/ssa"
 )
 
-type MemSSAInfo struct {
+type MemSSA struct {
 	Pkg   *ssa.Package
 	Param *ssa.Parameter
 	I9n   ssa.Instruction
 }
 
 type FromSSA struct {
+	pkg  *ssa.Package
 	mems *Mems
-	Info []MemSSAInfo
+	info []MemSSA // indexed by Mem
 }
 
-func (f *FromSSA) gen() {}
+func NewFromSSA() *FromSSA {
+	return &FromSSA{mems: NewMems(nil), info: make([]MemSSA, 0, 128)}
+}
+
+func (f *FromSSA) startPackage(p *ssa.Package) {
+	f.pkg = p
+}
+
+func (f *FromSSA) endPackage(p *ssa.Package) {
+	f.pkg = nil
+}
+
+func (f *FromSSA) Info(m Mem) *MemSSA {
+	return &f.info[m]
+}
+
+func (f *FromSSA) registerParam(p *ssa.Parameter) Mem {
+	m := f.mems.Opaque(p.Type())
+	f.set(m, &MemSSA{Pkg: f.pkg, Param: p})
+	return m
+}
+
+func (f *FromSSA) registerAlloc(a *ssa.Alloc) Mem {
+	if !a.Heap {
+		return Mem(0)
+	}
+	var m Mem
+	var i = MemSSA{Pkg: f.pkg, I9n: a}
+	m = f.mems.Heap(a.Type())
+	f.set(m, &i)
+	return m
+}
+
+func (f *FromSSA) registerGlobal(g *ssa.Global) Mem {
+	return Mem(0)
+}
+
+func (f *FromSSA) set(m Mem, info *MemSSA) {
+	n := Mem(uint32(cap(f.info)))
+	if m < n {
+		f.info[m] = *info
+		return
+	}
+	for n <= m {
+		n *= 2
+	}
+	infos := make([]MemSSA, n, n)
+	copy(infos, f.info)
+	infos[m] = *info
+	f.info = infos
+}

@@ -14,21 +14,52 @@
 
 package pal
 
-import "go/types"
+import (
+	"go/types"
+)
 
 type mem struct {
 	class  MemClass
 	root   Mem
 	parent Mem
 
-	ty  *types.Type
+	ty  types.Type
 	vsz Value
 }
 
 type Mems struct {
-	mems []mem
+	mems   []mem
+	values Values
+}
+
+func NewMems(values Values) *Mems {
+	return &Mems{
+		mems:   make([]mem, 1, 128),
+		values: values}
 }
 
 func (ms *Mems) Access(m Mem, vs ...Value) Mem {
 	return Mem(0)
+}
+
+func (ms *Mems) Heap(ty types.Type) Mem {
+	res := Mem(uint32(len(ms.mems)))
+	ms.mems = append(ms.mems, mem{
+		class:  Heap,
+		root:   res,
+		parent: res,
+		ty:     ty,
+		vsz:    ms.values.One()})
+	return res
+}
+
+func (ms *Mems) Opaque(ty types.Type) Mem {
+	res := Mem(uint32(len(ms.mems)))
+	ms.mems = append(ms.mems, mem{
+		class:  Opaque,
+		root:   res,
+		parent: res,
+		ty:     ty,
+		vsz:    ms.values.One()})
+	return res
 }
