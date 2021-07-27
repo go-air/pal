@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"golang.org/x/tools/0.20210713164023-8e85a283cd8f/go/ssa"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
