@@ -20,16 +20,19 @@ type ValueKind int
 const (
 	Const ValueKind = iota
 	Var
+	Op
 
 )
 
-type Value 
+type Value interface {
+	ValueKind() ValueKind
+}
 
 
-type Values[V any]  interface {
-	Const(v V) (uint64, bool)
-	Var(v V) bool
-	Plus(v V) Value
-	Equal(a, b V) AbsTruth
-	Less(a, b V) AbsTruth
+type Values interface {
+	Const(v Value) (int, bool)
+	Var(v Value) bool
+	Plus(v Value) Value
+	Equal(a, b Value) AbsTruth
+	Less(a, b Value) AbsTruth
 }

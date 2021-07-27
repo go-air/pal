@@ -63,5 +63,7 @@ func (t AbsTruth) Not() AbsTruth {
 		return True
 	case Unknown:
 		return Unknown
+	default:
+		panic("bad BasTruth")
 	}
 }

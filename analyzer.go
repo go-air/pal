@@ -23,12 +23,12 @@ import (
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 )
 
-var flagSet = flag.NewFlagSet("gpal", flag.ExitOnError)
+var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
 
 var Analyzer = &analysis.Analyzer{
-	Name:       "gpal",
+	Name:       "pal",
 	Flags:      *flagSet,
-	Doc:        "gpal pointer analysis",
+	Doc:        "pal pointer analysis",
 	Run:        run,
 	Requires:   []*analysis.Analyzer{buildssa.Analyzer},
 	ResultType: reflect.TypeOf(new(Mems))}

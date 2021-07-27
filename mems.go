@@ -14,6 +14,8 @@
 
 package pal
 
+import "go/types"
+
 type mem struct {
 	class  MemClass
 	root   Mem
@@ -27,5 +29,6 @@ type Mems struct {
 	mems []mem
 }
 
-func (m *Mems) Access(m Mem, vs ...Value) Mem {
+func (ms *Mems) Access(m Mem, vs ...Value) Mem {
+	return Mem(0)
 }
