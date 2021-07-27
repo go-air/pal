@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// This file provides support for generating and using the core pal
+// functions from golang.org/s/tools/go/ssa representation.
+
 package pal
 
 import (
@@ -19,12 +22,14 @@ import (
 )
 
 type MemSSAInfo struct {
-	Pkg   *ssa.Pkg
-	Fn    *ssa.Function
+	Pkg   *ssa.Package
 	Param *ssa.Parameter
+	I9n   ssa.Instruction
 }
 
 type FromSSA struct {
-	mems mems
+	mems *Mems
 	Info []MemSSAInfo
 }
+
+func (f *FromSSA) gen() {}

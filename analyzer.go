@@ -37,7 +37,10 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (interface{}, error) {
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssa.Pkg.Build()
-	mems := &mems{}
+	mems := &Mems{}
+	// bind globals
+
+	// bind funcs
 	for _, fn := range ssa.SrcFuncs {
 		runFunc(ssa, fn, mems)
 
@@ -45,70 +48,63 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return new(Mems), nil
 }
 
-func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *mems) {
+func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *Mems) {
 	// bind params
 	for _, p := range fn.Params {
 		fmt.Printf("%s - %s\n", p.Name(), p.Object())
 	}
 	for _, b := range fn.Blocks {
-
+		_ = b
 
 	}
 }
 
-func runBlock(block *ssa.BasicBlock, mems *mems) {
-	rands := make([]ssa.Value, 0, 128)
+func runBlock(block *ssa.BasicBlock, mems *Mems) {
 	for _, i9n := range block.Instrs {
 		runOne(i9n, mems)
 	}
 }
 
-func runOne(n ssa.Node) {
-		switch n := n.(type) {
-		case *ssa.Alloc:
-			if n.Heap {
-			}
-		case *ssa.Builtin:
-		case *ssa.Binop:
-		case *ssa.Call:
-		case *ssa.ChangeInterface:
-		case *ssa.ChangeType:
-		case *ssa.Const:
-		case *ssa.Convert:
-		case *ssa.DebugRef:
-		case *ssa.Defer:
-		case *ssa.Extract:
-		case *ssa.Field:
-		case *ssa.FieldAddr:
-		case *ssa.Function:
-		case *ssa.Global:
-		case *ssa.Go:
-		case *ssa.If:
-		case *ssa.Index:
-		case *ssa.IndexAddr:
-		case *ssa.Jump:
-		case *ssa.Lookup:
-		case *ssa.MakeInterface:
-		case *ssa.MakeClosure:
-		case *ssa.MakeChan:
-		case *ssa.MakeSlice:
-		case *ssa.MakeMap:
-		case *ssa.MapUpdate:
-		case *ssa.NamedConst:
-		case *ssa.Next:
-		case *ssa.Parameter:
-		case *ssa.Panic:
-		case *ssa.Phi:
-		case *ssa.Select:
-		case *ssa.Send:
-		case *ssa.Return:
-		case *ssa.UnOp:
-		case *ssa.Slice:
-		case *ssa.Store:
-		case *ssa.Type:
-		case *ssa.TypeAssert:
-		default:
-			panic("unknown ssa Node")
+func runOne(n ssa.Instruction, mems *Mems) {
+	rands := make([]ssa.Value, 0, 128)
+	_ = rands
+	switch n := n.(type) {
+	case *ssa.Alloc:
+		if n.Heap {
 		}
+	case *ssa.BinOp:
+	case *ssa.Call:
+	case *ssa.ChangeInterface:
+	case *ssa.ChangeType:
+	case *ssa.Convert:
+	case *ssa.DebugRef:
+	case *ssa.Defer:
+	case *ssa.Extract:
+	case *ssa.Field:
+	case *ssa.FieldAddr:
+	case *ssa.Go:
+	case *ssa.If:
+	case *ssa.Index:
+	case *ssa.IndexAddr:
+	case *ssa.Jump:
+	case *ssa.Lookup:
+	case *ssa.MakeInterface:
+	case *ssa.MakeClosure:
+	case *ssa.MakeChan:
+	case *ssa.MakeSlice:
+	case *ssa.MakeMap:
+	case *ssa.MapUpdate:
+	case *ssa.Next:
+	case *ssa.Panic:
+	case *ssa.Phi:
+	case *ssa.Select:
+	case *ssa.Send:
+	case *ssa.Return:
+	case *ssa.UnOp:
+	case *ssa.Slice:
+	case *ssa.Store:
+	case *ssa.TypeAssert:
+	default:
+		panic("unknown ssa Node")
 	}
 }
