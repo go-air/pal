@@ -2,8 +2,8 @@
 
 ## Goals
 
-The goal of pal is to provide a library which can be used for different languages
-for effective pointer analysis.
+The goal of pal is to provide a library which can be used for differnt analysis
+intermediate representations for effective pointer analysis for Go.
 
 ### Effective pointer analysis
 
@@ -17,7 +17,7 @@ This in turn has many applications
 	- any interprocedural sound analysis
 	- resolving method calls
 	
-1. Identifying possible invalid pointer dereferences and buffer overflows.
+1. Identifying possible invalid pointer dereferences.
 1. Linking traditional, memory-unaware, analysis methods to modern use. 
 1. Identifying aliases.
 
@@ -28,23 +28,22 @@ re-analyzing the standard library.
 In this project, effective pointer analysis means providing a relatively simple
 api to meet the most common needs well, and to meet most needs reasonably.
 
-### For different languages
+### For different Go IRs
 
-The memory model should fit modelling null dereferences in Java, pointer like objects
-in Go, common assembly architectures, C++ smart pointers, Rust mixed memory, ...
+staticcheck has an IR, golang.org/x/tools/go/ssa is a baseline, we are working on (air)[https://github.com/go-air/air].  We would like pal to be retargetable to these different IRs.  Perhaps
+it can be used one day for the Go gc compiler IR.
 
-In order to guarantee that the API is actually used, at least one implementation to a concrete
-current modern programming language will be provided.  In order to guarantee many common
-constructs are easily modelled, a collection of modelling mechanisms for different language
-constructs will be created.  
+To be standard, we will start with a golang.org/x/tools/go/ssa implementation.
 
 ### Out of Scope
 
-pal does not attempt to model specific programming language features, such as
-atomics, parallelism, volatility, or external registers.
+pal does not attempt to model edge cases scenarios in Go, such as
+correct pointer analysis in the presence of races or unsafe.Pointer usage.
 
 Rather, pal should provide a small set of basic operations which, taken together,
-can be used to model a variety of common programming language constructs.
+can be used to model a variety of program behaviors while focusing principally
+on standard usage.
+
 
 
 ## Architecture
@@ -57,7 +56,7 @@ of contexts, as in the diagram below.
 2. App uses pal to get pointer results about the input lang.
 
 ---------------          ------           ----------------
-| Language/AST |>--1--->| pal |>--2---> | Pointer Results|>--
+| GoIR         |>--1--->| pal  |>--2---> | Pointer Results|>--
 ---------------          ------           ----------------    |
        ^                                                      |
        |                                                      | 
@@ -66,7 +65,7 @@ of contexts, as in the diagram below.
 
 
 For example, it may be used to create a sound dynamic call graph, or it may
-be used to detect or prove absence of null dereferences or buffer overflows.
+be used to detect or prove absence of null dereferences.
 
 For a given input, pal will operate according to the classical pattern of 
 separating _constraint generation_ from solving.  While these may be interleaved
@@ -79,9 +78,10 @@ The back arrow is for optional incremental usage.
 ### Related Work
 
 pal is fundamentally based on a Anderson analysis [3], however it introduces a
-symbolic aspect for treatment of numerics, is designed to be retargeted and
-adaptable to different applications and languages, and provides a mechanism
-(_thunks_ + projection) for modular analysis.
+symbolic aspect for treatment of numerics, and a _meta symbolic_ aspect for
+incrementality.  pal is designed to be retargeted and
+adaptable to different applications, and provides a mechanism
+for modular analysis.
 
 srcPtr [7] works on the AST is a framework for Anderson or Steensgaard analysis.
 pal is completely agnostic of the input: it could be AST or some IR such as
