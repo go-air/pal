@@ -17,10 +17,15 @@ package pal
 type MemClass uint64
 
 const (
+	// Zero is the nil, the only pointer value which cannot be dereferenced.
 	Zero MemClass = iota
+	// Global is the location of a global variable
 	Global
+	// Local is the location of a local variable
 	Local
+	// Heap is the location associated with a heap allocation
 	Heap
+	// Opaque is a placeholder location.
 	Opaque
 )
 

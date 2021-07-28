@@ -37,15 +37,27 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (interface{}, error) {
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssa.Pkg.Build()
-	mems := &Mems{}
+	mems := NewMems(nil)
 	// bind globals
 
 	// bind funcs
+	for _, m := range ssa.Pkg.Members {
+		runMember(ssa, m, mems)
+	}
 	for _, fn := range ssa.SrcFuncs {
 		runFunc(ssa, fn, mems)
 
 	}
 	return new(Mems), nil
+}
+
+func runMember(_ *buildssa.SSA, m ssa.Member, mems *Mems) {
+	switch m := m.(type) {
+	case *ssa.Global:
+		fmt.Printf("global %s\n", m)
+		mems.Global(m.Type())
+	default:
+	}
 }
 
 func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *Mems) {
@@ -54,6 +66,7 @@ func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *Mems) {
 		fmt.Printf("%s - %s\n", p.Name(), p.Object())
 	}
 	for _, b := range fn.Blocks {
+		fmt.Printf("register block %s\n", b)
 		_ = b
 
 	}
@@ -68,6 +81,10 @@ func runBlock(block *ssa.BasicBlock, mems *Mems) {
 func runOne(n ssa.Instruction, mems *Mems) {
 	rands := make([]ssa.Value, 0, 128)
 	_ = rands
+	switch n := n.(type) {
+	default:
+		fmt.Printf("\t%#v %s %T\n", n, n, n)
+	}
 	switch n := n.(type) {
 	case *ssa.Alloc:
 		if n.Heap {
@@ -105,6 +122,6 @@ func runOne(n ssa.Instruction, mems *Mems) {
 	case *ssa.Store:
 	case *ssa.TypeAssert:
 	default:
-		panic("unknown ssa Node")
+		panic("unknown ssa Instruction")
 	}
 }

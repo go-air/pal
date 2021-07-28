@@ -25,6 +25,9 @@ type mem struct {
 
 	ty  types.Type
 	vsz Value
+
+	in  []Mem
+	out []Mem
 }
 
 type Mems struct {
@@ -34,12 +37,40 @@ type Mems struct {
 
 func NewMems(values Values) *Mems {
 	return &Mems{
-		mems:   make([]mem, 1, 128),
+		// 0 -> not a mem
+		// 1 -> zero mem
+		mems:   make([]mem, 2, 128),
 		values: values}
 }
 
 func (ms *Mems) Access(m Mem, vs ...Value) Mem {
 	return Mem(0)
+}
+
+func (ms *Mems) Zero() Mem {
+	return Mem(1)
+}
+
+func (ms *Mems) Local(ty types.Type) Mem {
+	res := Mem(uint32(len(ms.mems)))
+	ms.mems = append(ms.mems, mem{
+		class:  Local,
+		root:   res,
+		parent: res,
+		ty:     ty,
+		vsz:    ms.values.FromType(ty)})
+	return res
+}
+
+func (ms *Mems) Global(ty types.Type) Mem {
+	res := Mem(uint32(len(ms.mems)))
+	ms.mems = append(ms.mems, mem{
+		class:  Global,
+		root:   res,
+		parent: res,
+		ty:     ty,
+		vsz:    ms.values.FromType(ty)})
+	return res
 }
 
 func (ms *Mems) Heap(ty types.Type) Mem {
@@ -49,7 +80,7 @@ func (ms *Mems) Heap(ty types.Type) Mem {
 		root:   res,
 		parent: res,
 		ty:     ty,
-		vsz:    ms.values.One()})
+		vsz:    ms.values.FromType(ty)})
 	return res
 }
 
@@ -60,6 +91,6 @@ func (ms *Mems) Opaque(ty types.Type) Mem {
 		root:   res,
 		parent: res,
 		ty:     ty,
-		vsz:    ms.values.One()})
+		vsz:    ms.values.FromType(ty)})
 	return res
 }

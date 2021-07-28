@@ -22,9 +22,15 @@ import (
 )
 
 type MemSSA struct {
-	Pkg   *ssa.Package
-	Param *ssa.Parameter
-	I9n   ssa.Instruction
+	Pkg           *ssa.Package
+	Param         *ssa.Parameter
+	Global        *ssa.Global
+	Alloc         *ssa.Alloc
+	MakeChan      *ssa.MakeChan
+	MakeClosure   *ssa.MakeClosure
+	MakeInterface *ssa.MakeInterface
+	MakeMap       *ssa.MakeMap
+	MakeSlice     *ssa.MakeSlice
 }
 
 type FromSSA struct {
@@ -60,7 +66,7 @@ func (f *FromSSA) registerAlloc(a *ssa.Alloc) Mem {
 		return Mem(0)
 	}
 	var m Mem
-	var i = MemSSA{Pkg: f.pkg, I9n: a}
+	var i = MemSSA{Pkg: f.pkg, Alloc: a}
 	m = f.mems.Heap(a.Type())
 	f.set(m, &i)
 	return m
@@ -76,6 +82,8 @@ func (f *FromSSA) set(m Mem, info *MemSSA) {
 		f.info[m] = *info
 		return
 	}
+	// BUG(wsc) if m is too large, then n*m overflows
+	// will loop forever
 	for n <= m {
 		n *= 2
 	}

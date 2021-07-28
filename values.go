@@ -14,6 +14,8 @@
 
 package pal
 
+import "go/types"
+
 type ValueKind int
 
 const (
@@ -25,6 +27,7 @@ const (
 type Value interface{}
 
 type Values interface {
+	FromType(types.Type) Value
 	Zero() Value
 	One() Value
 	Const(v Value) (i int, ok bool)
