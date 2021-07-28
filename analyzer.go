@@ -67,8 +67,8 @@ func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *Mems) {
 		fmt.Printf("%s - %s\n", p.Name(), p.Object())
 	}
 	for _, b := range fn.Blocks {
-		fmt.Printf("register block %s\n", b)
 		_ = b
+		runBlock(b, mems)
 
 	}
 }
@@ -115,6 +115,7 @@ func runOne(n ssa.Instruction, mems *Mems) {
 	case *ssa.Next:
 	case *ssa.Panic:
 	case *ssa.Phi:
+	case *ssa.Range:
 	case *ssa.Select:
 	case *ssa.Send:
 	case *ssa.Return:

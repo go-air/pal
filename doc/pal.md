@@ -30,8 +30,9 @@ api to meet the most common needs well, and to meet most needs reasonably.
 
 ### For different Go IRs
 
-staticcheck has an IR, golang.org/x/tools/go/ssa is a baseline, we are working on (air)[https://github.com/go-air/air].  We would like pal to be retargetable to these different IRs.  Perhaps
-it can be used one day for the Go gc compiler IR.
+staticcheck has an IR, golang.org/x/tools/go/ssa is a baseline, we are working on (air)[https://github.com/go-air/air].  We would like pal to be retargetable to these different IRs as well as others to come.  The motivation behind this is that pointer analysis 
+is non-trivial, and we would like to provide consistent high quality results as widely
+as possible.  Perhaps it can be used one day for the Go gc compiler IR.
 
 To be standard, we will start with a golang.org/x/tools/go/ssa implementation.
 
@@ -79,9 +80,8 @@ The back arrow is for optional incremental usage.
 
 pal is fundamentally based on a Anderson analysis [3], however it introduces a
 symbolic aspect for treatment of numerics, and a _meta symbolic_ aspect for
-incrementality.  pal is designed to be retargeted and
-adaptable to different applications, and provides a mechanism
-for modular analysis.
+incrementality.  pal is designed to be retargeted and adaptable to different
+applications, and provides a mechanism for modular analysis.
 
 srcPtr [7] works on the AST is a framework for Anderson or Steensgaard analysis.
 pal is completely agnostic of the input: it could be AST or some IR such as

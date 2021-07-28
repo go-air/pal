@@ -65,6 +65,16 @@ func (c consts) FromType(ty types.Type) V {
 		k := c.FromType(ty.Key()).(int)
 		v := c.FromType(ty.Elem()).(int)
 		return Const(k + v)
+	case *types.Struct:
+		n := ty.NumFields()
+		sum := c.Zero()
+		for i := 0; i < n; i++ {
+			fty := ty.Field(i).Type()
+			sum = c.Plus(c, c.FromType(fty))
+		}
+		return sum
+	case *types.Named:
+		return c.FromType(ty.Underlying())
 
 	default:
 		panic(fmt.Sprintf("%s: unexpected/unimplemented", ty))

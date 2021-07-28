@@ -18,6 +18,7 @@
 package pal
 
 import (
+	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
 )
 
@@ -34,13 +35,14 @@ type MemSSA struct {
 }
 
 type FromSSA struct {
+	ssa  *buildssa.SSA
 	pkg  *ssa.Package
 	mems *Mems
 	info []MemSSA // indexed by Mem
 }
 
-func NewFromSSA() *FromSSA {
-	return &FromSSA{mems: NewMems(nil), info: make([]MemSSA, 0, 128)}
+func NewFromSSA(b *buildssa.SSA) *FromSSA {
+	return &FromSSA{ssa: b, mems: NewMems(nil), info: make([]MemSSA, 0, 128)}
 }
 
 func (f *FromSSA) startPackage(p *ssa.Package) {
@@ -82,8 +84,7 @@ func (f *FromSSA) set(m Mem, info *MemSSA) {
 		f.info[m] = *info
 		return
 	}
-	// BUG(wsc) if m is too large, then n*m overflows
-	// will loop forever
+	// BUG(wsc) overflow on n*2 may cause a loop forever 
 	for n <= m {
 		n *= 2
 	}
