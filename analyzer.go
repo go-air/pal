@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
@@ -37,7 +38,7 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (interface{}, error) {
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssa.Pkg.Build()
-	mems := NewMems(nil)
+	mems := NewMems(values.Consts())
 	// bind globals
 
 	// bind funcs

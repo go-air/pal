@@ -16,6 +16,8 @@ package pal
 
 import (
 	"go/types"
+
+	"github.com/go-air/pal/values"
 )
 
 type mem struct {
@@ -24,7 +26,7 @@ type mem struct {
 	parent Mem
 
 	ty  types.Type
-	vsz Value
+	vsz values.V
 
 	in  []Mem
 	out []Mem
@@ -32,10 +34,10 @@ type mem struct {
 
 type Mems struct {
 	mems   []mem
-	values Values
+	values values.T
 }
 
-func NewMems(values Values) *Mems {
+func NewMems(values values.T) *Mems {
 	return &Mems{
 		// 0 -> not a mem
 		// 1 -> zero mem
@@ -43,7 +45,7 @@ func NewMems(values Values) *Mems {
 		values: values}
 }
 
-func (ms *Mems) Access(m Mem, vs ...Value) Mem {
+func (ms *Mems) Access(m Mem, vs ...values.V) Mem {
 	return Mem(0)
 }
 

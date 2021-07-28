@@ -12,28 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package values
 
 import "go/types"
 
 type ValueKind int
 
 const (
-	Const ValueKind = iota
-	Var
-	Plus
+	ConstKind ValueKind = iota
+	VarKind
+	PlusKind
 )
 
-type Value interface{}
+type V interface{}
 
-type Values interface {
-	FromType(types.Type) Value
-	Zero() Value
-	One() Value
-	Const(v Value) (i int, ok bool)
-	Var(v Value) bool
-	Plus(v Value) Value
-	Equal(a, b Value) AbsTruth
-	Less(a, b Value) AbsTruth
-	Kind(v Value) ValueKind
+type T interface {
+	FromType(types.Type) V
+	Zero() V
+	One() V
+	Const(v V) (i int, ok bool)
+	Var(v V) bool
+	Plus(a, b V) V
+	Equal(a, b V) AbsTruth
+	Less(a, b V) AbsTruth
+	Kind(v V) ValueKind
 }
