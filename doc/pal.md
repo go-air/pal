@@ -1,48 +1,48 @@
-# pal -- Generic Pointer Analysis Library
+# pal -- Pointer Analysis Library for Go
 
 ## Goals
 
-The goal of pal is to provide a library which can be used for differnt analysis
-intermediate representations for effective pointer analysis for Go.
+The goal of pal is to provide a library which can be effectively used for different kinds of pointer analyses for Go on different
+intermediate representations for effective pointer analysis.
 
 ### Effective pointer analysis
 
-Pointer analysis (PA) is a core dependency of many static analyses, which have
-different needs, such as
+Pointer analysis (PA) is a core dependency of many static analyses, which have different needs, such as
 
-1. Providing a sound dynamic call graph.  
+1. Providing a sound dynamic call graph. 
 This in turn has many applications
 	- impact analysis
  	- non-interference analysis
 	- any interprocedural sound analysis
 	- resolving method calls
-	
 1. Identifying possible invalid pointer dereferences.
-1. Linking traditional, memory-unaware, analysis methods to modern use. 
+1. Proving that nil pointer dereferences or
+out of bounds panics are impossible.
+1. Linking traditional numeric, memory-unaware, analysis methods to modern use. 
 1. Identifying aliases.
 
 Unfortunately, PA is often or usually done under global program analysis, as
 opposed to modularly.  Tools such as Golang's pointer analysis often requires
-re-analyzing the standard library.
+re-analyzing the standard library.  Larger projects such as Docker or Kubernetes take even more resources.
 
 In this project, effective pointer analysis means providing a relatively simple
 api to meet the most common needs well, and to meet most needs reasonably.
 
 ### For different Go IRs
 
-staticcheck has an IR, golang.org/x/tools/go/ssa is a baseline, we are working on (air)[https://github.com/go-air/air].  We would like pal to be retargetable to these different IRs.  Perhaps
+staticcheck [6] has an IR, golang.org/x/tools/go/ssa is a baseline, we are working on (air)[https://github.com/go-air/air].  We would like pal to be retargetable to these different IRs.  Perhaps
 it can be used one day for the Go gc compiler IR.
 
 To be standard, we will start with a golang.org/x/tools/go/ssa implementation.
 
 ### Out of Scope
 
-pal does not attempt to model edge cases scenarios in Go, such as
+pal does not attempt to model edge case scenarios in Go, such as
 correct pointer analysis in the presence of races or unsafe.Pointer usage.
 
 Rather, pal should provide a small set of basic operations which, taken together,
 can be used to model a variety of program behaviors while focusing principally
-on standard usage.
+on usage for which Go guarantees memory safety. 
 
 
 
@@ -51,21 +51,25 @@ on standard usage.
 pal will be provided as a library to support different language/application pairs
 of contexts, as in the diagram below.
 
-```
-1. App maps lang/ast to pal constraints and mems
-2. App uses pal to get pointer results about the input lang.
+```flow
+st=>start: Go IR
+e=>end: Use Pointer Results
+op=>operation: Encode memory model
+op2=>operation: Solve model
+cond=>condition: More results?
 
----------------          ------           ----------------
-| GoIR         |>--1--->| pal  |>--2---> | Pointer Results|>--
----------------          ------           ----------------    |
-       ^                                                      |
-       |                                                      | 
-       |<----------------------------------------------------<| 
+st->op->op2->cond
+
+cond(yes)->st
+
+cond(no)->e
 ```
+
+
 
 
 For example, it may be used to create a sound dynamic call graph, or it may
-be used to detect or prove absence of null dereferences.
+be used to detect or prove absence of null dereferences, or to generate summaries for efficient incremental usage.
 
 For a given input, pal will operate according to the classical pattern of 
 separating _constraint generation_ from solving.  While these may be interleaved
@@ -73,7 +77,6 @@ when the input is additively incremental, their roles will be kept distinct and
 a common workflow will be that of a pass generating constraints followed by
 a pass of solving.
 
-The back arrow is for optional incremental usage.
 
 ### Related Work
 
@@ -386,7 +389,7 @@ Programming Language (PDF) (PhD thesis).
       primaryClass={cs.PL}
 }
 
-[6] static check
+[6] [static check](staticcheck.io) 
 
 [7] Zyrianov, Vlas; Newman, Christian D.; Guarnera, Drew T.; Collard, Michael L.; Maletic, Jonathan I. (2019). "srcPtr: A Framework for Implementing Static Pointer Analysis Approaches" (PDF). ICPC '19: Proceedings of the 27th IEEE International Conference on Program Comprehension. Montreal, Canada: IEEE.
 
