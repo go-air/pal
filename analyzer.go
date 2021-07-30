@@ -28,14 +28,16 @@ import (
 
 var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
 
-var Analyzer = &analysis.Analyzer{
-	Name:       "pal",
-	Flags:      *flagSet,
-	Doc:        "pal pointer analysis",
-	Run:        run,
-	Requires:   []*analysis.Analyzer{buildssa.Analyzer},
-	ResultType: reflect.TypeOf((*mem.Model)(nil)),
-	FactTypes:  []analysis.Fact{&PkgFact{}}}
+func Analyzer() *analysis.Analyzer {
+	return &analysis.Analyzer{
+		Name:       "pal",
+		Flags:      *flagSet,
+		Doc:        "pal pointer analysis",
+		Run:        run,
+		Requires:   []*analysis.Analyzer{buildssa.Analyzer},
+		ResultType: reflect.TypeOf((*mem.Model)(nil)),
+		FactTypes:  []analysis.Fact{&PkgFact{}}}
+}
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, imp := range pass.Pkg.Imports() {

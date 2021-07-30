@@ -29,6 +29,11 @@ type loc struct {
 
 	in  []T
 	out []T
+
+	// constraints
+	transfers []T
+	loads     []T
+	stores    []T
 }
 
 type Model struct {

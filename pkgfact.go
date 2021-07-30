@@ -14,26 +14,14 @@
 
 package pal
 
-import "go/token"
+import "github.com/go-air/pal/mem"
 
+// PkgFact represents information to pass from
+// a depended upon package to its importer.
 type PkgFact struct {
-	PackageName  string
-	MemSourceLoc []MemSourceLoc
+	PackageName string
+	MemModel    *mem.Model // provides mem.T operations
+	SrcInfo     []SrcInfo  // indexed by mem.T
 }
 
 func (p *PkgFact) AFact() {}
-
-type MemSourceLocKind int
-
-const (
-	Param MemSourceLocKind = iota
-	Decl
-	Alloc
-)
-
-type MemSourceLoc struct {
-	Kind     MemSourceLocKind
-	FuncName string
-	Param    int
-	Pos      token.Pos
-}
