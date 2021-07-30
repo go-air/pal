@@ -15,7 +15,9 @@
 package values
 
 import (
+	"encoding/binary"
 	"fmt"
+	"io"
 
 	"go/types"
 )
@@ -52,29 +54,29 @@ func (c consts) Const(v V) (int, bool) {
 	return int(vv), true
 }
 
-func (c consts) FromType(ty types.Type) V {
+func (c consts) TypeSize(ty types.Type) V {
 	switch ty := ty.(type) {
 	case *types.Basic:
 		return c.One()
 	case *types.Pointer:
 		return c.One()
 	case *types.Array:
-		elem := c.FromType(ty.Elem()).(Const)
+		elem := c.TypeSize(ty.Elem()).(Const)
 		return V(Const(ty.Len()) * elem)
 	case *types.Map:
-		k := c.FromType(ty.Key()).(int)
-		v := c.FromType(ty.Elem()).(int)
+		k := c.TypeSize(ty.Key()).(int)
+		v := c.TypeSize(ty.Elem()).(int)
 		return Const(k + v)
 	case *types.Struct:
 		n := ty.NumFields()
 		sum := c.Zero()
 		for i := 0; i < n; i++ {
 			fty := ty.Field(i).Type()
-			sum = c.Plus(c, c.FromType(fty))
+			sum = c.Plus(c, c.TypeSize(fty))
 		}
 		return sum
 	case *types.Named:
-		return c.FromType(ty.Underlying())
+		return c.TypeSize(ty.Underlying())
 
 	default:
 		panic(fmt.Sprintf("%s: unexpected/unimplemented", ty))
@@ -100,4 +102,31 @@ func (c consts) Equal(a, b V) AbsTruth {
 		return True
 	}
 	return False
+}
+
+func (c consts) PalEncodeValue(w io.Writer, v V) error {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, uint64(v.(Const)))
+	_, e := w.Write(buf)
+	return e
+}
+
+func (c consts) PalDecodeValue(r io.Reader) (V, error) {
+	buf := make([]byte, 8)
+	n, err := r.Read(buf)
+	if err != nil {
+		return nil, err
+	}
+	if n != 8 {
+		return nil, fmt.Errorf("PalDecodeValue: couldn't read 8")
+	}
+	return Const(int(binary.BigEndian.Uint64(buf))), nil
+}
+
+func (c consts) PalDecode(r io.Reader) error {
+	return nil
+}
+
+func (c consts) PalEncode(w io.Writer) error {
+	return nil
 }

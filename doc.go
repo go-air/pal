@@ -12,6 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package pal provides a pointer analysis library.
 package pal
-
-type Mem uint32

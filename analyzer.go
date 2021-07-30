@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/go-air/pal/mem"
 	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -33,21 +34,25 @@ var Analyzer = &analysis.Analyzer{
 	Doc:        "pal pointer analysis",
 	Run:        run,
 	Requires:   []*analysis.Analyzer{buildssa.Analyzer},
-	ResultType: reflect.TypeOf((*Mems)(nil)),
-	FactTypes:  []analysis.Fact{&palFact{}}}
-
-type palFact struct{}
-
-func (p palFact) AFact() {}
+	ResultType: reflect.TypeOf((*mem.Model)(nil)),
+	FactTypes:  []analysis.Fact{&PkgFact{}}}
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	pass.Pkg.Imports()
+	for _, imp := range pass.Pkg.Imports() {
+		if !imp.Complete() {
+			return nil, fmt.Errorf("%s incomplete", imp.Name())
+		}
+		f := &PkgFact{}
+		if !pass.ImportPackageFact(imp, f) {
+			return nil, fmt.Errorf("unable to import from %s", imp.Name())
+		}
+	}
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	fmt.Printf("building pkg %s\n", ssa.Pkg.Pkg.Name())
 	ssa.Pkg.Build()
 	fromSSA := NewFromSSA(ssa, values.Consts())
 	_ = fromSSA
-	mems := NewMems(values.Consts())
+	mems := mem.NewModel(values.Consts())
 	// bind globals
 
 	// bind funcs
@@ -58,10 +63,10 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		runFunc(ssa, fn, mems)
 
 	}
-	return new(Mems), nil
+	return new(mem.Model), nil
 }
 
-func runMember(_ *buildssa.SSA, m ssa.Member, mems *Mems) {
+func runMember(_ *buildssa.SSA, m ssa.Member, mems *mem.Model) {
 	switch m := m.(type) {
 	case *ssa.Global:
 		fmt.Printf("global %s\n", m)
@@ -70,7 +75,7 @@ func runMember(_ *buildssa.SSA, m ssa.Member, mems *Mems) {
 	}
 }
 
-func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *Mems) {
+func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *mem.Model) {
 	// bind params
 	for _, p := range fn.Params {
 		_ = p
@@ -83,13 +88,13 @@ func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *Mems) {
 	}
 }
 
-func runBlock(block *ssa.BasicBlock, mems *Mems) {
+func runBlock(block *ssa.BasicBlock, mems *mem.Model) {
 	for _, i9n := range block.Instrs {
 		runOne(i9n, mems)
 	}
 }
 
-func runOne(n ssa.Instruction, mems *Mems) {
+func runOne(n ssa.Instruction, mems *mem.Model) {
 	rands := make([]ssa.Value, 0, 128)
 	_ = rands
 	switch n := n.(type) {

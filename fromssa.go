@@ -20,6 +20,7 @@ package pal
 import (
 	"math"
 
+	"github.com/go-air/pal/mem"
 	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
@@ -46,12 +47,12 @@ type FromSSA struct {
 	// represents the current package under
 	// analysis.
 	pkg  *ssa.Package
-	mems *Mems
+	mems *mem.Model
 	info []MemSSA // indexed by Mem
 }
 
 func NewFromSSA(b *buildssa.SSA, vs values.T) *FromSSA {
-	mems := NewMems(vs)
+	mems := mem.NewModel(vs)
 	return &FromSSA{ssa: b, mems: mems, info: make([]MemSSA, mems.Len(), 128)}
 }
 
@@ -63,37 +64,37 @@ func (f *FromSSA) endPackage(p *ssa.Package) {
 	f.pkg = nil
 }
 
-func (f *FromSSA) Info(m Mem) *MemSSA {
+func (f *FromSSA) Info(m mem.T) *MemSSA {
 	return &f.info[m]
 }
 
-func (f *FromSSA) registerParam(p *ssa.Parameter) Mem {
+func (f *FromSSA) registerParam(p *ssa.Parameter) mem.T {
 	m := f.mems.Opaque(p.Type())
 	f.set(m, &MemSSA{Pkg: f.pkg, Param: p})
 	return m
 }
 
-func (f *FromSSA) registerAlloc(a *ssa.Alloc) Mem {
+func (f *FromSSA) registerAlloc(a *ssa.Alloc) mem.T {
 	if !a.Heap {
-		return Mem(0)
+		return mem.T(0)
 	}
-	var m Mem
+	var m mem.T
 	var i = MemSSA{Pkg: f.pkg, Alloc: a}
 	m = f.mems.Heap(a.Type())
 	f.set(m, &i)
 	return m
 }
 
-func (f *FromSSA) registerGlobal(g *ssa.Global) Mem {
-	var m Mem
+func (f *FromSSA) registerGlobal(g *ssa.Global) mem.T {
+	var m mem.T
 	var i = MemSSA{Pkg: f.pkg, Global: g}
 	m = f.mems.Global(g.Type())
 	f.set(m, &i)
 	return m
 }
 
-func (f *FromSSA) set(m Mem, info *MemSSA) {
-	n := Mem(uint32(cap(f.info)))
+func (f *FromSSA) set(m mem.T, info *MemSSA) {
+	n := mem.T(uint32(cap(f.info)))
 	if m < n {
 		f.info[m] = *info
 		return
@@ -105,7 +106,7 @@ func (f *FromSSA) set(m Mem, info *MemSSA) {
 			n *= 2
 		}
 	}
-	infos := make([]MemSSA, n, n)
+	infos := make([]MemSSA, n)
 	copy(infos, f.info)
 	infos[m] = *info
 	f.info = infos

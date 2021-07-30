@@ -14,7 +14,10 @@
 
 package values
 
-import "go/types"
+import (
+	"go/types"
+	"io"
+)
 
 type ValueKind int
 
@@ -27,7 +30,7 @@ const (
 type V interface{}
 
 type T interface {
-	FromType(types.Type) V
+	TypeSize(types.Type) V
 	Zero() V
 	One() V
 	Const(v V) (i int, ok bool)
@@ -36,4 +39,8 @@ type T interface {
 	Equal(a, b V) AbsTruth
 	Less(a, b V) AbsTruth
 	Kind(v V) ValueKind
+	PalEncodeValue(io.Writer, V) error
+	PalDecodeValue(io.Reader) (V, error)
+	PalEncode(io.Writer) error
+	PalDecode(io.Reader) error
 }
