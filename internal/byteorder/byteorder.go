@@ -12,17 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package byteorder
 
-import "github.com/go-air/pal/mem"
+import "encoding/binary"
 
-// PkgFact represents information to pass from
-// a depended upon package to its importer.
-type PkgFact struct {
-	PackageName string
-	Start       mem.T
-	MemModel    *mem.Model // provides mem.T operations
-	SrcInfo     []SrcInfo  // indexed by mem.T
+// ByteOrder returns the ByteOrder for encoding pal data.
+func ByteOrder() binary.ByteOrder {
+	return binary.BigEndian
 }
-
-func (p *PkgFact) AFact() {}

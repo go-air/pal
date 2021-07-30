@@ -31,6 +31,7 @@ type loc struct {
 	out []T
 
 	// constraints
+	pointsTo  []T
 	transfers []T
 	loads     []T
 	stores    []T

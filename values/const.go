@@ -15,11 +15,12 @@
 package values
 
 import (
-	"encoding/binary"
 	"fmt"
 	"io"
 
 	"go/types"
+
+	"github.com/go-air/pal/internal/byteorder"
 )
 
 type Const int
@@ -106,7 +107,8 @@ func (c consts) Equal(a, b V) AbsTruth {
 
 func (c consts) PalEncodeValue(w io.Writer, v V) error {
 	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, uint64(v.(Const)))
+	bo := byteorder.ByteOrder()
+	bo.PutUint64(buf, uint64(v.(Const)))
 	_, e := w.Write(buf)
 	return e
 }
@@ -117,10 +119,11 @@ func (c consts) PalDecodeValue(r io.Reader) (V, error) {
 	if err != nil {
 		return nil, err
 	}
+	bo := byteorder.ByteOrder()
 	if n != 8 {
 		return nil, fmt.Errorf("PalDecodeValue: couldn't read 8")
 	}
-	return Const(int(binary.BigEndian.Uint64(buf))), nil
+	return Const(int(bo.Uint64(buf))), nil
 }
 
 func (c consts) PalDecode(r io.Reader) error {
