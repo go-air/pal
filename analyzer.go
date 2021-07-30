@@ -33,11 +33,20 @@ var Analyzer = &analysis.Analyzer{
 	Doc:        "pal pointer analysis",
 	Run:        run,
 	Requires:   []*analysis.Analyzer{buildssa.Analyzer},
-	ResultType: reflect.TypeOf((*Mems)(nil))}
+	ResultType: reflect.TypeOf((*Mems)(nil)),
+	FactTypes:  []analysis.Fact{&palFact{}}}
+
+type palFact struct{}
+
+func (p palFact) AFact() {}
 
 func run(pass *analysis.Pass) (interface{}, error) {
+	pass.Pkg.Imports()
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
+	fmt.Printf("building pkg %s\n", ssa.Pkg.Pkg.Name())
 	ssa.Pkg.Build()
+	fromSSA := NewFromSSA(ssa, values.Consts())
+	_ = fromSSA
 	mems := NewMems(values.Consts())
 	// bind globals
 
@@ -64,7 +73,8 @@ func runMember(_ *buildssa.SSA, m ssa.Member, mems *Mems) {
 func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *Mems) {
 	// bind params
 	for _, p := range fn.Params {
-		fmt.Printf("%s - %s\n", p.Name(), p.Object())
+		_ = p
+		//fmt.Printf("%s - %s\n", p.Name(), p.Object())
 	}
 	for _, b := range fn.Blocks {
 		_ = b
@@ -84,7 +94,8 @@ func runOne(n ssa.Instruction, mems *Mems) {
 	_ = rands
 	switch n := n.(type) {
 	default:
-		fmt.Printf("\t%#v %s %T\n", n, n, n)
+		_ = n
+		//fmt.Printf("\t%#v %s %T\n", n, n, n)
 	}
 	switch n := n.(type) {
 	case *ssa.Alloc:
@@ -116,6 +127,7 @@ func runOne(n ssa.Instruction, mems *Mems) {
 	case *ssa.Panic:
 	case *ssa.Phi:
 	case *ssa.Range:
+	case *ssa.RunDefers:
 	case *ssa.Select:
 	case *ssa.Send:
 	case *ssa.Return:

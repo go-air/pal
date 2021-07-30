@@ -346,7 +346,7 @@ type Solver interface {
 }
 ```
 
-## Modular Analysis
+## Modular/Incremental Analysis
 
 Modular analysis, for example on a per function basis can applied as follows.
 Take a sub program which contains all of its dependencies.  For any function
@@ -358,10 +358,7 @@ Once that part of the program has been analyzed, one may call ProjectedSolving
 on nodes local to the calling code after a call to ReplaceThunk for each
 exposed parameter.
 
-
 TBD(wsc) work on this
-
-
 
 ## References
 

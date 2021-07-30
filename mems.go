@@ -38,11 +38,22 @@ type Mems struct {
 }
 
 func NewMems(values values.T) *Mems {
-	return &Mems{
+	res := &Mems{
 		// 0 -> not a mem
 		// 1 -> zero mem
 		mems:   make([]mem, 2, 128),
 		values: values}
+	zz := Mem(1)
+	z := &res.mems[1]
+	z.class = Zero
+	z.parent = zz
+	z.root = zz
+	z.ty = nil
+	return res
+}
+
+func (ms *Mems) Len() int {
+	return len(ms.mems)
 }
 
 func (ms *Mems) Access(m Mem, vs ...values.V) Mem {

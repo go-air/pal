@@ -18,12 +18,18 @@
 package pal
 
 import (
+	"math"
+
+	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
 )
 
 type MemSSA struct {
-	Pkg           *ssa.Package
+	Pkg *ssa.Package
+
+	// these fields are like a union
+	// only at most one is non-nil
 	Param         *ssa.Parameter
 	Global        *ssa.Global
 	Alloc         *ssa.Alloc
@@ -35,14 +41,18 @@ type MemSSA struct {
 }
 
 type FromSSA struct {
-	ssa  *buildssa.SSA
+	ssa *buildssa.SSA
+	// this is a state variable which
+	// represents the current package under
+	// analysis.
 	pkg  *ssa.Package
 	mems *Mems
 	info []MemSSA // indexed by Mem
 }
 
-func NewFromSSA(b *buildssa.SSA) *FromSSA {
-	return &FromSSA{ssa: b, mems: NewMems(nil), info: make([]MemSSA, 0, 128)}
+func NewFromSSA(b *buildssa.SSA, vs values.T) *FromSSA {
+	mems := NewMems(vs)
+	return &FromSSA{ssa: b, mems: mems, info: make([]MemSSA, mems.Len(), 128)}
 }
 
 func (f *FromSSA) startPackage(p *ssa.Package) {
@@ -75,7 +85,11 @@ func (f *FromSSA) registerAlloc(a *ssa.Alloc) Mem {
 }
 
 func (f *FromSSA) registerGlobal(g *ssa.Global) Mem {
-	return Mem(0)
+	var m Mem
+	var i = MemSSA{Pkg: f.pkg, Global: g}
+	m = f.mems.Global(g.Type())
+	f.set(m, &i)
+	return m
 }
 
 func (f *FromSSA) set(m Mem, info *MemSSA) {
@@ -84,9 +98,12 @@ func (f *FromSSA) set(m Mem, info *MemSSA) {
 		f.info[m] = *info
 		return
 	}
-	// BUG(wsc) overflow on n*2 may cause a loop forever 
-	for n <= m {
-		n *= 2
+	if m > math.MaxUint32/2 {
+		n = math.MaxUint32
+	} else {
+		for n <= m {
+			n *= 2
+		}
 	}
 	infos := make([]MemSSA, n, n)
 	copy(infos, f.info)
