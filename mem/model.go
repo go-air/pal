@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package mem
 
 import (
 	"go/types"
@@ -20,90 +20,84 @@ import (
 	"github.com/go-air/pal/values"
 )
 
-type mem struct {
-	class  MemClass
-	root   Mem
-	parent Mem
+type loc struct {
+	class  Class
+	root   T
+	parent T
 
-	ty  types.Type
 	vsz values.V
 
-	in  []Mem
-	out []Mem
+	in  []T
+	out []T
 }
 
-type Mems struct {
-	mems   []mem
+type Model struct {
+	locs   []loc
 	values values.T
 }
 
-func NewMems(values values.T) *Mems {
-	res := &Mems{
+func NewModel(values values.T) *Model {
+	res := &Model{
 		// 0 -> not a mem
 		// 1 -> zero mem
-		mems:   make([]mem, 2, 128),
+		locs:   make([]loc, 2, 128),
 		values: values}
-	zz := Mem(1)
-	z := &res.mems[1]
+	zz := T(1)
+	z := &res.locs[1]
 	z.class = Zero
 	z.parent = zz
 	z.root = zz
-	z.ty = nil
 	return res
 }
 
-func (ms *Mems) Len() int {
-	return len(ms.mems)
+func (mod *Model) Len() int {
+	return len(mod.locs)
 }
 
-func (ms *Mems) Access(m Mem, vs ...values.V) Mem {
-	return Mem(0)
+func (mod *Model) Access(m T, vs ...values.V) T {
+	return T(0)
 }
 
-func (ms *Mems) Zero() Mem {
-	return Mem(1)
+func (mod *Model) Zero() T {
+	return T(1)
 }
 
-func (ms *Mems) Local(ty types.Type) Mem {
-	res := Mem(uint32(len(ms.mems)))
-	ms.mems = append(ms.mems, mem{
+func (mod *Model) Local(ty types.Type) T {
+	res := T(uint32(len(mod.locs)))
+	mod.locs = append(mod.locs, loc{
 		class:  Local,
 		root:   res,
 		parent: res,
-		ty:     ty,
-		vsz:    ms.values.FromType(ty)})
+		vsz:    mod.values.TypeSize(ty)})
 	return res
 }
 
-func (ms *Mems) Global(ty types.Type) Mem {
-	res := Mem(uint32(len(ms.mems)))
-	ms.mems = append(ms.mems, mem{
+func (mod *Model) Global(ty types.Type) T {
+	res := T(uint32(len(mod.locs)))
+	mod.locs = append(mod.locs, loc{
 		class:  Global,
 		root:   res,
 		parent: res,
-		ty:     ty,
-		vsz:    ms.values.FromType(ty)})
+		vsz:    mod.values.TypeSize(ty)})
 	return res
 }
 
-func (ms *Mems) Heap(ty types.Type) Mem {
-	res := Mem(uint32(len(ms.mems)))
-	ms.mems = append(ms.mems, mem{
+func (mod *Model) Heap(ty types.Type) T {
+	res := T(uint32(len(mod.locs)))
+	mod.locs = append(mod.locs, loc{
 		class:  Heap,
 		root:   res,
 		parent: res,
-		ty:     ty,
-		vsz:    ms.values.FromType(ty)})
+		vsz:    mod.values.TypeSize(ty)})
 	return res
 }
 
-func (ms *Mems) Opaque(ty types.Type) Mem {
-	res := Mem(uint32(len(ms.mems)))
-	ms.mems = append(ms.mems, mem{
+func (mod *Model) Opaque(ty types.Type) T {
+	res := T(uint32(len(mod.locs)))
+	mod.locs = append(mod.locs, loc{
 		class:  Opaque,
 		root:   res,
 		parent: res,
-		ty:     ty,
-		vsz:    ms.values.FromType(ty)})
+		vsz:    mod.values.TypeSize(ty)})
 	return res
 }

@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package mem
 
-type MemClass uint64
+type Class uint64
 
 const (
 	// Zero is the nil, the only pointer value which cannot be dereferenced.
-	Zero MemClass = iota
+	Zero Class = iota
 	// Global is the location of a global variable
 	Global
 	// Local is the location of a local variable
@@ -29,7 +29,7 @@ const (
 	Opaque
 )
 
-func (c MemClass) String() string {
+func (c Class) String() string {
 	switch c {
 	case Zero:
 		return "z"
