@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"io"
 
-	"go/types"
-
 	"github.com/go-air/pal/internal/byteorder"
 )
 
@@ -47,41 +45,16 @@ func (c consts) Kind(_ V) ValueKind {
 	return ConstKind
 }
 
-func (c consts) Const(v V) (int, bool) {
+func (c consts) FromInt(v int) V {
+	return Const(v)
+}
+
+func (c consts) AsInt(v V) (int, bool) {
 	vv, ok := v.(Const)
 	if !ok {
 		return 0, false
 	}
 	return int(vv), true
-}
-
-func (c consts) TypeSize(ty types.Type) V {
-	switch ty := ty.(type) {
-	case *types.Basic:
-		return c.One()
-	case *types.Pointer:
-		return c.One()
-	case *types.Array:
-		elem := c.TypeSize(ty.Elem()).(Const)
-		return V(Const(ty.Len()) * elem)
-	case *types.Map:
-		k := c.TypeSize(ty.Key()).(int)
-		v := c.TypeSize(ty.Elem()).(int)
-		return Const(k + v)
-	case *types.Struct:
-		n := ty.NumFields()
-		sum := c.Zero()
-		for i := 0; i < n; i++ {
-			fty := ty.Field(i).Type()
-			sum = c.Plus(c, c.TypeSize(fty))
-		}
-		return sum
-	case *types.Named:
-		return c.TypeSize(ty.Underlying())
-
-	default:
-		panic(fmt.Sprintf("%s: unexpected/unimplemented", ty))
-	}
 }
 
 func (c consts) Plus(a, b V) V {

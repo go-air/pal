@@ -25,4 +25,5 @@ type PkgFact struct {
 	SrcInfo     []SrcInfo  // indexed by mem.T
 }
 
+// AFact satisfies golong.org/x/tools/go/analysis.Fact.
 func (p *PkgFact) AFact() {}

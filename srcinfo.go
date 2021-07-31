@@ -15,9 +15,10 @@
 package pal
 
 import (
-	"encoding/binary"
 	"go/token"
 	"io"
+
+	"github.com/go-air/pal/internal/byteorder"
 )
 
 type SrcKind int
@@ -36,19 +37,27 @@ const (
 	AddressOf
 )
 
+// SrcInfo represents the information about
+// the source code pal expects to extract
+// from an ir such as golang.org/x/tools/go/ssa.
 type SrcInfo struct {
 	Kind SrcKind
 	Pos  token.Pos
 }
 
+// PalEncode encodes si onto w, returning
+// a non-nil error if there was a problem
+// writing.
 func (si *SrcInfo) PalEncode(w io.Writer) error {
 	buf := make([]byte, 9)
 	buf[0] = byte(si.Kind)
-	binary.BigEndian.PutUint64(buf[1:], uint64(si.Pos))
+	byteorder.ByteOrder().PutUint64(buf[1:], uint64(si.Pos))
 	_, e := w.Write([]byte{byte(si.Kind)})
 	return e
 }
 
+// PalDecode decodes r into si, overwriting
+// si's fields
 func (si *SrcInfo) PalDecode(r io.Reader) error {
 	buf := make([]byte, 9)
 	var s, n int
@@ -65,6 +74,6 @@ func (si *SrcInfo) PalDecode(r io.Reader) error {
 		buf = buf[n:]
 	}
 	si.Kind = SrcKind(buf[0])
-	si.Pos = token.Pos(binary.BigEndian.Uint64(buf[1:]))
+	si.Pos = token.Pos(byteorder.ByteOrder().Uint64(buf[1:]))
 	return nil
 }

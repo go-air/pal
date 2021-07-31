@@ -68,19 +68,13 @@ func (f *FromSSA) Info(m mem.T) *MemSSA {
 	return &f.info[m]
 }
 
-func (f *FromSSA) registerParam(p *ssa.Parameter) mem.T {
-	m := f.mems.Opaque(p.Type())
-	f.set(m, &MemSSA{Pkg: f.pkg, Param: p})
-	return m
-}
-
 func (f *FromSSA) registerAlloc(a *ssa.Alloc) mem.T {
 	if !a.Heap {
 		return mem.T(0)
 	}
 	var m mem.T
 	var i = MemSSA{Pkg: f.pkg, Alloc: a}
-	m = f.mems.Heap(a.Type())
+	m = f.mems.Heap(a.Type(), 0)
 	f.set(m, &i)
 	return m
 }
@@ -88,7 +82,7 @@ func (f *FromSSA) registerAlloc(a *ssa.Alloc) mem.T {
 func (f *FromSSA) registerGlobal(g *ssa.Global) mem.T {
 	var m mem.T
 	var i = MemSSA{Pkg: f.pkg, Global: g}
-	m = f.mems.Global(g.Type())
+	m = f.mems.Global(g.Type(), 0)
 	f.set(m, &i)
 	return m
 }

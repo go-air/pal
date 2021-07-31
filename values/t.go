@@ -15,7 +15,6 @@
 package values
 
 import (
-	"go/types"
 	"io"
 )
 
@@ -30,10 +29,9 @@ const (
 type V interface{}
 
 type T interface {
-	TypeSize(types.Type) V
 	Zero() V
 	One() V
-	Const(v V) (i int, ok bool)
+	AsInt(v V) (i int, ok bool)
 	Var(v V) bool
 	Plus(a, b V) V
 	Equal(a, b V) AbsTruth

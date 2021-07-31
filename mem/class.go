@@ -14,7 +14,7 @@
 
 package mem
 
-type Class uint64
+type Class byte
 
 const (
 	// Zero is the nil, the only pointer value which cannot be dereferenced.
@@ -25,8 +25,6 @@ const (
 	Local
 	// Heap is the location associated with a heap allocation
 	Heap
-	// Opaque is a placeholder location.
-	Opaque
 )
 
 func (c Class) String() string {
@@ -39,8 +37,6 @@ func (c Class) String() string {
 		return "g"
 	case Heap:
 		return "h"
-	case Opaque:
-		return "?"
 	default:
 		panic("bad MemClass")
 	}

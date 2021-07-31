@@ -22,19 +22,21 @@ import (
 
 type loc struct {
 	class  Class
+	attrs  Attrs
 	root   T
 	parent T
 
 	vsz values.V
 
+	// constraints
+	pointsTo  []T // this loc points to that
+	transfers []T //
+	loads     []T // this loc = *(that loc)
+	stores    []T // *(this loc) = that loc
+
+	// points-to (and from)
 	in  []T
 	out []T
-
-	// constraints
-	pointsTo  []T
-	transfers []T
-	loads     []T
-	stores    []T
 }
 
 type Model struct {
@@ -60,50 +62,118 @@ func (mod *Model) Len() int {
 	return len(mod.locs)
 }
 
-func (mod *Model) Access(m T, vs ...values.V) T {
+func (mod *Model) At(i int) T {
+	return T(i)
+}
+
+// Access returns the T which results from
+// add vo to the virtual size of m.
+func (mod *Model) Access(m T, vo values.V) T {
 	return T(0)
+}
+
+func (mod *Model) VSize(m T) values.V {
+	return mod.locs[m].vsz
+}
+
+func (mod *Model) Equals(a, b T) values.AbsTruth {
+	if a != b {
+		return values.False
+	}
+	return values.Unknown
 }
 
 func (mod *Model) Zero() T {
 	return T(1)
 }
 
-func (mod *Model) Local(ty types.Type) T {
+func (mod *Model) Local(ty types.Type, attrs Attrs) T {
 	res := T(uint32(len(mod.locs)))
 	mod.locs = append(mod.locs, loc{
 		class:  Local,
+		attrs:  attrs,
 		root:   res,
 		parent: res,
-		vsz:    mod.values.TypeSize(ty)})
+		vsz:    mod.values.TypeVSize(ty)})
 	return res
 }
 
-func (mod *Model) Global(ty types.Type) T {
+func (mod *Model) Global(ty types.Type, attrs Attrs) T {
 	res := T(uint32(len(mod.locs)))
 	mod.locs = append(mod.locs, loc{
 		class:  Global,
+		attrs:  attrs,
 		root:   res,
 		parent: res,
-		vsz:    mod.values.TypeSize(ty)})
+		vsz:    mod.values.TypeVSize(ty)})
 	return res
 }
 
-func (mod *Model) Heap(ty types.Type) T {
+func (mod *Model) Heap(ty types.Type, attrs Attrs) T {
 	res := T(uint32(len(mod.locs)))
 	mod.locs = append(mod.locs, loc{
 		class:  Heap,
+		attrs:  attrs,
 		root:   res,
 		parent: res,
-		vsz:    mod.values.TypeSize(ty)})
+		vsz:    mod.values.TypeVSize(ty)})
 	return res
 }
 
-func (mod *Model) Opaque(ty types.Type) T {
-	res := T(uint32(len(mod.locs)))
-	mod.locs = append(mod.locs, loc{
-		class:  Opaque,
-		root:   res,
-		parent: res,
-		vsz:    mod.values.TypeSize(ty)})
-	return res
+func (mod *Model) Attrs(m T) Attrs {
+	return mod.locs[m].attrs
+}
+
+func (mod *Model) AddAttrs(m T, a Attrs) {
+	mm := &mod.locs[m]
+	mm.attrs |= a
+}
+
+func (mod *Model) SetAttrs(m T, a Attrs) {
+	mm := &mod.locs[m]
+	mm.attrs = a
+}
+
+func (mod *Model) GenPointsTo(a, b T) {
+	loc := &mod.locs[a]
+	loc.pointsTo = append(loc.pointsTo, b)
+}
+
+// dst = *src
+func (mod *Model) GenLoad(dst, src T) {
+	loc := &mod.locs[dst]
+	loc.loads = append(loc.loads, src)
+
+}
+
+// *dst = src
+func (mod *Model) GenStore(dst, src T) {
+	loc := &mod.locs[dst]
+	loc.stores = append(loc.stores, src)
+
+}
+
+// dst = src
+func (mod *Model) GenTransfer(dst, src T) {
+	loc := &mod.locs[dst]
+	loc.stores = append(loc.stores, src)
+}
+
+func (mod *Model) Solve() {
+	// apply constraints until fixed point.
+}
+
+// PointsTo places the points-to set of
+// p in dst and returns it.
+func (mod *Model) PointsToFor(dst []T, p T) []T {
+	return dst
+}
+
+// Export exports the model 'mod', removing
+// unnecessary local mem.Ts and compacting
+// the result by permuting the remaining
+// locations.  Export returns the permutation
+// if 'perm' is non-nil.
+func (mod *Model) Export(perm []T) []T {
+	return perm
 }

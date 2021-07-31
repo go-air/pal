@@ -72,7 +72,7 @@ func runMember(_ *buildssa.SSA, m ssa.Member, mems *mem.Model) {
 	switch m := m.(type) {
 	case *ssa.Global:
 		fmt.Printf("global %s\n", m)
-		mems.Global(m.Type())
+		mems.Global(m.Type(), 0)
 	default:
 	}
 }
