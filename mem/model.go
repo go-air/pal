@@ -94,7 +94,7 @@ func (mod *Model) Local(ty types.Type, attrs Attrs) T {
 		attrs:  attrs,
 		root:   res,
 		parent: res,
-		vsz:    mod.values.TypeVSize(ty)})
+		vsz:    values.TypeVSize(ty)})
 	return res
 }
 
@@ -105,7 +105,7 @@ func (mod *Model) Global(ty types.Type, attrs Attrs) T {
 		attrs:  attrs,
 		root:   res,
 		parent: res,
-		vsz:    mod.values.TypeVSize(ty)})
+		vsz:    values.TypeVSize(ty)})
 	return res
 }
 
@@ -116,7 +116,7 @@ func (mod *Model) Heap(ty types.Type, attrs Attrs) T {
 		attrs:  attrs,
 		root:   res,
 		parent: res,
-		vsz:    mod.values.TypeVSize(ty)})
+		vsz:    values.TypeVSize(ty)})
 	return res
 }
 
