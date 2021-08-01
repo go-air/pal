@@ -38,43 +38,15 @@ type FromSSA struct {
 	results *results.T
 }
 
-var noImp = map[string]struct{}{
-	"unsafe":      struct{}{},
-	"runtime":     struct{}{},
-	"runtime/cpu": struct{}{},
-	"runtype/sys": struct{}{}}
-
 func NewFromSSA(pass *analysis.Pass, vs values.T) (*FromSSA, error) {
-	var palres *results.T
-	var err error
-	for _, imp := range pass.Pkg.Imports() {
-		_, present := noImp[imp.Path()]
-		if present {
-			continue
-		}
-		if !imp.Complete() {
-			return nil, fmt.Errorf("%s incomplete", imp.Name())
-		}
-		if palres != nil {
-			continue
-		}
-		if !pass.ImportPackageFact(imp, palres) {
-			return nil, fmt.Errorf("unable to import from %s", imp.Name())
-		}
-	}
-	if palres == nil {
-		palres, err = results.NewT()
-		if err != nil {
-			return nil, err
-		}
-	}
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssa.Pkg.Build()
+	fmt.Printf("building pkg %s\n", pass.Pkg.Path())
 	fromSSA := &FromSSA{
 		pass:    pass,
 		pkg:     ssa.Pkg,
 		ssa:     ssa,
-		results: palres,
+		results: pass.Analyzer.FactTypes[0].(*results.T),
 		values:  vs}
 	return fromSSA, nil
 }

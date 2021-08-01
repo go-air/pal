@@ -25,7 +25,7 @@ func init() {
 }
 
 func NewT() (*T, error) {
-	return nil, nil
+	return &T{}, nil
 }
 
 func (t *T) AFact() {}

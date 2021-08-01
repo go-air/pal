@@ -16,7 +16,6 @@ package pal
 
 import (
 	"flag"
-	"fmt"
 	"reflect"
 
 	"github.com/go-air/pal/results"
@@ -28,6 +27,10 @@ import (
 var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
 
 func Analyzer() *analysis.Analyzer {
+	palRes, err := results.NewT()
+	if err != nil {
+		panic(err.Error())
+	}
 	return &analysis.Analyzer{
 		Name:       "pal",
 		Flags:      *flagSet,
@@ -35,22 +38,10 @@ func Analyzer() *analysis.Analyzer {
 		Run:        run,
 		Requires:   []*analysis.Analyzer{buildssa.Analyzer},
 		ResultType: reflect.TypeOf((*results.T)(nil)),
-		FactTypes:  []analysis.Fact{&results.T{}}}
+		FactTypes:  []analysis.Fact{palRes}}
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	// var pkgFact *PkgFact
-	// for _, imp := range pass.Pkg.Imports() {
-	// 	if !imp.Complete() {
-	// 		return nil, fmt.Errorf("%s incomplete", imp.Name())
-	// 	}
-	// 	if !pass.ImportPackageFact(imp, pkgFact) {
-	// 		return nil, fmt.Errorf("unable to import from %s", imp.Name())
-	// 	}
-	// }
-	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
-	fmt.Printf("building pkg %s\n", ssa.Pkg.Pkg.Name())
-	ssa.Pkg.Build()
 	fromSSA, err := NewFromSSA(pass, values.ConstVals())
 	if err != nil {
 		return nil, err
