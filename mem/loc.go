@@ -14,4 +14,9 @@
 
 package mem
 
+// Loc represents a memory location.
+//
+// This memory location is intented for pal points to analysis.
+// it has nothing to do with the numeric value of a pointer
+// in a program.
 type Loc uint32

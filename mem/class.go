@@ -14,6 +14,7 @@
 
 package mem
 
+// Class is a memory class.  Each location has a unique memory class.
 type Class byte
 
 const (
