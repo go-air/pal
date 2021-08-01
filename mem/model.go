@@ -15,6 +15,7 @@
 package mem
 
 import (
+	"fmt"
 	"go/types"
 
 	"github.com/go-air/pal/values"
@@ -42,6 +43,7 @@ type loc struct {
 type Model struct {
 	locs   []loc
 	values values.T
+	vszs   []int
 }
 
 func NewModel(values values.T) *Model {
@@ -66,6 +68,14 @@ func (mod *Model) At(i int) T {
 	return T(i)
 }
 
+func (mod *Model) IsRoot(m T) bool {
+	return mod.Parent(m) == m
+}
+
+func (mod *Model) Parent(m T) T {
+	return mod.locs[m].parent
+}
+
 // Access returns the T which results from
 // add vo to the virtual size of m.
 func (mod *Model) Access(m T, vo values.V) T {
@@ -88,36 +98,63 @@ func (mod *Model) Zero() T {
 }
 
 func (mod *Model) Local(ty types.Type, attrs Attrs) T {
-	res := T(uint32(len(mod.locs)))
-	mod.locs = append(mod.locs, loc{
-		class:  Local,
-		attrs:  attrs,
-		root:   res,
-		parent: res,
-		vsz:    values.TypeVSize(ty)})
-	return res
+	var sum int
+	p := T(uint32(len(mod.locs)))
+	return mod.add(ty, Local, attrs, p, p, &sum)
 }
 
 func (mod *Model) Global(ty types.Type, attrs Attrs) T {
-	res := T(uint32(len(mod.locs)))
-	mod.locs = append(mod.locs, loc{
-		class:  Global,
-		attrs:  attrs,
-		root:   res,
-		parent: res,
-		vsz:    values.TypeVSize(ty)})
-	return res
+	var sum int
+	p := T(uint32(len(mod.locs)))
+	return mod.add(ty, Global, attrs, p, p, &sum)
 }
 
 func (mod *Model) Heap(ty types.Type, attrs Attrs) T {
-	res := T(uint32(len(mod.locs)))
-	mod.locs = append(mod.locs, loc{
-		class:  Heap,
-		attrs:  attrs,
-		root:   res,
-		parent: res,
-		vsz:    values.TypeVSize(ty)})
-	return res
+	var sum int
+	p := T(uint32(len(mod.locs)))
+	return mod.add(ty, Heap, attrs, p, p, &sum)
+}
+
+func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r T, sum *int) T {
+	n := T(uint32(len(mod.locs)))
+	l := loc{
+		parent: p,
+		root:   r,
+		class:  class,
+		attrs:  attrs}
+	lastSum := *sum
+	switch ty := ty.(type) {
+	case *types.Basic, *types.Pointer:
+		mod.locs = append(mod.locs, l)
+		*sum++
+	case *types.Array:
+		mod.locs = append(mod.locs, l)
+		m := int(ty.Len())
+		for i := 0; i < m; i++ {
+			mod.add(ty.Elem(), class, attrs, n, r, sum)
+		}
+	case *types.Map:
+		mod.locs = append(mod.locs, l)
+		mod.add(ty.Key(), class, attrs, n, r, sum)
+		mod.add(ty.Elem(), class, attrs, n, r, sum)
+	case *types.Struct:
+		mod.locs = append(mod.locs, l)
+		nf := ty.NumFields()
+		for i := 0; i < nf; i++ {
+			fty := ty.Field(i).Type()
+			mod.add(fty, class, attrs, n, r, sum)
+		}
+	case *types.Named:
+		// no space reserved for named types, go to
+		// underlying
+		return mod.add(ty.Underlying(), class, attrs, p, r, sum)
+
+	default:
+		panic(fmt.Sprintf("%s: unexpected/unimplemented", ty))
+	}
+	// we added a slot at dst[n] for ty, set it
+	mod.locs[n].vsz = mod.values.FromInt(*sum - lastSum)
+	return n
 }
 
 func (mod *Model) Attrs(m T) Attrs {
@@ -134,6 +171,7 @@ func (mod *Model) SetAttrs(m T, a Attrs) {
 	mm.attrs = a
 }
 
+// a = &b
 func (mod *Model) GenPointsTo(a, b T) {
 	loc := &mod.locs[a]
 	loc.pointsTo = append(loc.pointsTo, b)
@@ -174,6 +212,18 @@ func (mod *Model) PointsToFor(dst []T, p T) []T {
 // the result by permuting the remaining
 // locations.  Export returns the permutation
 // if 'perm' is non-nil.
+//
+// Generally, after Export is called,
+// 'mod' contains no local variables.
+// One can retrieve points-to information
+// for local variables using PoinstToFor,
+// before calling Export.
 func (mod *Model) Export(perm []T) []T {
 	return perm
+}
+
+// Import imports 'other', merging it with
+// mod in place.
+func (mod *Model) Import(other *Model) {
+
 }
