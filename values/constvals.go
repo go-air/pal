@@ -21,8 +21,6 @@ import (
 	"github.com/go-air/pal/internal/byteorder"
 )
 
-type Const int
-
 type consts struct{}
 
 func ConstVals() T {
@@ -30,11 +28,11 @@ func ConstVals() T {
 }
 
 func (c consts) Zero() V {
-	return V(Const(0))
+	return V(0)
 }
 
 func (c consts) One() V {
-	return V(Const(1))
+	return V(1)
 }
 
 func (c consts) Var(v V) bool {
@@ -46,24 +44,24 @@ func (c consts) Kind(_ V) ValueKind {
 }
 
 func (c consts) FromInt(v int) V {
-	return Const(v)
+	return v
 }
 
 func (c consts) AsInt(v V) (int, bool) {
-	vv, ok := v.(Const)
+	vv, ok := v.(int)
 	if !ok {
 		return 0, false
 	}
-	return int(vv), true
+	return vv, true
 }
 
 func (c consts) Plus(a, b V) V {
-	aa, bb := a.(Const), b.(Const)
-	return V(Const(aa + bb))
+	aa, bb := a.(int), b.(int)
+	return V(aa + bb)
 }
 
 func (c consts) Less(a, b V) AbsTruth {
-	aa, bb := a.(Const), b.(Const)
+	aa, bb := a.(int), b.(int)
 	if aa < bb {
 		return True
 	}
@@ -71,7 +69,7 @@ func (c consts) Less(a, b V) AbsTruth {
 }
 
 func (c consts) Equal(a, b V) AbsTruth {
-	aa, bb := a.(Const), b.(Const)
+	aa, bb := a.(int), b.(int)
 	if aa == bb {
 		return True
 	}
@@ -81,7 +79,7 @@ func (c consts) Equal(a, b V) AbsTruth {
 func (c consts) PalEncodeValue(w io.Writer, v V) error {
 	buf := make([]byte, 8)
 	bo := byteorder.ByteOrder()
-	bo.PutUint64(buf, uint64(v.(Const)))
+	bo.PutUint64(buf, uint64(v.(int)))
 	_, e := w.Write(buf)
 	return e
 }
@@ -96,7 +94,7 @@ func (c consts) PalDecodeValue(r io.Reader) (V, error) {
 	if n != 8 {
 		return nil, fmt.Errorf("PalDecodeValue: couldn't read 8")
 	}
-	return Const(int(bo.Uint64(buf))), nil
+	return int(bo.Uint64(buf)), nil
 }
 
 func (c consts) PalDecode(r io.Reader) error {
