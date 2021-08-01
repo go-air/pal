@@ -19,11 +19,10 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/go-air/pal/mem"
+	"github.com/go-air/pal/results"
 	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
-	"golang.org/x/tools/go/ssa"
 )
 
 var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
@@ -35,44 +34,48 @@ func Analyzer() *analysis.Analyzer {
 		Doc:        "pal pointer analysis",
 		Run:        run,
 		Requires:   []*analysis.Analyzer{buildssa.Analyzer},
-		ResultType: reflect.TypeOf((*mem.Model)(nil)),
-		FactTypes:  []analysis.Fact{&PkgFact{}}}
+		ResultType: reflect.TypeOf((*results.T)(nil)),
+		FactTypes:  []analysis.Fact{&results.T{}}}
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	for _, imp := range pass.Pkg.Imports() {
-		if !imp.Complete() {
-			return nil, fmt.Errorf("%s incomplete", imp.Name())
-		}
-		f := &PkgFact{}
-		if !pass.ImportPackageFact(imp, f) {
-			return nil, fmt.Errorf("unable to import from %s", imp.Name())
-		}
-	}
+	// var pkgFact *PkgFact
+	// for _, imp := range pass.Pkg.Imports() {
+	// 	if !imp.Complete() {
+	// 		return nil, fmt.Errorf("%s incomplete", imp.Name())
+	// 	}
+	// 	if !pass.ImportPackageFact(imp, pkgFact) {
+	// 		return nil, fmt.Errorf("unable to import from %s", imp.Name())
+	// 	}
+	// }
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	fmt.Printf("building pkg %s\n", ssa.Pkg.Pkg.Name())
 	ssa.Pkg.Build()
-	fromSSA := NewFromSSA(ssa, values.Consts())
+	fromSSA, err := NewFromSSA(pass, values.ConstVals())
+	if err != nil {
+		return nil, err
+	}
 	_ = fromSSA
-	mems := mem.NewModel(values.Consts())
 	// bind globals
 
 	// bind funcs
-	for _, m := range ssa.Pkg.Members {
-		runMember(ssa, m, mems)
-	}
-	for _, fn := range ssa.SrcFuncs {
-		runFunc(ssa, fn, mems)
 
-	}
-	return new(mem.Model), nil
+	/*
+		for _, fn := range ssa.SrcFuncs {
+			runFunc(ssa, fn, mems)
+
+		}
+	*/
+	return fromSSA.results, nil
 }
 
+/*
 func runMember(_ *buildssa.SSA, m ssa.Member, mems *mem.Model) {
 	switch m := m.(type) {
 	case *ssa.Global:
-		fmt.Printf("global %s\n", m)
 		mems.Global(m.Type(), 0)
+	case *ssa.Function:
+		fmt.Printf("member func!\n")
 	default:
 	}
 }
@@ -99,11 +102,6 @@ func runBlock(block *ssa.BasicBlock, mems *mem.Model) {
 func runOne(n ssa.Instruction, mems *mem.Model) {
 	rands := make([]ssa.Value, 0, 128)
 	_ = rands
-	switch n := n.(type) {
-	default:
-		_ = n
-		//fmt.Printf("\t%#v %s %T\n", n, n, n)
-	}
 	switch n := n.(type) {
 	case *ssa.Alloc:
 		if n.Heap {
@@ -146,3 +144,4 @@ func runOne(n ssa.Instruction, mems *mem.Model) {
 		panic("unknown ssa Instruction")
 	}
 }
+*/
