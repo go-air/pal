@@ -44,7 +44,7 @@ func (b *Builder) Reset() {
 }
 
 func (b *Builder) GenLoc() memory.Loc {
-	res := b.pkg.MemModel.Add(b.Type, b.Class, b.Attrs)
+	res := b.pkg.MemModel.Gen(b.Type, b.Class, b.Attrs)
 	b.pkg.set(res, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
 	return res
 }

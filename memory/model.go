@@ -115,7 +115,7 @@ func (mod *Model) Heap(ty types.Type, attrs Attrs) Loc {
 	return mod.add(ty, Heap, attrs, p, p, &sum)
 }
 
-func (mod *Model) Add(ty types.Type, class Class, attrs Attrs) Loc {
+func (mod *Model) Gen(ty types.Type, class Class, attrs Attrs) Loc {
 	var sum int
 	p := Loc(uint32(len(mod.locs)))
 	return mod.add(ty, class, attrs, p, p, &sum)
