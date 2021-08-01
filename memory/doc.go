@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package mem defines the memory model of pal
+// Package memory defines the memory model of pal
 // and associated operations.
-package mem
+package memory

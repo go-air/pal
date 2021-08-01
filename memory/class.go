@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mem
+package memory
 
 // Class is a memory class.  Each location has a unique memory class.
 type Class byte

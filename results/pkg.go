@@ -17,7 +17,7 @@ package results
 import (
 	"math"
 
-	"github.com/go-air/pal/mem"
+	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/values"
 )
 
@@ -25,22 +25,22 @@ import (
 // a depended upon package to its importer.
 type Pkg struct {
 	Values   values.T
-	Start    mem.Loc
-	MemModel *mem.Model // provides mem.T operations
-	SrcInfo  []SrcInfo  // indexed by mem.T
+	Start    memory.Loc
+	MemModel *memory.Model // provides memory.Loc operations
+	SrcInfo  []SrcInfo     // indexed by memory.Loc
 }
 
 func NewPkg(pkgName string, vs values.T) *Pkg {
-	mdl := mem.NewModel(vs)
+	mdl := memory.NewModel(vs)
 	return &Pkg{
 		Values:   vs,
-		Start:    mem.Loc(1),
+		Start:    memory.Loc(1),
 		MemModel: mdl,
 		SrcInfo:  make([]SrcInfo, mdl.Len())}
 }
 
-func (pkg *Pkg) set(m mem.Loc, info *SrcInfo) {
-	n := mem.Loc(uint32(cap(pkg.SrcInfo)))
+func (pkg *Pkg) set(m memory.Loc, info *SrcInfo) {
+	n := memory.Loc(uint32(cap(pkg.SrcInfo)))
 	if m < n {
 		pkg.SrcInfo[m] = *info
 		return

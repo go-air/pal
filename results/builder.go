@@ -18,12 +18,12 @@ import (
 	"go/token"
 	"go/types"
 
-	"github.com/go-air/pal/mem"
+	"github.com/go-air/pal/memory"
 )
 
 type Builder struct {
-	Attrs   mem.Attrs
-	Class   mem.Class
+	Attrs   memory.Attrs
+	Class   memory.Class
 	Pos     token.Pos
 	ty      types.Type
 	SrcKind SrcKind
@@ -36,14 +36,14 @@ func NewBuilder(pkg *Pkg) *Builder {
 }
 
 func (b *Builder) Reset() {
-	b.Attrs = mem.Attrs(0)
-	b.Class = mem.Class(0)
+	b.Attrs = memory.Attrs(0)
+	b.Class = memory.Class(0)
 	b.SrcKind = SrcKind(0)
 	b.Pos = -1
 	b.ty = nil
 }
 
-func (b *Builder) GenLoc() mem.Loc {
+func (b *Builder) GenLoc() memory.Loc {
 	res := b.pkg.MemModel.Add(b.ty, b.Class, b.Attrs)
 	b.pkg.set(res, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
 	return res
