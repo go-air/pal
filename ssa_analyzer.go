@@ -46,11 +46,11 @@ func SSAAnalyzer() *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	fromSSA, err := NewFromSSA(pass, values.ConstVals())
+	palSSA, err := NewPalSSA(pass, values.ConstVals())
 	if err != nil {
 		return nil, err
 	}
-	return fromSSA.genResult()
+	return palSSA.genResult()
 }
 
 /*

@@ -27,7 +27,7 @@ import (
 	"golang.org/x/tools/go/ssa"
 )
 
-type FromSSA struct {
+type PalSSA struct {
 	pass *analysis.Pass
 	ssa  *buildssa.SSA
 	// this is a state variable which
@@ -39,7 +39,7 @@ type FromSSA struct {
 	pkgres  *results.Pkg
 }
 
-func NewFromSSA(pass *analysis.Pass, vs values.T) (*FromSSA, error) {
+func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
 	pkgRes := results.NewPkg(pkgPath, vs)
@@ -54,18 +54,18 @@ func NewFromSSA(pass *analysis.Pass, vs values.T) (*FromSSA, error) {
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssa.Pkg.Build()
 
-	fromSSA := &FromSSA{
+	palSSA := &PalSSA{
 		pass:    pass,
 		pkg:     ssa.Pkg,
 		ssa:     ssa,
 		results: palres,
 		pkgres:  pkgRes,
 		values:  vs}
-	fromSSA.results.Put(pkgPath, pkgRes)
-	return fromSSA, nil
+	palSSA.results.Put(pkgPath, pkgRes)
+	return palSSA, nil
 }
 
-func (f *FromSSA) genResult() (*results.T, error) {
+func (f *PalSSA) genResult() (*results.T, error) {
 	return f.results, nil
 }
 
