@@ -12,9 +12,39 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package results provides pal results.
-//
-// Unlike most go analyzer packages, pal uses the
-// same kind of results between analyzers and
-// between packages.
 package results
+
+import (
+	"go/token"
+	"go/types"
+
+	"github.com/go-air/pal/mem"
+)
+
+type Builder struct {
+	Attrs   mem.Attrs
+	Class   mem.Class
+	Pos     token.Pos
+	ty      types.Type
+	SrcKind SrcKind
+
+	pkg *Pkg
+}
+
+func NewBuilder(pkg *Pkg) *Builder {
+	return &Builder{pkg: pkg}
+}
+
+func (b *Builder) Reset() {
+	b.Attrs = mem.Attrs(0)
+	b.Class = mem.Class(0)
+	b.SrcKind = SrcKind(0)
+	b.Pos = -1
+	b.ty = nil
+}
+
+func (b *Builder) GenLoc() mem.Loc {
+	res := b.pkg.MemModel.Add(b.ty, b.Class, b.Attrs)
+	b.pkg.set(res, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
+	return res
+}

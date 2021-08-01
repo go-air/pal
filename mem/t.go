@@ -14,4 +14,4 @@
 
 package mem
 
-type T uint32
+type Loc uint32

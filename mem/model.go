@@ -24,20 +24,20 @@ import (
 type loc struct {
 	class  Class
 	attrs  Attrs
-	root   T
-	parent T
+	root   Loc
+	parent Loc
 
 	vsz values.V
 
 	// constraints
-	pointsTo  []T // this loc points to that
-	transfers []T //
-	loads     []T // this loc = *(that loc)
-	stores    []T // *(this loc) = that loc
+	pointsTo  []Loc // this loc points to that
+	transfers []Loc //
+	loads     []Loc // this loc = *(that loc)
+	stores    []Loc // *(this loc) = that loc
 
 	// points-to (and from)
-	in  []T
-	out []T
+	in  []Loc
+	out []Loc
 }
 
 type Model struct {
@@ -52,7 +52,7 @@ func NewModel(values values.T) *Model {
 		// 1 -> zero mem
 		locs:   make([]loc, 2, 128),
 		values: values}
-	zz := T(1)
+	zz := Loc(1)
 	z := &res.locs[1]
 	z.class = Zero
 	z.parent = zz
@@ -64,59 +64,65 @@ func (mod *Model) Len() int {
 	return len(mod.locs)
 }
 
-func (mod *Model) At(i int) T {
-	return T(i)
+func (mod *Model) At(i int) Loc {
+	return Loc(i)
 }
 
-func (mod *Model) IsRoot(m T) bool {
+func (mod *Model) IsRoot(m Loc) bool {
 	return mod.Parent(m) == m
 }
 
-func (mod *Model) Parent(m T) T {
+func (mod *Model) Parent(m Loc) Loc {
 	return mod.locs[m].parent
 }
 
 // Access returns the T which results from
 // add vo to the virtual size of m.
-func (mod *Model) Access(m T, vo values.V) T {
-	return T(0)
+func (mod *Model) Access(m Loc, vo values.V) Loc {
+	return Loc(0)
 }
 
-func (mod *Model) VSize(m T) values.V {
+func (mod *Model) VSize(m Loc) values.V {
 	return mod.locs[m].vsz
 }
 
-func (mod *Model) Equals(a, b T) values.AbsTruth {
+func (mod *Model) Equals(a, b Loc) values.AbsTruth {
 	if a != b {
 		return values.False
 	}
 	return values.Unknown
 }
 
-func (mod *Model) Zero() T {
-	return T(1)
+func (mod *Model) Zero() Loc {
+	return Loc(1)
 }
 
-func (mod *Model) Local(ty types.Type, attrs Attrs) T {
+func (mod *Model) Local(ty types.Type, attrs Attrs) Loc {
 	var sum int
-	p := T(uint32(len(mod.locs)))
+	p := Loc(uint32(len(mod.locs)))
 	return mod.add(ty, Local, attrs, p, p, &sum)
 }
 
-func (mod *Model) Global(ty types.Type, attrs Attrs) T {
+func (mod *Model) Global(ty types.Type, attrs Attrs) Loc {
 	var sum int
-	p := T(uint32(len(mod.locs)))
+	p := Loc(uint32(len(mod.locs)))
 	return mod.add(ty, Global, attrs, p, p, &sum)
 }
 
-func (mod *Model) Heap(ty types.Type, attrs Attrs) T {
+func (mod *Model) Heap(ty types.Type, attrs Attrs) Loc {
 	var sum int
-	p := T(uint32(len(mod.locs)))
+	p := Loc(uint32(len(mod.locs)))
 	return mod.add(ty, Heap, attrs, p, p, &sum)
 }
 
-func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r T, sum *int) T {
-	n := T(uint32(len(mod.locs)))
+func (mod *Model) Add(ty types.Type, class Class, attrs Attrs) Loc {
+	var sum int
+	p := Loc(uint32(len(mod.locs)))
+	return mod.add(ty, class, attrs, p, p, &sum)
+}
+
+func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *int) Loc {
+	n := Loc(uint32(len(mod.locs)))
 	l := loc{
 		parent: p,
 		root:   r,
@@ -157,42 +163,42 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r T, sum *int)
 	return n
 }
 
-func (mod *Model) Attrs(m T) Attrs {
+func (mod *Model) Attrs(m Loc) Attrs {
 	return mod.locs[m].attrs
 }
 
-func (mod *Model) AddAttrs(m T, a Attrs) {
+func (mod *Model) AddAttrs(m Loc, a Attrs) {
 	mm := &mod.locs[m]
 	mm.attrs |= a
 }
 
-func (mod *Model) SetAttrs(m T, a Attrs) {
+func (mod *Model) SetAttrs(m Loc, a Attrs) {
 	mm := &mod.locs[m]
 	mm.attrs = a
 }
 
 // a = &b
-func (mod *Model) GenPointsTo(a, b T) {
+func (mod *Model) GenPointsTo(a, b Loc) {
 	loc := &mod.locs[a]
 	loc.pointsTo = append(loc.pointsTo, b)
 }
 
 // dst = *src
-func (mod *Model) GenLoad(dst, src T) {
+func (mod *Model) GenLoad(dst, src Loc) {
 	loc := &mod.locs[dst]
 	loc.loads = append(loc.loads, src)
 
 }
 
 // *dst = src
-func (mod *Model) GenStore(dst, src T) {
+func (mod *Model) GenStore(dst, src Loc) {
 	loc := &mod.locs[dst]
 	loc.stores = append(loc.stores, src)
 
 }
 
 // dst = src
-func (mod *Model) GenTransfer(dst, src T) {
+func (mod *Model) GenTransfer(dst, src Loc) {
 	loc := &mod.locs[dst]
 	loc.stores = append(loc.stores, src)
 }
@@ -203,7 +209,7 @@ func (mod *Model) Solve() {
 
 // PointsTo places the points-to set of
 // p in dst and returns it.
-func (mod *Model) PointsToFor(dst []T, p T) []T {
+func (mod *Model) PointsToFor(dst []Loc, p Loc) []Loc {
 	return dst
 }
 
@@ -218,7 +224,7 @@ func (mod *Model) PointsToFor(dst []T, p T) []T {
 // One can retrieve points-to information
 // for local variables using PoinstToFor,
 // before calling Export.
-func (mod *Model) Export(perm []T) []T {
+func (mod *Model) Export(perm []Loc) []Loc {
 	return perm
 }
 

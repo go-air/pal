@@ -25,7 +25,7 @@ import (
 // a depended upon package to its importer.
 type Pkg struct {
 	Values   values.T
-	Start    mem.T
+	Start    mem.Loc
 	MemModel *mem.Model // provides mem.T operations
 	SrcInfo  []SrcInfo  // indexed by mem.T
 }
@@ -34,13 +34,13 @@ func NewPkg(pkgName string, vs values.T) *Pkg {
 	mdl := mem.NewModel(vs)
 	return &Pkg{
 		Values:   vs,
-		Start:    mem.T(1),
+		Start:    mem.Loc(1),
 		MemModel: mdl,
 		SrcInfo:  make([]SrcInfo, mdl.Len())}
 }
 
-func (pkg *Pkg) set(m mem.T, info *SrcInfo) {
-	n := mem.T(uint32(cap(pkg.SrcInfo)))
+func (pkg *Pkg) set(m mem.Loc, info *SrcInfo) {
+	n := mem.Loc(uint32(cap(pkg.SrcInfo)))
 	if m < n {
 		pkg.SrcInfo[m] = *info
 		return

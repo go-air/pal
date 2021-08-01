@@ -42,7 +42,7 @@ type FromSSA struct {
 func NewFromSSA(pass *analysis.Pass, vs values.T) (*FromSSA, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
-	pkgo := results.NewPkg(pkgPath, vs)
+	pkgRes := results.NewPkg(pkgPath, vs)
 	for _, imp := range pass.Pkg.Imports() {
 		iPath := imp.Path()
 		//fmt.Printf("\t%s: importing %s\n", pkgPath, iPath)
@@ -53,15 +53,20 @@ func NewFromSSA(pass *analysis.Pass, vs values.T) (*FromSSA, error) {
 
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssa.Pkg.Build()
+
 	fromSSA := &FromSSA{
 		pass:    pass,
 		pkg:     ssa.Pkg,
 		ssa:     ssa,
 		results: palres,
-		pkgres:  pkgo,
+		pkgres:  pkgRes,
 		values:  vs}
-	fromSSA.results.Put(pkgPath, pkgo)
+	fromSSA.results.Put(pkgPath, pkgRes)
 	return fromSSA, nil
+}
+
+func (f *FromSSA) genResult() (*results.T, error) {
+	return f.results, nil
 }
 
 /*

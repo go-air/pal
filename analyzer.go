@@ -27,6 +27,8 @@ import (
 var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
 
 func Analyzer() *analysis.Analyzer {
+	// generate a unique results object
+	// for every analyzer.
 	palRes, err := results.NewT()
 	if err != nil {
 		panic(err.Error())
@@ -34,7 +36,7 @@ func Analyzer() *analysis.Analyzer {
 	return &analysis.Analyzer{
 		Name:       "pal",
 		Flags:      *flagSet,
-		Doc:        "pal pointer analysis",
+		Doc:        doc, // see file paldoc.go
 		Run:        run,
 		Requires:   []*analysis.Analyzer{buildssa.Analyzer},
 		ResultType: reflect.TypeOf((*results.T)(nil)),
@@ -46,18 +48,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	_ = fromSSA
-	// bind globals
-
-	// bind funcs
-
-	/*
-		for _, fn := range ssa.SrcFuncs {
-			runFunc(ssa, fn, mems)
-
-		}
-	*/
-	return fromSSA.results, nil
+	return fromSSA.genResult()
 }
 
 /*
