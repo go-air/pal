@@ -25,10 +25,17 @@ func init() {
 }
 
 func NewT() (*T, error) {
-	return &T{}, nil
+	return &T{d: make(map[string]*Pkg)}, nil
 }
 
 func (t *T) AFact() {}
+
+func (t *T) Lookup(pkgPath string) *Pkg {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	res, _ := t.d[pkgPath]
+	return res
+}
 
 func (t *T) Put(pkgName string, pkgR *Pkg) error {
 	t.mu.Lock()

@@ -36,18 +36,31 @@ type FromSSA struct {
 	pkg     *ssa.Package
 	values  values.T
 	results *results.T
+	pkgres  *results.Pkg
 }
 
 func NewFromSSA(pass *analysis.Pass, vs values.T) (*FromSSA, error) {
+	palres := pass.Analyzer.FactTypes[0].(*results.T)
+	pkgPath := pass.Pkg.Path()
+	pkgo := results.NewPkg(pkgPath, vs)
+	for _, imp := range pass.Pkg.Imports() {
+		iPath := imp.Path()
+		//fmt.Printf("\t%s: importing %s\n", pkgPath, iPath)
+		if palres.Lookup(iPath) == nil {
+			return nil, fmt.Errorf("couldn't find pal results for %s", iPath)
+		}
+	}
+
 	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssa.Pkg.Build()
-	fmt.Printf("building pkg %s\n", pass.Pkg.Path())
 	fromSSA := &FromSSA{
 		pass:    pass,
 		pkg:     ssa.Pkg,
 		ssa:     ssa,
-		results: pass.Analyzer.FactTypes[0].(*results.T),
+		results: palres,
+		pkgres:  pkgo,
 		values:  vs}
+	fromSSA.results.Put(pkgPath, pkgo)
 	return fromSSA, nil
 }
 
