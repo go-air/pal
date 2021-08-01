@@ -24,17 +24,17 @@ import (
 type SrcKind int
 
 const (
-	TypeVar SrcKind = iota
-	Func
-	MakeArray
-	MakeSlice
-	MakeChan
+	SrcVar SrcKind = iota
+	SrcFunc
+	SrcMakeArray
+	SrcMakeSlice
+	SrcMakeChan
 
-	MakeInterface
-	MakeClosure
+	SrcMakeInterface
+	SrcMakeClosure
 
-	New
-	AddressOf
+	SrcNew
+	SrcAddressOf
 )
 
 // SrcInfo represents the information about

@@ -25,7 +25,7 @@ type Builder struct {
 	Attrs   memory.Attrs
 	Class   memory.Class
 	Pos     token.Pos
-	ty      types.Type
+	Type    types.Type
 	SrcKind SrcKind
 
 	pkg *Pkg
@@ -40,11 +40,11 @@ func (b *Builder) Reset() {
 	b.Class = memory.Class(0)
 	b.SrcKind = SrcKind(0)
 	b.Pos = -1
-	b.ty = nil
+	b.Type = nil
 }
 
 func (b *Builder) GenLoc() memory.Loc {
-	res := b.pkg.MemModel.Add(b.ty, b.Class, b.Attrs)
+	res := b.pkg.MemModel.Add(b.Type, b.Class, b.Attrs)
 	b.pkg.set(res, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
 	return res
 }

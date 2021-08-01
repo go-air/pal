@@ -130,7 +130,7 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		attrs:  attrs}
 	lastSum := *sum
 	switch ty := ty.(type) {
-	case *types.Basic, *types.Pointer:
+	case *types.Basic, *types.Pointer, *types.Signature:
 		mod.locs = append(mod.locs, l)
 		*sum++
 	case *types.Array:

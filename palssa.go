@@ -19,7 +19,10 @@ package pal
 
 import (
 	"fmt"
+	"go/token"
+	"go/types"
 
+	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/results"
 	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis"
@@ -37,6 +40,7 @@ type PalSSA struct {
 	values  values.T
 	results *results.T
 	pkgres  *results.Pkg
+	buildr  *results.Builder
 }
 
 func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
@@ -60,13 +64,56 @@ func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 		ssa:     ssa,
 		results: palres,
 		pkgres:  pkgRes,
-		values:  vs}
-	palSSA.results.Put(pkgPath, pkgRes)
+		values:  vs,
+		buildr:  results.NewBuilder(pkgRes)}
 	return palSSA, nil
 }
 
-func (f *PalSSA) genResult() (*results.T, error) {
-	return f.results, nil
+func (p *PalSSA) genResult() (*results.T, error) {
+	for name, mbr := range p.ssa.Pkg.Members {
+		p.genMember(name, mbr)
+	}
+	p.putResults()
+	return p.results, nil
+}
+
+func (p *PalSSA) genMember(name string, mbr ssa.Member) {
+	switch mbr.Token() {
+	case token.TYPE, token.CONST:
+		return
+	}
+	buildr := p.buildr
+	buildr.Reset()
+	fmt.Printf("genMember for \"%s\".%s\n", p.pkg.Pkg.Path(), name)
+
+	switch x := mbr.(type) {
+	case *ssa.Global:
+		buildr.Pos = x.Pos()
+		buildr.Type = x.Type()
+		buildr.Class = memory.Global
+		switch buildr.Type.(type) {
+		case *types.Basic, *types.Array, *types.Struct, *types.Map, *types.Chan, *types.Pointer:
+			buildr.SrcKind = results.SrcVar
+		case *types.Signature:
+			fmt.Printf("gotta func global %s\n", name)
+			buildr.SrcKind = results.SrcFunc
+			buildr.Attrs = memory.IsFunc
+		default:
+			fmt.Printf("gotta unknown %s\n", name, buildr.Type)
+		}
+
+	case *ssa.Function:
+		fmt.Printf("gotta func member %s %s %#v\n", name, x.Type(), x)
+		buildr.Pos = x.Pos()
+		buildr.Type = x.Signature
+		buildr.Class = memory.Global
+		buildr.Attrs = memory.IsFunc
+	}
+	buildr.GenLoc()
+}
+
+func (p *PalSSA) putResults() {
+	p.results.Put(p.pass.Pkg.Path(), p.pkgres)
 }
 
 /*
