@@ -25,7 +25,7 @@ type Const int
 
 type consts struct{}
 
-func Consts() T {
+func ConstVals() T {
 	return consts{}
 }
 

@@ -32,6 +32,7 @@ type T interface {
 	Zero() V
 	One() V
 	AsInt(v V) (i int, ok bool)
+	FromInt(i int) V
 	Var(v V) bool
 	Plus(a, b V) V
 	Equal(a, b V) AbsTruth
