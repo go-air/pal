@@ -2,19 +2,22 @@
 
 ## Goals
 
-The goal of pal is to provide a library which can be effectively used for different kinds of pointer analyses for Go on different
-intermediate representations for effective pointer analysis.
+The goal of pal is to provide a library which can be effectively used for
+different kinds of pointer analyses for Go on different intermediate
+representations.
 
 ### Effective pointer analysis
 
-Pointer analysis (PA) is a core dependency of many static analyses, which have different needs, such as
+Pointer analysis (PA) is a core dependency of many static analyses, which have
+different needs, such as
 
 1. Providing a sound dynamic call graph. 
 This in turn has many applications
 	- impact analysis
  	- non-interference analysis
-	- any interprocedural sound analysis
-	- resolving method calls
+	- almost any interprocedural sound analysis
+	- resolving method calls (with more precision)
+	- dataflow analysis, eg for security
 1. Identifying possible invalid pointer dereferences.
 1. Proving that nil pointer dereferences or
 out of bounds panics are impossible.
@@ -23,169 +26,35 @@ out of bounds panics are impossible.
 
 Unfortunately, PA is often or usually done under global program analysis, as
 opposed to modularly.  Tools such as Golang's pointer analysis often requires
-re-analyzing the standard library.  Larger projects such as Docker or Kubernetes take even more resources.
+re-analyzing the standard library.  Larger projects such as Docker or
+Kubernetes take even more resources.
 
 In this project, effective pointer analysis means providing a relatively simple
 api to meet the most common needs well, and to meet most needs reasonably.
 
 ### For different Go IRs
 
+staticcheck [6] has an IR, golang.org/x/tools/go/ssa is a baseline, we are
+working on (air)[https://github.com/go-air/air].  We would like pal to be
+retargetable to these different IRs.  Perhaps it can be used one day for the Go
+gc compiler IR, or other IRs.
 
-staticcheck [6] has an IR, golang.org/x/tools/go/ssa is a baseline, we are working on (air)[https://github.com/go-air/air].  We would like pal to be retargetable to these different IRs.  Perhaps
-it can be used one day for the Go gc compiler IR.
-
-
-To be standard, we will start with a golang.org/x/tools/go/ssa implementation.
-
-### Out of Scope
-
-pal does not attempt to model edge case scenarios in Go, such as
-correct pointer analysis in the presence of races or unsafe.Pointer usage.
-
-Rather, pal should provide a small set of basic operations which, taken together,
-can be used to model a variety of program behaviors while focusing principally
-on usage for which Go guarantees memory safety. 
-
-
+However, to be standard, we will start with a golang.org/x/tools/go/ssa
+implementation.
 
 ## Architecture
 
-pal will be provided as a library to support different language/application pairs
-of contexts, as in the diagram below.
-
-```flow
-st=>start: Go IR
-e=>end: Use Pointer Results
-op=>operation: Encode memory model
-op2=>operation: Solve model
-cond=>condition: More results?
-
-st->op->op2->cond
-
-cond(yes)->st
-
-cond(no)->e
-```
-
-
-
-For example, it may be used to create a sound dynamic call graph, or it may
-be used to detect or prove absence of null dereferences, or to generate summaries for efficient incremental usage.
-
-For a given input, pal will operate according to the classical pattern of 
-separating _constraint generation_ from solving.  While these may be interleaved
-when the input is additively incremental, their roles will be kept distinct and
-a common workflow will be that of a pass generating constraints followed by
-a pass of solving.
-
-
-### Related Work
-
-pal is fundamentally based on a Anderson analysis [3], however it introduces a
-symbolic aspect for treatment of numerics, and a _meta symbolic_ aspect for
-incrementality.  pal is designed to be retargeted and adaptable to different
-applications, and provides a mechanism for modular analysis.
-
-srcPtr [7] works on the AST is a framework for Anderson or Steensgaard analysis.
-pal is completely agnostic of the input: it could be AST or some IR such as
-SSA or SSI.  pal does not directly require a call graph or a control flow graph,
-it is lower level and only provides the pointer related operations.  Of course
-we anticipate that such operations are normally called during a traversal of a 
-program representation, but no assumptions are made about that representation.
-
-Infer [2] is a bug finding tool which performs compositional memory analysis 
-using _biabduction_.  Like Infer, pal (atleast in compositional usage) uses
-meta-symbolic variables (variables whose values are program variables) to 
-reason about functions without knowing anything about call sites.  Unlike Infer, 
-pal does not use separation logic, rather the heap is modelled as a graph
-between memory locations. 
-
-Infer is also an application while pal is a library to be used in a variety
-of applications.
-
-Gillian [5] is also language agnostic, however it is based on modelling full
-programs by symbolic execution in a given IR (GIL) whereas pal only
-symbolically executes the numeric _Values_ in pointer arithmetic, allowing the
-caller to model these values in many different ways.
-
-Golang's pointer analysis [8] is Anderson style with less flexibility,
-dependency on an ssa package specific to Go.
-
-
+Please see [archi](archi.md).
 
 ## Functionality
 
-### Memory
+Please see [func](func.md).
 
-Memory locations are modelled as a set of nodes (as in nodes in a graph), called
-_mems_.  For example, mems may correspond to global variables, local variables,
-the result of calls to 'malloc', function declarations, etc.  Mems also be specific to
-control flow and/or call flow context.  However, pal leaves this opaque to the
-user.
 
-Sets of mems may or may not support non-constant values for their size.  For non-constant
-values which occur in the program under analysis, a special Value type is provided and
-detailed below.
-
-Sets of Mem must provide an efficient means to determine if two mems 'm', 'n' may overlap
-and whether they are equal.
-
-The application context will generate a set (or sets) of mems.
 
 Below is the interface.
 
-```go
-type Mem uint64
-type Value uint64
-type AbsTruth int
 
-const (
-	False AbsTruth = iota
-	True 
-	Maybe
-)
-
-type Mems interface {
-	// like nil/NULL
-	Zero() Mem
-
-	// out of bounds, 
-	Oob() Mem
-
-	// like random pointer, points to everything.  May be distinct.
-	Any() Mem
-
-    // an opaque, uninterpreted Mem with a unique singleton points to
-	Thunk() Mem
-
-
-	// for nested objects struct S { a, b int } s.Open(); s.Gen(); s.Gen(); s.Close()
-	Open() Mem
-
-	// Gen a mem of size sz
-	Gen(sz Value) Mem
-	
-	// close last opened object
-	Close()
-
-	// return the size of m
-	Size(m Mem) Value
-
-	// add o to m
-	Add(m Mem, o Value) Mem
-
-    // get the root
-	Root(m Mem) Mem
-
-	// total number of Mems generated
-	Len() int
-
-    // Mem at index i
-	At(i int) Mem
-
-	Constraints() Constraints
-}
-```
 
 #### Role in Applications
 
@@ -200,7 +69,7 @@ map would would be represented by a node representing a (key, value) pair;
 all the values in the map are abstracted to a single pair.
 
 For flow sensitivity, an SSA form in combination with such a representation
-can be used.
+can be used.  For more flow sensitivity an SSI form can be used.
 
 There are various mechanisms which increase the precision of an analysis by
 increasing the number of nodes.  Go's maps, or allocation points can have
@@ -245,7 +114,8 @@ below.
 
 ```go
 type Values interface {
-	Const(v Value) (int, bool)
+	ToInt(v Value) (int, bool)
+	FromInt(int) V
 	Plus(a, b Value) Value
 	Less(a, b Value) AbsTrue
 	Equal(a, b Value) AbsTruth
