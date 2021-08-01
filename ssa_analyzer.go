@@ -26,7 +26,9 @@ import (
 
 var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
 
-func Analyzer() *analysis.Analyzer {
+// SSAAnalyzer produces an Analyzer which
+// works on golang.org/x/tools/go/ssa form.
+func SSAAnalyzer() *analysis.Analyzer {
 	// generate a unique results object
 	// for every analyzer.
 	palRes, err := results.NewT()

@@ -20,5 +20,5 @@ import (
 )
 
 func main() {
-	singlechecker.Main(pal.Analyzer())
+	singlechecker.Main(pal.SSAAnalyzer())
 }
