@@ -12,36 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package plain
-
-import (
-	"bytes"
-	"io"
-
-	"strings"
-)
-
-func String(t Encoder) string {
-	var b bytes.Buffer
-	if err := t.PlainEncode(&b); err != nil {
-		panic(err)
-	}
-	return b.String()
-}
-
-func Parse(t Decoder, s string) error {
-	return t.PlainDecode(strings.NewReader(s))
-}
-
-type Encoder interface {
-	PlainEncode(io.Writer) error
-}
-
-type Decoder interface {
-	PlainDecode(io.Reader) error
-}
-
-type Coder interface {
-	Encoder
-	Decoder
-}
+// Package byteorder defines pal's ByteOrder for binary serialisation.
+package byteorder

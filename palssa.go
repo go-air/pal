@@ -71,7 +71,6 @@ func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 }
 
 func (p *PalSSA) genResult() (*results.T, error) {
-	defer p.putResults()
 	var err error
 	for name, mbr := range p.ssa.Pkg.Members {
 		err = p.genMember(name, mbr)
@@ -79,6 +78,7 @@ func (p *PalSSA) genResult() (*results.T, error) {
 			return nil, err
 		}
 	}
+	p.putResults()
 	return p.results, nil
 }
 
@@ -101,9 +101,13 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 			buildr.Type = ty.Elem()
 			buildr.SrcKind = results.SrcVar
 			// gen what it points to
-			buildr.GenLoc()
+			dst := buildr.GenLoc()
 			// pointer generated below
 			buildr.Type = ty
+			p := buildr.GenLoc()
+			buildr.GenPointsTo(dst, p)
+
+			return nil
 
 		default:
 			msg := fmt.Sprintf(
@@ -119,6 +123,22 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 		buildr.Type = x.Signature
 		buildr.Class = memory.Global
 		buildr.Attrs = memory.IsFunc
+		buildr.SrcKind = results.SrcFunc
+		buildr.GenLoc()
+		buildr.Reset()
+		if x.Signature.Variadic() {
+			fmt.Printf("warning: \"%s\".%s: variadic params not yet handled\n", p.PkgPath(), name)
+			return nil
+		}
+		for _, param := range x.Params {
+			buildr.Pos = param.Pos()
+			buildr.Type = param.Type()
+			buildr.Attrs = memory.Opaque | memory.IsParam
+			buildr.Class = memory.Local
+			buildr.SrcKind = results.SrcVar
+			buildr.GenLoc()
+		}
+		return nil
 	default:
 		msg := fmt.Sprintf(
 			"unexpected ssa member for %s %s %#v\n",
@@ -127,8 +147,10 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 			x)
 		return errors.New(msg)
 	}
-	buildr.GenLoc()
-	return nil
+}
+
+func (p *PalSSA) PkgPath() string {
+	return p.pass.Pkg.Path()
 }
 
 func (p *PalSSA) putResults() {

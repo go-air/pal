@@ -48,3 +48,7 @@ func (b *Builder) GenLoc() memory.Loc {
 	b.pkg.set(res, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
 	return res
 }
+
+func (b *Builder) GenPointsTo(dst, p memory.Loc) {
+	b.pkg.MemModel.GenPointsTo(dst, p)
+}
