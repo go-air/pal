@@ -92,6 +92,7 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 
 	switch x := mbr.(type) {
 	case *ssa.Global:
+		// globals are in general pointers
 		buildr.Pos = x.Pos()
 		buildr.Type = x.Type()
 		buildr.Class = memory.Global
@@ -99,14 +100,11 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 		case *types.Pointer:
 			buildr.Type = ty.Elem()
 			buildr.SrcKind = results.SrcVar
+			// gen what it points to
+			buildr.GenLoc()
+			// pointer generated below
+			buildr.Type = ty
 
-		case *types.Basic, *types.Array, *types.Struct, *types.Map, *types.Chan:
-			fmt.Printf("gotta basic %s\n", buildr.Type)
-			buildr.SrcKind = results.SrcVar
-		case *types.Signature:
-			fmt.Printf("gotta func global %s\n", name)
-			buildr.SrcKind = results.SrcFunc
-			buildr.Attrs = memory.IsFunc
 		default:
 			msg := fmt.Sprintf(
 				"unexpected ssa global member type for %s %T\n",
@@ -116,7 +114,7 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 		}
 
 	case *ssa.Function:
-		fmt.Printf("gotta func member %s %s %#v\n", name, x.Type(), x)
+		// declared funcs
 		buildr.Pos = x.Pos()
 		buildr.Type = x.Signature
 		buildr.Class = memory.Global

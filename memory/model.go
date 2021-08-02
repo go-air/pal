@@ -55,7 +55,7 @@ func NewModel(values values.T) *Model {
 	res := &Model{
 		// 0 -> not a mem
 		// 1 -> zero mem
-		locs:   make([]loc, 2, 128),
+		locs:   make([]loc, 2, 1024),
 		values: values}
 	zz := Loc(1)
 	z := &res.locs[1]

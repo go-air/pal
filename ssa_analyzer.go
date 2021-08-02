@@ -54,15 +54,6 @@ func run(pass *analysis.Pass) (interface{}, error) {
 }
 
 /*
-func runMember(_ *buildssa.SSA, m ssa.Member, mems *mem.Model) {
-	switch m := m.(type) {
-	case *ssa.Global:
-		mems.Global(m.Type(), 0)
-	case *ssa.Function:
-		fmt.Printf("member func!\n")
-	default:
-	}
-}
 
 func runFunc(ssa *buildssa.SSA, fn *ssa.Function, mems *mem.Model) {
 	// bind params
