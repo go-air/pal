@@ -133,7 +133,7 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 		for _, param := range x.Params {
 			buildr.Pos = param.Pos()
 			buildr.Type = param.Type()
-			buildr.Attrs = memory.Opaque | memory.IsParam
+			buildr.Attrs = memory.IsOpaque | memory.IsParam
 			buildr.Class = memory.Local
 			buildr.SrcKind = results.SrcVar
 			buildr.GenLoc()

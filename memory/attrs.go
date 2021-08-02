@@ -14,17 +14,24 @@
 
 package memory
 
+import (
+	"fmt"
+	"io"
+
+	"github.com/go-air/pal/internal/palio"
+)
+
 type Attrs byte
 
 const (
-	Opaque Attrs = 1 << iota
-	IsParam
+	IsOpaque Attrs = 1 << iota
 	IsFunc
+	IsParam
 	IsReturn
 )
 
 func (a Attrs) IsOpaque() bool {
-	return a&Opaque != 0
+	return a&IsOpaque != 0
 }
 
 func (a Attrs) IsParam() bool {
@@ -37,6 +44,46 @@ func (a Attrs) IsFunc() bool {
 
 func (a Attrs) IsReturn() bool {
 	return a&IsReturn != 0
+}
+
+func (a Attrs) PlainEncode(w io.Writer) error {
+	_, e := w.Write([]byte(a.String()))
+	return e
+}
+
+var (
+	_Attrs [4]Attrs = [4]Attrs{
+		IsOpaque, IsFunc, IsParam, IsReturn}
+)
+
+func (a *Attrs) decode(buf []byte) error {
+	if buf[0] != byte('o') ||
+		buf[2] != byte('f') ||
+		buf[4] != byte('p') ||
+		buf[6] != byte('r') {
+		return fmt.Errorf("expected: %s", string(buf))
+	}
+	*a = Attrs(0)
+	for i := 1; i < 8; i += 2 {
+		switch buf[i] {
+		case '-':
+		case '+':
+			*a |= _Attrs[i/2]
+		default:
+			return fmt.Errorf("expected: %s", string(buf))
+		}
+	}
+	return nil
+}
+
+func (a *Attrs) PlainDecode(r io.Reader) error {
+
+	buf := make([]byte, 8)
+	_, e := palio.ReadBuf(buf, r)
+	if e != nil {
+		return e
+	}
+	return a.decode(buf)
 }
 
 func boolByte(b bool) byte {

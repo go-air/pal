@@ -21,25 +21,6 @@ import (
 	"github.com/go-air/pal/values"
 )
 
-type loc struct {
-	class  Class
-	attrs  Attrs
-	root   Loc
-	parent Loc
-
-	vsz values.V
-
-	// constraints
-	pointsTo  []Loc // this loc points to that
-	transfers []Loc //
-	loads     []Loc // this loc = *(that loc)
-	stores    []Loc // *(this loc) = that loc
-
-	// points-to (and from)
-	in  []Loc
-	out []Loc
-}
-
 // Type Model represents a memory model for a package.
 type Model struct {
 	locs   []loc

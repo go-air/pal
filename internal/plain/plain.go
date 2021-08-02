@@ -45,3 +45,11 @@ type Coder interface {
 	Encoder
 	Decoder
 }
+
+func EncodeDecode(c Coder) error {
+	var buf = new(bytes.Buffer)
+	if err := c.PlainEncode(buf); err != nil {
+		return err
+	}
+	return c.PlainDecode(buf)
+}
