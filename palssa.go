@@ -1,4 +1,3 @@
-// Copyright 2021 The pal authors (see AUTHORS)
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -92,60 +91,81 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 
 	switch x := mbr.(type) {
 	case *ssa.Global:
-		// globals are in general pointers
-		buildr.Pos = x.Pos()
-		buildr.Type = x.Type()
-		buildr.Class = memory.Global
-		switch ty := buildr.Type.(type) {
-		case *types.Pointer:
-			buildr.Type = ty.Elem()
-			buildr.SrcKind = results.SrcVar
-			// gen what it points to
-			dst := buildr.GenLoc()
-			// pointer generated below
-			buildr.Type = ty
-			p := buildr.GenLoc()
-			buildr.GenPointsTo(dst, p)
-
-			return nil
-
-		default:
-			msg := fmt.Sprintf(
-				"unexpected ssa global member type for %s %T\n",
-				name,
-				buildr.Type)
-			return errors.New(msg)
-		}
+		p.genGlobal(buildr, name, x)
+		return nil
 
 	case *ssa.Function:
-		// declared funcs
-		buildr.Pos = x.Pos()
-		buildr.Type = x.Signature
-		buildr.Class = memory.Global
-		buildr.Attrs = memory.IsFunc
-		buildr.SrcKind = results.SrcFunc
-		buildr.GenLoc()
-		buildr.Reset()
-		if x.Signature.Variadic() {
-			fmt.Printf("warning: \"%s\".%s: variadic params not yet handled\n", p.PkgPath(), name)
-			return nil
-		}
-		for _, param := range x.Params {
-			buildr.Pos = param.Pos()
-			buildr.Type = param.Type()
-			buildr.Attrs = memory.IsOpaque | memory.IsParam
-			buildr.Class = memory.Local
-			buildr.SrcKind = results.SrcVar
-			buildr.GenLoc()
-		}
+		p.addFuncDecl(buildr, name, x)
 		return nil
 	default:
+		// NB(wsc) I think we can panic here...
 		msg := fmt.Sprintf(
 			"unexpected ssa member for %s %s %#v\n",
 			name,
 			x.Type(),
 			x)
 		return errors.New(msg)
+	}
+}
+
+func (p *PalSSA) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
+	// globals are in general pointers
+	buildr.Pos = x.Pos()
+	buildr.Type = x.Type()
+	buildr.Class = memory.Global
+	switch ty := buildr.Type.(type) {
+	case *types.Pointer:
+		buildr.Type = ty.Elem()
+		buildr.SrcKind = results.SrcVar
+		// gen what it points to
+		dst := buildr.GenLoc()
+		// pointer generated below
+		buildr.Type = ty
+		p := buildr.GenLoc()
+		buildr.GenPointsTo(dst, p)
+
+		return
+
+	default:
+		msg := fmt.Sprintf(
+			"unexpected ssa global member type for %s %T\n",
+			name,
+			buildr.Type)
+		_ = msg
+
+		return // errors.New(msg)
+	}
+}
+
+func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) {
+	if fn.Signature.Variadic() {
+		// XXX(wsc)
+		fmt.Printf(
+			"warning: \"%s\".%s: variadic params not yet handled\n",
+			p.PkgPath(),
+			name)
+		return
+	}
+	bld.Pos = fn.Pos()
+	bld.Type = fn.Signature
+	bld.Class = memory.Global
+	bld.Attrs = memory.IsFunc
+	bld.SrcKind = results.SrcFunc
+	bld.GenLoc()
+	bld.Reset()
+
+	// handle parameters
+	attrs := memory.IsParam
+	if token.IsExported(name) {
+		attrs |= memory.IsOpaque
+	}
+	for _, param := range fn.Params {
+		bld.Pos = param.Pos()
+		bld.Type = param.Type()
+		bld.Attrs = attrs
+		bld.Class = memory.Local
+		bld.SrcKind = results.SrcVar
+		bld.GenLoc()
 	}
 }
 
