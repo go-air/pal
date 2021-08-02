@@ -21,11 +21,7 @@ import (
 	"strings"
 )
 
-type T struct {
-	Encoding
-}
-
-func (t T) Plain() string {
+func String(t PlainEncoder) string {
 	var b bytes.Buffer
 	if err := t.PlainEncode(&b); err != nil {
 		panic(err)
@@ -33,19 +29,19 @@ func (t T) Plain() string {
 	return b.String()
 }
 
-func (t T) ParsePlain(s string) error {
+func Parse(t PlainDecoder, s string) error {
 	return t.PlainDecode(strings.NewReader(s))
 }
 
-type PlainEncoder interface {
+type Encoder interface {
 	PlainEncode(io.Writer) error
 }
 
-type PlainDecoder interface {
+type Decoder interface {
 	PlainDecode(io.Reader) error
 }
 
-type Encoding interface {
-	PlainEncoder
-	PlainDecoder
+type Coder interface {
+	Encoder
+	Decoder
 }
