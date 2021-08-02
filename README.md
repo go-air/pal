@@ -6,7 +6,13 @@ pal -- generic pointer analysis library for Go
 
 
 [design](doc/design/index.md)
+
+## Tutorial
+
 [tutorial](doc/tutorial/index.md)
+
+## Manual
+
 [manual](doc/manual/index.md)
 
 
