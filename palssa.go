@@ -41,6 +41,7 @@ type PalSSA struct {
 	results *results.T
 	pkgres  *results.Pkg
 	buildr  *results.Builder
+	vmap    map[ssa.Instruction]memory.Loc
 }
 
 func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
@@ -55,17 +56,18 @@ func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 		}
 	}
 
-	ssa := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
-	ssa.Pkg.Build()
+	ssapkg := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
+	ssapkg.Pkg.Build()
 
 	palSSA := &PalSSA{
 		pass:    pass,
-		pkg:     ssa.Pkg,
-		ssa:     ssa,
+		pkg:     ssapkg.Pkg,
+		ssa:     ssapkg,
 		results: palres,
 		pkgres:  pkgRes,
 		values:  vs,
-		buildr:  results.NewBuilder(pkgRes)}
+		buildr:  results.NewBuilder(pkgRes),
+		vmap:    make(map[ssa.Instruction]memory.Loc)}
 	return palSSA, nil
 }
 
@@ -113,6 +115,9 @@ func (p *PalSSA) genGlobal(buildr *results.Builder, name string, x *ssa.Global) 
 	buildr.Pos = x.Pos()
 	buildr.Type = x.Type()
 	buildr.Class = memory.Global
+	if token.IsExported(name) {
+		buildr.Attrs = memory.IsOpaque
+	}
 	switch ty := buildr.Type.(type) {
 	case *types.Pointer:
 		buildr.Type = ty.Elem()
@@ -166,6 +171,80 @@ func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function
 		bld.Class = memory.Local
 		bld.SrcKind = results.SrcVar
 		bld.GenLoc()
+	}
+	// free vars not needed here -- top level func def
+
+	// locals: *ssa.Alloc
+	for _, a := range fn.Locals {
+		bld.Reset()
+		bld.Class = memory.Local
+		if a.Heap {
+			bld.Class = memory.Global
+		}
+		bld.Type = a.Type()
+		bld.Pos = a.Pos()
+		bld.SrcKind = results.SrcVar
+		bld.GenLoc()
+	}
+
+	// blocks
+	for _, blk := range fn.Blocks {
+		p.genBlock(bld, name, blk)
+	}
+	if fn.Recover != nil {
+		p.genBlock(bld, name, fn.Recover)
+	}
+}
+
+func (p *PalSSA) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlock) {
+	for _, i9n := range blk.Instrs {
+		p.genI9n(bld, fnName, i9n)
+	}
+}
+
+func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) {
+	rands := make([]ssa.Value, 0, 128)
+	_ = rands
+	switch i9n := i9n.(type) {
+	case *ssa.Alloc:
+		if i9n.Heap {
+		}
+	case *ssa.BinOp:
+	case *ssa.Call:
+	case *ssa.ChangeInterface:
+	case *ssa.ChangeType:
+	case *ssa.Convert:
+	case *ssa.DebugRef:
+	case *ssa.Defer:
+	case *ssa.Extract:
+	case *ssa.Field:
+	case *ssa.FieldAddr:
+	case *ssa.Go:
+	case *ssa.If:
+	case *ssa.Index:
+	case *ssa.IndexAddr:
+	case *ssa.Jump:
+	case *ssa.Lookup:
+	case *ssa.MakeInterface:
+	case *ssa.MakeClosure:
+	case *ssa.MakeChan:
+	case *ssa.MakeSlice:
+	case *ssa.MakeMap:
+	case *ssa.MapUpdate:
+	case *ssa.Next:
+	case *ssa.Panic:
+	case *ssa.Phi:
+	case *ssa.Range:
+	case *ssa.RunDefers:
+	case *ssa.Select:
+	case *ssa.Send:
+	case *ssa.Return:
+	case *ssa.UnOp:
+	case *ssa.Slice:
+	case *ssa.Store:
+	case *ssa.TypeAssert:
+	default:
+		panic("unknown ssa Instruction")
 	}
 }
 
