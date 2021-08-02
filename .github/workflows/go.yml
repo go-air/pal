@@ -18,7 +18,7 @@ on:
   push:
     branches: [ main, proto ]
   pull_request:
-    branches: [ main, prot ]
+    branches: [ main, proto ]
 
 jobs:
 
