@@ -40,12 +40,17 @@ type loc struct {
 	out []Loc
 }
 
+// Type Model represents a memory model for a package.
 type Model struct {
 	locs   []loc
 	values values.T
 	vszs   []int
 }
 
+// NewModel generates a new memory model for a package.
+//
+// values parameterises the resulting model on numeric
+// (int) values.
 func NewModel(values values.T) *Model {
 	res := &Model{
 		// 0 -> not a mem
@@ -76,6 +81,10 @@ func (mod *Model) Parent(m Loc) Loc {
 	return mod.locs[m].parent
 }
 
+func (mod *Model) Root(m Loc) Loc {
+	return mod.locs[m].root
+}
+
 // Access returns the T which results from
 // add vo to the virtual size of m.
 func (mod *Model) Access(m Loc, vo values.V) Loc {
@@ -84,6 +93,16 @@ func (mod *Model) Access(m Loc, vo values.V) Loc {
 
 func (mod *Model) VSize(m Loc) values.V {
 	return mod.locs[m].vsz
+}
+
+func (mod *Model) Overlaps(a, b Loc) values.AbsTruth {
+	if mod.Root(a) != mod.Root(b) {
+		return values.False
+	}
+	if a == b {
+		return values.True
+	}
+	return values.Unknown
 }
 
 func (mod *Model) Equals(a, b Loc) values.AbsTruth {
@@ -115,6 +134,7 @@ func (mod *Model) Heap(ty types.Type, attrs Attrs) Loc {
 	return mod.add(ty, Heap, attrs, p, p, &sum)
 }
 
+// Gen generates a new root memory location.
 func (mod *Model) Gen(ty types.Type, class Class, attrs Attrs) Loc {
 	var sum int
 	p := Loc(uint32(len(mod.locs)))
@@ -130,7 +150,7 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		attrs:  attrs}
 	lastSum := *sum
 	switch ty := ty.(type) {
-	case *types.Basic, *types.Pointer, *types.Signature:
+	case *types.Basic, *types.Pointer, *types.Signature, *types.Interface:
 		mod.locs = append(mod.locs, l)
 		*sum++
 	case *types.Array:
@@ -150,6 +170,13 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 			fty := ty.Field(i).Type()
 			mod.add(fty, class, attrs, n, r, sum)
 		}
+	case *types.Slice:
+		mod.locs = append(mod.locs, l)
+		mod.add(ty.Elem(), class, attrs, n, r, sum)
+	case *types.Chan:
+		mod.locs = append(mod.locs, l)
+		mod.add(ty.Elem(), class, attrs, n, r, sum)
+
 	case *types.Named:
 		// no space reserved for named types, go to
 		// underlying

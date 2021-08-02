@@ -18,6 +18,7 @@
 package pal
 
 import (
+	"errors"
 	"fmt"
 	"go/token"
 	"go/types"
@@ -70,36 +71,48 @@ func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 }
 
 func (p *PalSSA) genResult() (*results.T, error) {
+	defer p.putResults()
+	var err error
 	for name, mbr := range p.ssa.Pkg.Members {
-		p.genMember(name, mbr)
+		err = p.genMember(name, mbr)
+		if err != nil {
+			return nil, err
+		}
 	}
-	p.putResults()
 	return p.results, nil
 }
 
-func (p *PalSSA) genMember(name string, mbr ssa.Member) {
+func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 	switch mbr.Token() {
 	case token.TYPE, token.CONST:
-		return
+		return nil
 	}
 	buildr := p.buildr
 	buildr.Reset()
-	fmt.Printf("genMember for \"%s\".%s\n", p.pkg.Pkg.Path(), name)
 
 	switch x := mbr.(type) {
 	case *ssa.Global:
 		buildr.Pos = x.Pos()
 		buildr.Type = x.Type()
 		buildr.Class = memory.Global
-		switch buildr.Type.(type) {
-		case *types.Basic, *types.Array, *types.Struct, *types.Map, *types.Chan, *types.Pointer:
+		switch ty := buildr.Type.(type) {
+		case *types.Pointer:
+			buildr.Type = ty.Elem()
+			buildr.SrcKind = results.SrcVar
+
+		case *types.Basic, *types.Array, *types.Struct, *types.Map, *types.Chan:
+			fmt.Printf("gotta basic %s\n", buildr.Type)
 			buildr.SrcKind = results.SrcVar
 		case *types.Signature:
 			fmt.Printf("gotta func global %s\n", name)
 			buildr.SrcKind = results.SrcFunc
 			buildr.Attrs = memory.IsFunc
 		default:
-			fmt.Printf("gotta unknown %s\n", name, buildr.Type)
+			msg := fmt.Sprintf(
+				"unexpected ssa global member type for %s %T\n",
+				name,
+				buildr.Type)
+			return errors.New(msg)
 		}
 
 	case *ssa.Function:
@@ -108,30 +121,18 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) {
 		buildr.Type = x.Signature
 		buildr.Class = memory.Global
 		buildr.Attrs = memory.IsFunc
+	default:
+		msg := fmt.Sprintf(
+			"unexpected ssa member for %s %s %#v\n",
+			name,
+			x.Type(),
+			x)
+		return errors.New(msg)
 	}
 	buildr.GenLoc()
+	return nil
 }
 
 func (p *PalSSA) putResults() {
 	p.results.Put(p.pass.Pkg.Path(), p.pkgres)
 }
-
-/*
-func (f *FromSSA) registerAlloc(a *ssa.Alloc) mem.T {
-	if !a.Heap {
-		return mem.T(0)
-	}
-	var m mem.T
-	m = f.mems.Heap(a.Type(), 0)
-	f.set(m, &i)
-	return m
-}
-
-func (f *FromSSA) registerGlobal(g *ssa.Global) mem.T {
-	var m mem.T
-	var i = MemSSA{Pkg: f.pkg, Global: g}
-	m = f.mems.Global(g.Type(), 0)
-	f.set(m, &i)
-	return m
-}
-*/
