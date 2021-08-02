@@ -15,8 +15,11 @@
 package memory
 
 import (
+	"bufio"
 	"fmt"
 	"go/types"
+	"io"
+	"strconv"
 
 	"github.com/go-air/pal/values"
 )
@@ -240,4 +243,43 @@ func (mod *Model) Export(perm []Loc) []Loc {
 // mod in place.
 func (mod *Model) Import(other *Model) {
 
+}
+
+func (mod *Model) PlainEncode(w io.Writer) error {
+	fmt.Fprintf(w, "%d locs\n", len(mod.locs))
+	var err error
+	for i := range mod.locs {
+		m := &mod.locs[i]
+		err = m.PlainEncode(w)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (mod *Model) PlainDecode(r io.Reader) error {
+	br := bufio.NewReader(r)
+	nLocs, err := br.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	nLocsInt, err := strconv.ParseUint(nLocs, 10, 32)
+	if err != nil {
+		return err
+	}
+	// OVFL
+	N := Loc(uint32(nLocsInt))
+	if N > Loc(uint32(cap(mod.locs))) {
+		tmp := make([]loc, N)
+		mod.locs = tmp
+	}
+	mod.locs = mod.locs[:N]
+	for i := Loc(0); i < N; i++ {
+		p := &mod.locs[i]
+		if err = p.PlainDecode(br); err != nil {
+			return err
+		}
+	}
+	return nil
 }
