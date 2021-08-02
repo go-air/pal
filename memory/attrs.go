@@ -49,10 +49,10 @@ func (a Attrs) String() string {
 	return string([]byte{
 		byte('o'),
 		boolByte(a.IsOpaque()),
-		byte('p'),
-		boolByte(a.IsParam()),
 		byte('f'),
 		boolByte(a.IsFunc()),
+		byte('p'),
+		boolByte(a.IsParam()),
 		byte('r'),
 		boolByte(a.IsReturn())})
 }
