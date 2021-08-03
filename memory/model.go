@@ -81,7 +81,8 @@ func (mod *Model) AccessField(m Loc, i int) (Loc, error) {
 	if !ok {
 		panic("")
 	}
-	fmt.Printf("%d.access field %d, len %d vsz %d end %d\n", m, i, mod.Len(), msz, Loc(msz)+m)
+	_ = msz
+	//fmt.Printf("%d.access field %d, len %d vsz %d end %d\n", m, i, mod.Len(), msz, Loc(msz)+m)
 	n := m + 1 // first field
 
 	for j := 0; j < i; j++ {
@@ -90,7 +91,7 @@ func (mod *Model) AccessField(m Loc, i int) (Loc, error) {
 		if !ok {
 			return Loc(0), fmt.Errorf("memory model has non-const field size: %s", plain.String(m))
 		}
-		fmt.Printf("\tfield %d sz %d\n", j, isz)
+		//fmt.Printf("\tfield %d sz %d\n", j, isz)
 		n += Loc(isz)
 	}
 	return n, nil
@@ -139,11 +140,24 @@ func (mod *Model) Heap(ty types.Type, attrs Attrs) Loc {
 	return mod.add(ty, Heap, attrs, p, p, &sum)
 }
 
-// Gen generates a new root memory location.
-func (mod *Model) Gen(ty types.Type, class Class, attrs Attrs) Loc {
+// GenRoot generates a new root memory location.
+func (mod *Model) GenRoot(ty types.Type, class Class, attrs Attrs) Loc {
 	var sum int
 	p := Loc(uint32(len(mod.locs)))
 	return mod.add(ty, class, attrs, p, p, &sum)
+}
+
+func (mod *Model) PlainCoderAt(i int) plain.Coder {
+	return &mod.locs[i]
+}
+
+func (mod *Model) Cap(c int) {
+	if cap(mod.locs) < c {
+		tmp := make([]loc, c)
+		copy(tmp, mod.locs)
+		mod.locs = tmp
+	}
+	mod.locs = mod.locs[:c]
 }
 
 func (mod *Model) Check() error {
@@ -222,7 +236,6 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		mod.add(ty.Elem(), class, attrs, n, r, sum)
 
 	case *types.Named:
-		fmt.Printf("named %s\n", ty)
 		// no space reserved for named types, go to
 		// underlying
 		return mod.add(ty.Underlying(), class, attrs, p, r, sum)
@@ -312,6 +325,10 @@ func (mod *Model) PlainEncode(w io.Writer) error {
 	for i := range mod.locs {
 		m := &mod.locs[i]
 		err = m.PlainEncode(w)
+		if err != nil {
+			return err
+		}
+		_, err := w.Write([]byte{byte('\n')})
 		if err != nil {
 			return err
 		}

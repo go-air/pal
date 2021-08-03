@@ -1,12 +1,10 @@
 package memory
 
 import (
-	"fmt"
 	"go/token"
 	"go/types"
 	"testing"
 
-	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/values"
 )
 
@@ -35,5 +33,5 @@ func TestModel(t *testing.T) {
 		return
 	}
 
-	fmt.Printf(plain.String(mdl))
+	//fmt.Printf(plain.String(mdl))
 }

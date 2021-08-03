@@ -26,7 +26,8 @@ const (
 	PlusKind
 )
 
-type V interface{}
+type V interface {
+}
 
 type T interface {
 	Zero() V

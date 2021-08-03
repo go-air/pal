@@ -66,7 +66,7 @@ type loc struct {
 }
 
 func (m *loc) PlainEncode(w io.Writer) error {
-	_, e := fmt.Fprintf(w, "%s %s %s\n",
+	_, e := fmt.Fprintf(w, "%s %s %s",
 		plain.String(m.class), plain.String(m.attrs), plain.String(m.parent))
 	return e
 }
@@ -87,7 +87,7 @@ func (m *loc) PlainDecode(r io.Reader) error {
 		return err
 	}
 	word, err = br.ReadString('\n')
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return err
 	}
 	return plain.Parse(&m.parent, word)

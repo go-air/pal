@@ -31,6 +31,8 @@ const (
 )
 
 func init() {
+	// something around this will be needed once we put in
+	// place per-package caching.
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
 		panic(fmt.Sprintf("couldn't read build info"))
@@ -38,10 +40,16 @@ func init() {
 	fmt.Printf("bi.Main.Path: %s %s\n", bi.Main.Path, bi.Main.Version)
 }
 
+// New generates a new results.T object for managing pointer analysis
+// results.
 func New() (*T, error) {
 	return &T{d: make(map[string]*ForPkg)}, nil
 }
 
+// AFact satisfying golang.org/x/tools/go/analysis's Facts.
+//
+// Using this in that framework makes it analyse package dependencies before
+// analyzing the respective package.
 func (t *T) AFact() {}
 
 func (t *T) Lookup(pkgPath string) *ForPkg {
