@@ -101,8 +101,7 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 		return nil
 
 	case *ssa.Function:
-		p.addFuncDecl(buildr, name, x)
-		return nil
+		return p.addFuncDecl(buildr, name, x)
 	default:
 		// NB(wsc) I think we can panic here...
 		msg := fmt.Sprintf(
@@ -148,14 +147,13 @@ func (p *PalSSA) genGlobal(buildr *results.Builder, name string, x *ssa.Global) 
 	}
 }
 
-func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) {
+func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) error {
 	if fn.Signature.Variadic() {
 		// XXX(wsc)
-		fmt.Printf(
+		return fmt.Errorf(
 			"warning: \"%s\".%s: variadic params not yet handled\n",
 			p.PkgPath(),
 			name)
-		return
 	}
 	bld.Pos = fn.Pos()
 	bld.Type = fn.Signature
@@ -195,20 +193,28 @@ func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function
 
 	// blocks
 	for _, blk := range fn.Blocks {
-		p.genBlock(bld, name, blk)
+		if err := p.genBlock(bld, name, blk); err != nil {
+			return err
+		}
 	}
 	if fn.Recover != nil {
-		p.genBlock(bld, name, fn.Recover)
+		if err := p.genBlock(bld, name, fn.Recover); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (p *PalSSA) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlock) {
+func (p *PalSSA) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlock) error {
 	for _, i9n := range blk.Instrs {
-		p.genI9n(bld, fnName, i9n)
+		if err := p.genI9n(bld, fnName, i9n); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) {
+func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) error {
 	bld.Pos = i9n.Pos()
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc:
@@ -269,7 +275,7 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 		if !i9n.IsString {
 			// not addressable
 
-			return
+			return nil
 		}
 		// it is a map, type Tuple
 	case *ssa.Panic:
@@ -291,6 +297,7 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 	default:
 		panic("unknown ssa Instruction")
 	}
+	return nil
 }
 
 func (p *PalSSA) PkgPath() string {
