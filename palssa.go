@@ -42,8 +42,8 @@ type PalSSA struct {
 	results *results.T
 	pkgres  *results.ForPkg
 	buildr  *results.Builder
-	imap    map[ssa.Instruction]memory.Loc
 	vmap    map[ssa.Value]memory.Loc
+	rands   []*ssa.Value
 }
 
 func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
@@ -69,8 +69,8 @@ func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 		pkgres:  pkgRes,
 		values:  vs,
 		buildr:  results.NewBuilder(pkgRes),
-		imap:    make(map[ssa.Instruction]memory.Loc),
-		vmap:    make(map[ssa.Value]memory.Loc)}
+		vmap:    make(map[ssa.Value]memory.Loc, 8192),
+		rands:   make([]*ssa.Value, 0, 128)}
 	return palSSA, nil
 }
 
@@ -129,8 +129,10 @@ func (p *PalSSA) genGlobal(buildr *results.Builder, name string, x *ssa.Global) 
 		dst := buildr.GenLoc()
 		// pointer generated below
 		buildr.Type = ty
-		p := buildr.GenLoc()
-		buildr.GenPointsTo(dst, p)
+
+		loc := buildr.GenLoc()
+		p.vmap[x] = loc
+		buildr.GenPointsTo(dst, loc)
 
 		return
 
@@ -159,7 +161,7 @@ func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function
 	bld.Class = memory.Global
 	bld.Attrs = memory.IsFunc
 	bld.SrcKind = results.SrcFunc
-	bld.GenLoc()
+	p.vmap[fn] = bld.GenLoc()
 	bld.Reset()
 
 	// handle parameters
@@ -173,7 +175,7 @@ func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function
 		bld.Attrs = attrs
 		bld.Class = memory.Local
 		bld.SrcKind = results.SrcVar
-		bld.GenLoc()
+		p.vmap[param] = bld.GenLoc()
 	}
 	// free vars not needed here -- top level func def
 
@@ -187,7 +189,7 @@ func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function
 		bld.Type = a.Type()
 		bld.Pos = a.Pos()
 		bld.SrcKind = results.SrcVar
-		bld.GenLoc()
+		p.vmap[a] = bld.GenLoc()
 	}
 
 	// blocks
@@ -206,8 +208,6 @@ func (p *PalSSA) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlo
 }
 
 func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) {
-	rands := make([]ssa.Value, 0, 128)
-	_ = rands
 	bld.Pos = i9n.Pos()
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc:
@@ -222,22 +222,32 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 		bld.GenLoc()
 	case *ssa.BinOp:
 	case *ssa.Call:
+		p.call(bld, i9n.Call)
 	case *ssa.ChangeInterface:
 	case *ssa.ChangeType:
 	case *ssa.Convert:
 	case *ssa.DebugRef:
 	case *ssa.Defer:
+		p.call(bld, i9n.Call)
 	case *ssa.Extract:
 	case *ssa.Field:
 	case *ssa.FieldAddr:
-		// TBD: dependencies
-		bld.Type = i9n.Type()
-		bld.Class = memory.Local // really?
-		bld.GenLoc()
+		xloc := p.getLoc(bld, i9n.X)
+		floc, err := p.pkgres.MemModel.AccessField(xloc, i9n.Field)
+		if err != nil {
+			panic(err)
+		}
+		pf := p.getLoc(bld, i9n)
+		p.buildr.GenPointsTo(floc, pf)
 	case *ssa.Go:
+		p.call(bld, i9n.Call)
 	case *ssa.If:
 	case *ssa.Index:
 	case *ssa.IndexAddr:
+		xloc := p.getLoc(bld, i9n.X)
+		iloc := p.getLoc(bld, i9n.Index)
+		_, _ = xloc, iloc
+
 	case *ssa.Jump:
 	case *ssa.Lookup:
 	case *ssa.MakeInterface:
@@ -260,7 +270,7 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 
 			return
 		}
-		// map.
+		// it is a map, type Tuple
 	case *ssa.Panic:
 	case *ssa.Phi:
 	case *ssa.Range:
@@ -269,8 +279,13 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 	case *ssa.Send:
 	case *ssa.Return:
 	case *ssa.UnOp:
+
 	case *ssa.Slice:
 	case *ssa.Store:
+		vloc := p.getLoc(bld, i9n.Val)
+		aloc := p.getLoc(bld, i9n.Addr)
+		bld.GenStore(aloc, vloc)
+
 	case *ssa.TypeAssert:
 	default:
 		panic("unknown ssa Instruction")
@@ -279,6 +294,28 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 
 func (p *PalSSA) PkgPath() string {
 	return p.pass.Pkg.Path()
+}
+
+func (p *PalSSA) call(b *results.Builder, c ssa.CallCommon) {}
+
+func (p *PalSSA) getLoc(b *results.Builder, v ssa.Value) memory.Loc {
+	loc, ok := p.vmap[v]
+	if ok {
+		return loc
+	}
+
+	b.Reset()
+	switch v.(type) {
+	case *ssa.Global:
+		b.Class = memory.Global
+	default:
+		b.Class = memory.Local
+	}
+	b.Pos = v.Pos()
+	b.Type = v.Type()
+	loc = b.GenLoc()
+	p.vmap[v] = loc
+	return loc
 }
 
 func (p *PalSSA) putResults() {

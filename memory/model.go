@@ -21,6 +21,7 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/values"
 )
 
@@ -73,6 +74,24 @@ func (mod *Model) Root(m Loc) Loc {
 // add vo to the virtual size of m.
 func (mod *Model) Access(m Loc, vo values.V) Loc {
 	return Loc(0)
+}
+
+// ?(wsco) pass values.V instead?
+func (mod *Model) AccessField(m Loc, i int) (Loc, error) {
+	n := m + 1 // first field
+
+	// ?(wsco) binary search
+	for j := 0; j < i; j++ {
+		sz := mod.locs[m].vsz
+		isz, ok := mod.values.AsInt(sz)
+		if !ok {
+			return Loc(0), fmt.Errorf("memory model has non-const field size: %s", plain.String(m))
+		}
+		fmt.Printf("fsz[%d] is %d\n", j, isz)
+		// OVFL
+		n += Loc(isz)
+	}
+	return n, nil
 }
 
 func (mod *Model) VSize(m Loc) values.V {
@@ -132,7 +151,7 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		root:   r,
 		class:  class,
 		attrs:  attrs}
-	lastSum := *sum
+	lastSum := *sum + 1
 	switch ty := ty.(type) {
 	case *types.Basic, *types.Pointer, *types.Signature, *types.Interface:
 		mod.locs = append(mod.locs, l)

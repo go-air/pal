@@ -21,8 +21,7 @@ import (
 	"github.com/go-air/pal/values"
 )
 
-// ForPkg represents information to pass from
-// a depended upon package to its importer.
+// ForPkg represents results for a package.
 type ForPkg struct {
 	Values   values.T
 	Start    memory.Loc
