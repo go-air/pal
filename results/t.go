@@ -38,7 +38,7 @@ func init() {
 	fmt.Printf("bi.Main.Path: %s %s\n", bi.Main.Path, bi.Main.Version)
 }
 
-func NewT() (*T, error) {
+func New() (*T, error) {
 	return &T{d: make(map[string]*ForPkg)}, nil
 }
 

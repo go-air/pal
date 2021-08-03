@@ -31,7 +31,7 @@ var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
 func SSAAnalyzer() *analysis.Analyzer {
 	// generate a unique results object
 	// for every analyzer.
-	palRes, err := results.NewT()
+	palRes, err := results.New()
 	if err != nil {
 		panic(err.Error())
 	}
