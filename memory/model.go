@@ -225,7 +225,7 @@ func (mod *Model) PointsToFor(dst []Loc, p Loc) []Loc {
 }
 
 // Export exports the model 'mod', removing
-// unnecessary local mem.Ts and compacting
+// unnecessary local mem.Locs and compacting
 // the result by permuting the remaining
 // locations.  Export returns the permutation
 // if 'perm' is non-nil.

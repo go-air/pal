@@ -33,21 +33,16 @@ import (
 type Loc uint32
 
 func (m Loc) PlainEncode(w io.Writer) error {
-	var buf = []byte{byte('0'), byte('x'), byte(0), byte(0), byte(0), byte(0)}
-	strconv.AppendUint(buf[:2], uint64(m), 16)
-	_, e := w.Write(buf)
+	_, e := fmt.Fprintf(w, "%08x", m)
 	return e
 }
 
 func (m *Loc) PlainDecode(r io.Reader) error {
-	var buf = []byte{byte(0), byte(0), byte(0), byte(0), byte(0), byte(0)}
+	var buf = make([]byte, 8)
 	if _, err := palio.ReadBuf(buf, r); err != nil {
 		return err
 	}
-	if buf[0] != byte('0') || buf[1] != byte('x') {
-		return fmt.Errorf("invalid loc: %s", string(buf))
-	}
-	n, e := strconv.ParseUint(string(buf[2:]), 16, 32)
+	n, e := strconv.ParseUint(string(buf), 16, 32)
 	*m = Loc(uint32(n))
 	return e
 }

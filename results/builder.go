@@ -52,3 +52,7 @@ func (b *Builder) GenLoc() memory.Loc {
 func (b *Builder) GenPointsTo(dst, p memory.Loc) {
 	b.pkg.MemModel.GenPointsTo(dst, p)
 }
+
+func (b *Builder) GenStore(dst, src memory.Loc) {
+	b.pkg.MemModel.GenStore(dst, src)
+}

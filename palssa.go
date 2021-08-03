@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
+	"os"
 
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/results"
@@ -41,7 +42,8 @@ type PalSSA struct {
 	results *results.T
 	pkgres  *results.Pkg
 	buildr  *results.Builder
-	vmap    map[ssa.Instruction]memory.Loc
+	imap    map[ssa.Instruction]memory.Loc
+	vmap    map[ssa.Value]memory.Loc
 }
 
 func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
@@ -67,7 +69,8 @@ func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 		pkgres:  pkgRes,
 		values:  vs,
 		buildr:  results.NewBuilder(pkgRes),
-		vmap:    make(map[ssa.Instruction]memory.Loc)}
+		imap:    make(map[ssa.Instruction]memory.Loc),
+		vmap:    make(map[ssa.Value]memory.Loc)}
 	return palSSA, nil
 }
 
@@ -205,10 +208,18 @@ func (p *PalSSA) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlo
 func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) {
 	rands := make([]ssa.Value, 0, 128)
 	_ = rands
+	bld.Pos = i9n.Pos()
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc:
+		bld.Type = i9n.Type()
 		if i9n.Heap {
+			bld.SrcKind = results.SrcNew
+			bld.Class = memory.Heap
+		} else {
+			bld.SrcKind = results.SrcVar
+			bld.Class = memory.Local
 		}
+		bld.GenLoc()
 	case *ssa.BinOp:
 	case *ssa.Call:
 	case *ssa.ChangeInterface:
@@ -219,6 +230,10 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 	case *ssa.Extract:
 	case *ssa.Field:
 	case *ssa.FieldAddr:
+		// TBD: dependencies
+		bld.Type = i9n.Type()
+		bld.Class = memory.Local // really?
+		bld.GenLoc()
 	case *ssa.Go:
 	case *ssa.If:
 	case *ssa.Index:
@@ -226,12 +241,26 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 	case *ssa.Jump:
 	case *ssa.Lookup:
 	case *ssa.MakeInterface:
+		bld.Type = i9n.Type()
+		bld.Class = memory.Heap
+		bld.SrcKind = results.SrcMakeInterface
+		bld.GenLoc()
 	case *ssa.MakeClosure:
 	case *ssa.MakeChan:
 	case *ssa.MakeSlice:
+		bld.Type = i9n.Type()
+		bld.Class = memory.Heap
+		bld.SrcKind = results.SrcMakeSlice
+		bld.GenLoc()
 	case *ssa.MakeMap:
 	case *ssa.MapUpdate:
-	case *ssa.Next:
+	case *ssa.Next: // either string iterator or map
+		if !i9n.IsString {
+			// not addressable
+
+			return
+		}
+		// map.
 	case *ssa.Panic:
 	case *ssa.Phi:
 	case *ssa.Range:
@@ -253,5 +282,8 @@ func (p *PalSSA) PkgPath() string {
 }
 
 func (p *PalSSA) putResults() {
+	if debugLogModel {
+		p.pkgres.MemModel.PlainEncode(os.Stdout)
+	}
 	p.results.Put(p.pass.Pkg.Path(), p.pkgres)
 }
