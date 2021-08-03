@@ -28,10 +28,10 @@ type Builder struct {
 	Type    types.Type
 	SrcKind SrcKind
 
-	pkg *Pkg
+	pkg *ForPkg
 }
 
-func NewBuilder(pkg *Pkg) *Builder {
+func NewBuilder(pkg *ForPkg) *Builder {
 	return &Builder{pkg: pkg}
 }
 

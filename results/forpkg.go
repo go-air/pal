@@ -21,25 +21,25 @@ import (
 	"github.com/go-air/pal/values"
 )
 
-// Pkg represents information to pass from
+// ForPkg represents information to pass from
 // a depended upon package to its importer.
-type Pkg struct {
+type ForPkg struct {
 	Values   values.T
 	Start    memory.Loc
 	MemModel *memory.Model // provides memory.Loc operations
 	SrcInfo  []SrcInfo     // indexed by memory.Loc
 }
 
-func NewPkg(pkgName string, vs values.T) *Pkg {
+func NewPkg(pkgName string, vs values.T) *ForPkg {
 	mdl := memory.NewModel(vs)
-	return &Pkg{
+	return &ForPkg{
 		Values:   vs,
 		Start:    memory.Loc(1),
 		MemModel: mdl,
 		SrcInfo:  make([]SrcInfo, mdl.Len())}
 }
 
-func (pkg *Pkg) set(m memory.Loc, info *SrcInfo) {
+func (pkg *ForPkg) set(m memory.Loc, info *SrcInfo) {
 	n := memory.Loc(uint32(cap(pkg.SrcInfo)))
 	if m < n {
 		pkg.SrcInfo[m] = *info

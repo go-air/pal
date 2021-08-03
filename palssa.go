@@ -40,7 +40,7 @@ type PalSSA struct {
 	pkg     *ssa.Package
 	values  values.T
 	results *results.T
-	pkgres  *results.Pkg
+	pkgres  *results.ForPkg
 	buildr  *results.Builder
 	imap    map[ssa.Instruction]memory.Loc
 	vmap    map[ssa.Value]memory.Loc

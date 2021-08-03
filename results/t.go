@@ -22,7 +22,7 @@ import (
 
 type T struct {
 	mu   sync.Mutex
-	d    map[string]*Pkg
+	d    map[string]*ForPkg
 	perm []int
 }
 
@@ -39,19 +39,19 @@ func init() {
 }
 
 func NewT() (*T, error) {
-	return &T{d: make(map[string]*Pkg)}, nil
+	return &T{d: make(map[string]*ForPkg)}, nil
 }
 
 func (t *T) AFact() {}
 
-func (t *T) Lookup(pkgPath string) *Pkg {
+func (t *T) Lookup(pkgPath string) *ForPkg {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	res, _ := t.d[pkgPath]
 	return res
 }
 
-func (t *T) Put(pkgName string, pkgR *Pkg) error {
+func (t *T) Put(pkgName string, pkgR *ForPkg) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.d[pkgName] = pkgR
