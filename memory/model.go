@@ -29,7 +29,6 @@ import (
 type Model struct {
 	locs   []loc
 	values values.T
-	vszs   []int
 }
 
 // NewModel generates a new memory model for a package.
@@ -78,17 +77,20 @@ func (mod *Model) Access(m Loc, vo values.V) Loc {
 
 // ?(wsco) pass values.V instead?
 func (mod *Model) AccessField(m Loc, i int) (Loc, error) {
+	msz, ok := mod.values.AsInt(mod.VSize(m))
+	if !ok {
+		panic("")
+	}
+	fmt.Printf("%d.access field %d, len %d vsz %d end %d\n", m, i, mod.Len(), msz, Loc(msz)+m)
 	n := m + 1 // first field
 
-	// ?(wsco) binary search
 	for j := 0; j < i; j++ {
-		sz := mod.locs[m].vsz
+		sz := mod.locs[n].vsz
 		isz, ok := mod.values.AsInt(sz)
 		if !ok {
 			return Loc(0), fmt.Errorf("memory model has non-const field size: %s", plain.String(m))
 		}
-		fmt.Printf("fsz[%d] is %d\n", j, isz)
-		// OVFL
+		fmt.Printf("\tfield %d sz %d\n", j, isz)
 		n += Loc(isz)
 	}
 	return n, nil
@@ -144,6 +146,40 @@ func (mod *Model) Gen(ty types.Type, class Class, attrs Attrs) Loc {
 	return mod.add(ty, class, attrs, p, p, &sum)
 }
 
+func (mod *Model) Check() error {
+	N := len(mod.locs)
+	sizes := make(map[Loc]int)
+	for i := 2; i < N; i++ {
+		loc := &mod.locs[i]
+		if loc.parent == Loc(i) {
+			continue
+		}
+		sz, ok := mod.values.AsInt(loc.vsz)
+		if !ok {
+			return fmt.Errorf("vsz not const")
+		}
+		ttl, _ := sizes[loc.parent]
+		sizes[loc.parent] = sz + ttl
+	}
+	for m, sz := range sizes {
+		sz++
+		loc := &mod.locs[m]
+		realsz, ok := mod.values.AsInt(loc.vsz)
+		if !ok {
+			return fmt.Errorf("vsz not const")
+		}
+		if sz != realsz {
+			return fmt.Errorf("loc %s sum %d size %d\n", plain.String(m), sz, realsz)
+		}
+	}
+	return nil
+}
+
+// add adds a root recursively according to ty.
+//
+// add is responsible for setting the size, parent, class, attrs, and root
+// of all added nodes.
+//
 func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *int) Loc {
 	n := Loc(uint32(len(mod.locs)))
 	l := loc{
@@ -151,23 +187,26 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		root:   r,
 		class:  class,
 		attrs:  attrs}
-	lastSum := *sum + 1
+	lastSum := *sum
 	switch ty := ty.(type) {
 	case *types.Basic, *types.Pointer, *types.Signature, *types.Interface:
 		mod.locs = append(mod.locs, l)
 		*sum++
 	case *types.Array:
 		mod.locs = append(mod.locs, l)
+		*sum++
 		m := int(ty.Len())
 		for i := 0; i < m; i++ {
 			mod.add(ty.Elem(), class, attrs, n, r, sum)
 		}
 	case *types.Map:
 		mod.locs = append(mod.locs, l)
+		*sum++
 		mod.add(ty.Key(), class, attrs, n, r, sum)
 		mod.add(ty.Elem(), class, attrs, n, r, sum)
 	case *types.Struct:
 		mod.locs = append(mod.locs, l)
+		*sum++
 		nf := ty.NumFields()
 		for i := 0; i < nf; i++ {
 			fty := ty.Field(i).Type()
@@ -175,12 +214,15 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		}
 	case *types.Slice:
 		mod.locs = append(mod.locs, l)
+		*sum++
 		mod.add(ty.Elem(), class, attrs, n, r, sum)
 	case *types.Chan:
 		mod.locs = append(mod.locs, l)
+		*sum++
 		mod.add(ty.Elem(), class, attrs, n, r, sum)
 
 	case *types.Named:
+		fmt.Printf("named %s\n", ty)
 		// no space reserved for named types, go to
 		// underlying
 		return mod.add(ty.Underlying(), class, attrs, p, r, sum)
@@ -188,7 +230,7 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 	default:
 		panic(fmt.Sprintf("%s: unexpected/unimplemented", ty))
 	}
-	// we added a slot at dst[n] for ty, set it
+	// we added a slot at dst[n] for ty,  set it
 	mod.locs[n].vsz = mod.values.FromInt(*sum - lastSum)
 	return n
 }
@@ -230,7 +272,7 @@ func (mod *Model) GenStore(dst, src Loc) {
 // dst = src
 func (mod *Model) GenTransfer(dst, src Loc) {
 	loc := &mod.locs[dst]
-	loc.stores = append(loc.stores, src)
+	_ = loc
 }
 
 func (mod *Model) Solve() {

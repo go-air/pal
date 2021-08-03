@@ -23,6 +23,7 @@ import (
 	"go/types"
 	"os"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/results"
 	"github.com/go-air/pal/values"
@@ -49,6 +50,7 @@ type PalSSA struct {
 func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
+	fmt.Printf("ssa for %s\n", pkgPath)
 	pkgRes := results.NewPkg(pkgPath, vs)
 	for _, imp := range pass.Pkg.Imports() {
 		iPath := imp.Path()
@@ -299,23 +301,30 @@ func (p *PalSSA) PkgPath() string {
 func (p *PalSSA) call(b *results.Builder, c ssa.CallCommon) {}
 
 func (p *PalSSA) getLoc(b *results.Builder, v ssa.Value) memory.Loc {
-	loc, ok := p.vmap[v]
-	if ok {
+	switch v := v.(type) {
+	default:
+		loc, ok := p.vmap[v]
+		if ok {
+			return loc
+		}
+
+		b.Reset()
+		switch v.(type) {
+		case *ssa.Global:
+			b.Class = memory.Global
+		default:
+			b.Class = memory.Local
+		}
+		b.Pos = v.Pos()
+		b.Type = v.Type().Underlying()
+		loc = b.GenLoc()
+		fmt.Printf("gen loc for %s: %s %s\n", v, plain.String(loc), b.Type)
+		p.vmap[v] = loc
+		if err := b.Check(); err != nil {
+			panic(err)
+		}
 		return loc
 	}
-
-	b.Reset()
-	switch v.(type) {
-	case *ssa.Global:
-		b.Class = memory.Global
-	default:
-		b.Class = memory.Local
-	}
-	b.Pos = v.Pos()
-	b.Type = v.Type()
-	loc = b.GenLoc()
-	p.vmap[v] = loc
-	return loc
 }
 
 func (p *PalSSA) putResults() {

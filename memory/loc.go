@@ -20,7 +20,6 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/go-air/pal/internal/palio"
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/values"
 )
@@ -39,7 +38,7 @@ func (m Loc) PlainEncode(w io.Writer) error {
 
 func (m *Loc) PlainDecode(r io.Reader) error {
 	var buf = make([]byte, 8)
-	if _, err := palio.ReadBuf(buf, r); err != nil {
+	if _, err := io.ReadFull(r, buf); err != nil {
 		return err
 	}
 	n, e := strconv.ParseUint(string(buf), 16, 32)
@@ -53,7 +52,7 @@ type loc struct {
 	root   Loc
 	parent Loc
 
-	vsz values.V
+	vsz values.V // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
 
 	// constraints
 	pointsTo  []Loc // this loc points to that

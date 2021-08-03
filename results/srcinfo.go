@@ -20,7 +20,6 @@ import (
 	"io"
 
 	"github.com/go-air/pal/internal/byteorder"
-	"github.com/go-air/pal/internal/palio"
 )
 
 type SrcKind int
@@ -76,7 +75,7 @@ func (k SrcKind) PlainEncode(w io.Writer) error {
 
 func (k *SrcKind) PlainDecode(r io.Reader) error {
 	buf := make([]byte, 3)
-	_, e := palio.ReadBuf(buf, r)
+	_, e := io.ReadFull(r, buf)
 	if e != nil {
 		return e
 	}

@@ -17,8 +17,6 @@ package memory
 import (
 	"fmt"
 	"io"
-
-	"github.com/go-air/pal/internal/palio"
 )
 
 // Class is a memory class.  Each location has a unique memory class.
@@ -57,7 +55,7 @@ func (c Class) PlainEncode(w io.Writer) error {
 
 func (c *Class) PlainDecode(r io.Reader) error {
 	buf := make([]byte, 1)
-	_, err := palio.ReadBuf(buf, r)
+	_, err := io.ReadFull(r, buf)
 	if err != nil {
 		return err
 	}

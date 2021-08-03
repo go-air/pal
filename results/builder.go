@@ -56,3 +56,7 @@ func (b *Builder) GenPointsTo(dst, p memory.Loc) {
 func (b *Builder) GenStore(dst, src memory.Loc) {
 	b.pkg.MemModel.GenStore(dst, src)
 }
+
+func (b *Builder) Check() error {
+	return b.pkg.MemModel.Check()
+}
