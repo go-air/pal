@@ -17,8 +17,6 @@ package memory
 import (
 	"fmt"
 	"io"
-
-	"github.com/go-air/pal/internal/palio"
 )
 
 type Attrs byte
@@ -79,7 +77,7 @@ func (a *Attrs) decode(buf []byte) error {
 func (a *Attrs) PlainDecode(r io.Reader) error {
 
 	buf := make([]byte, 8)
-	_, e := palio.ReadBuf(buf, r)
+	_, e := io.ReadFull(r, buf)
 	if e != nil {
 		return e
 	}
