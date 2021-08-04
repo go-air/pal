@@ -203,7 +203,36 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		attrs:  attrs}
 	lastSum := *sum
 	switch ty := ty.(type) {
-	case *types.Basic, *types.Pointer, *types.Signature, *types.Interface:
+	case *types.Signature:
+		// a virtual place for the func
+		mod.locs = append(mod.locs, l)
+		*sum++
+
+		// let's do this later...
+		if ty.Variadic() {
+			panic("unimplemented")
+		}
+		if ty.Recv() != nil {
+			panic("unimplemented")
+		}
+
+		parms := ty.Params()
+		if parms != nil {
+			N := parms.Len()
+			for i := 0; i < N; i++ {
+				p := parms.At(i)
+				mod.add(p.Type(), class, attrs, n, r, sum)
+			}
+		}
+		rets := ty.Results()
+		if rets != nil {
+			N := rets.Len()
+			for i := 0; i < N; i++ {
+				ret := rets.At(i)
+				mod.add(ret.Type(), class, attrs, n, r, sum)
+			}
+		}
+	case *types.Basic, *types.Pointer, *types.Interface:
 		mod.locs = append(mod.locs, l)
 		*sum++
 	case *types.Array:

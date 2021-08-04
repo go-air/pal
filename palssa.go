@@ -285,6 +285,7 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 	case *ssa.Select:
 	case *ssa.Send:
 	case *ssa.Return:
+
 	case *ssa.UnOp:
 
 	case *ssa.Slice:
@@ -304,7 +305,8 @@ func (p *PalSSA) PkgPath() string {
 	return p.pass.Pkg.Path()
 }
 
-func (p *PalSSA) call(b *results.Builder, c ssa.CallCommon) {}
+func (p *PalSSA) call(b *results.Builder, c ssa.CallCommon) {
+}
 
 func (p *PalSSA) getLoc(b *results.Builder, v ssa.Value) memory.Loc {
 	loc, ok := p.vmap[v]
