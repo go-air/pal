@@ -19,6 +19,7 @@ import (
 	"reflect"
 
 	"github.com/go-air/pal/results"
+	"github.com/go-air/pal/ssapal"
 	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -46,9 +47,9 @@ func SSAAnalyzer() *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	palSSA, err := NewPalSSA(pass, values.ConstVals())
+	pal, err := ssapal.New(pass, values.ConstVals())
 	if err != nil {
 		return nil, err
 	}
-	return palSSA.genResult()
+	return pal.GenResult()
 }

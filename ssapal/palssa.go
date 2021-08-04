@@ -14,7 +14,7 @@
 // This file provides support for generating and using the core pal
 // functions from golang.org/s/tools/go/ssa representation.
 
-package pal
+package ssapal
 
 import (
 	"errors"
@@ -31,7 +31,7 @@ import (
 	"golang.org/x/tools/go/ssa"
 )
 
-type PalSSA struct {
+type T struct {
 	pass *analysis.Pass
 	ssa  *buildssa.SSA
 	// this is a state variable which
@@ -46,10 +46,9 @@ type PalSSA struct {
 	rands   []*ssa.Value
 }
 
-func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
+func New(pass *analysis.Pass, vs values.T) (*T, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
-	fmt.Printf("ssa for %s\n", pkgPath)
 	pkgRes := results.NewForPkg(pkgPath, vs)
 	for _, imp := range pass.Pkg.Imports() {
 		iPath := imp.Path()
@@ -62,7 +61,7 @@ func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 	ssapkg := pass.ResultOf[buildssa.Analyzer].(*buildssa.SSA)
 	ssapkg.Pkg.Build()
 
-	palSSA := &PalSSA{
+	pal := &T{
 		pass:    pass,
 		pkg:     ssapkg.Pkg,
 		ssa:     ssapkg,
@@ -72,10 +71,10 @@ func NewPalSSA(pass *analysis.Pass, vs values.T) (*PalSSA, error) {
 		buildr:  results.NewBuilder(pkgRes),
 		vmap:    make(map[ssa.Value]memory.Loc, 8192),
 		rands:   make([]*ssa.Value, 0, 128)}
-	return palSSA, nil
+	return pal, nil
 }
 
-func (p *PalSSA) genResult() (*results.T, error) {
+func (p *T) GenResult() (*results.T, error) {
 	var err error
 	for name, mbr := range p.ssa.Pkg.Members {
 		err = p.genMember(name, mbr)
@@ -87,7 +86,7 @@ func (p *PalSSA) genResult() (*results.T, error) {
 	return p.results, nil
 }
 
-func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
+func (p *T) genMember(name string, mbr ssa.Member) error {
 	switch mbr.Token() {
 	case token.TYPE, token.CONST:
 		return nil
@@ -113,7 +112,7 @@ func (p *PalSSA) genMember(name string, mbr ssa.Member) error {
 	}
 }
 
-func (p *PalSSA) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
+func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 	// globals are in general pointers
 	buildr.Pos = x.Pos()
 	buildr.Type = x.Type()
@@ -147,7 +146,7 @@ func (p *PalSSA) genGlobal(buildr *results.Builder, name string, x *ssa.Global) 
 	}
 }
 
-func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) error {
+func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) error {
 	if fn.Signature.Variadic() {
 		// XXX(wsc)
 		return fmt.Errorf(
@@ -205,7 +204,7 @@ func (p *PalSSA) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function
 	return nil
 }
 
-func (p *PalSSA) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlock) error {
+func (p *T) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlock) error {
 	for _, i9n := range blk.Instrs {
 		if err := p.genI9n(bld, fnName, i9n); err != nil {
 			return err
@@ -214,7 +213,7 @@ func (p *PalSSA) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlo
 	return nil
 }
 
-func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) error {
+func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) error {
 	bld.Pos = i9n.Pos()
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc:
@@ -301,14 +300,14 @@ func (p *PalSSA) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction
 	return nil
 }
 
-func (p *PalSSA) PkgPath() string {
+func (p *T) PkgPath() string {
 	return p.pass.Pkg.Path()
 }
 
-func (p *PalSSA) call(b *results.Builder, c ssa.CallCommon) {
+func (p *T) call(b *results.Builder, c ssa.CallCommon) {
 }
 
-func (p *PalSSA) getLoc(b *results.Builder, v ssa.Value) memory.Loc {
+func (p *T) getLoc(b *results.Builder, v ssa.Value) memory.Loc {
 	loc, ok := p.vmap[v]
 	if ok {
 		return loc
@@ -328,7 +327,7 @@ func (p *PalSSA) getLoc(b *results.Builder, v ssa.Value) memory.Loc {
 	return loc
 }
 
-func (p *PalSSA) putResults() {
+func (p *T) putResults() {
 	if debugLogModel {
 		p.pkgres.PlainEncode(os.Stdout)
 	}

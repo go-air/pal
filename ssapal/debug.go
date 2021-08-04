@@ -1,4 +1,4 @@
-package pal
+package ssapal
 
 const (
 	debugLogModel = true
