@@ -16,4 +16,6 @@ package ssapal
 
 const (
 	debugLogModel = true
+	traceLocVal   = true
+	traceGenI9n   = true
 )

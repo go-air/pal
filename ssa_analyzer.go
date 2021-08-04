@@ -19,7 +19,7 @@ import (
 	"reflect"
 
 	"github.com/go-air/pal/results"
-	"github.com/go-air/pal/ssapal"
+	"github.com/go-air/pal/ssa2pal"
 	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"

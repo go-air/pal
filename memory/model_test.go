@@ -34,13 +34,9 @@ func TestModel(t *testing.T) {
 		types.NewVar(token.NoPos, nil, "f2", types.Typ[types.Int])},
 		[]string{"", ""}), 0)
 
-	gf, e := mdl.AccessField(gs, 1)
-	if e != nil {
-		t.Errorf("access field 1: %s", e)
-		return
-	}
+	gf := mdl.Field(gs, 1)
 	if mdl.Parent(gf) != gs {
-		t.Errorf("access field parent")
+		t.Errorf("field parent")
 	}
 	if err := mdl.Check(); err != nil {
 		t.Errorf("check failed: %s", err)

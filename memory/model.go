@@ -71,30 +71,34 @@ func (mod *Model) Root(m Loc) Loc {
 
 // Access returns the T which results from
 // add vo to the virtual size of m.
-func (mod *Model) Access(m Loc, vo values.V) Loc {
-	return Loc(0)
-}
-
-// ?(wsco) pass values.V instead?
-func (mod *Model) AccessField(m Loc, i int) (Loc, error) {
-	msz, ok := mod.values.AsInt(mod.VSize(m))
-	if !ok {
-		panic("")
-	}
-	_ = msz
-	//fmt.Printf("%d.access field %d, len %d vsz %d end %d\n", m, i, mod.Len(), msz, Loc(msz)+m)
+func (mod *Model) Field(m Loc, i int) Loc {
 	n := m + 1 // first field
-
 	for j := 0; j < i; j++ {
 		sz := mod.locs[n].vsz
 		isz, ok := mod.values.AsInt(sz)
 		if !ok {
-			return Loc(0), fmt.Errorf("memory model has non-const field size: %s", plain.String(m))
+			return NoLoc
 		}
-		//fmt.Printf("\tfield %d sz %d\n", j, isz)
 		n += Loc(isz)
 	}
-	return n, nil
+	return n
+}
+
+func (mod *Model) AddField(p Loc, i int) (Loc, error) {
+	// to where it points.
+	s := mod.locs[p].obj
+	if s == NoLoc {
+		panic("access field is not a ptr")
+	}
+	f := mod.Field(s, i)
+	hdl := mod.locs[f].hdl
+	if hdl == NoLoc {
+		sloc := &mod.locs[s]
+		hdl = mod.GenRoot(types.NewPointer(types.Typ[types.Invalid]),
+			sloc.class, sloc.attrs)
+		mod.locs[f].hdl = hdl
+	}
+	return hdl, nil
 }
 
 func (mod *Model) VSize(m Loc) values.V {
@@ -147,6 +151,23 @@ func (mod *Model) GenRoot(ty types.Type, class Class, attrs Attrs) Loc {
 	return mod.add(ty, class, attrs, p, p, &sum)
 }
 
+func (mod *Model) GenObj(ty types.Type, class Class, attrs Attrs) Loc {
+	objType := ty.Underlying().(*types.Pointer).Elem()
+	obj := mod.GenRoot(objType, class, attrs)
+	ptr := mod.GenRoot(ty, class, attrs)
+	mod.locs[ptr].obj = obj
+	mod.locs[obj].hdl = ptr
+	return ptr
+}
+
+func (mod *Model) Obj(m Loc) Loc {
+	return mod.locs[m].obj
+}
+
+func (mod *Model) Handle(m Loc) Loc {
+	return mod.locs[m].hdl
+}
+
 func (mod *Model) PlainCoderAt(i int) plain.Coder {
 	return &mod.locs[i]
 }
@@ -160,6 +181,10 @@ func (mod *Model) Cap(c int) {
 	mod.locs = mod.locs[:c]
 }
 
+// validates that
+//
+// 1. n.vsz = 1 + Sum(c.vsz, c a child of n)
+// 2. n.obj != 0 => n.obj.hdl == n &&
 func (mod *Model) Check() error {
 	N := len(mod.locs)
 	sizes := make(map[Loc]int)
@@ -251,6 +276,7 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		mod.locs = append(mod.locs, l)
 		*sum++
 		nf := ty.NumFields()
+		fmt.Printf("add struct %d fields\n", nf)
 		for i := 0; i < nf; i++ {
 			fty := ty.Field(i).Type()
 			mod.add(fty, class, attrs, n, r, sum)

@@ -24,6 +24,7 @@ import (
 	"go/types"
 	"os"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/results"
 	"github.com/go-air/pal/values"
@@ -116,7 +117,7 @@ func (p *T) genMember(name string, mbr ssa.Member) error {
 func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 	// globals are in general pointers
 	buildr.Pos = x.Pos()
-	buildr.Type = x.Type()
+	buildr.Type = x.Type().Underlying()
 	buildr.Class = memory.Global
 	if token.IsExported(name) {
 		buildr.Attrs = memory.IsOpaque
@@ -132,6 +133,9 @@ func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 
 		loc := buildr.GenLoc()
 		p.vmap[x] = loc
+		if traceLocVal {
+			fmt.Printf("g %s %s\n", x.Name(), plain.String(loc))
+		}
 		buildr.GenPointsTo(dst, loc)
 
 		return
@@ -155,31 +159,21 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 			p.PkgPath(),
 			name)
 	}
-	bld.Pos = fn.Pos()
-	bld.Type = fn.Signature
-	bld.Class = memory.Global
-	bld.Attrs = memory.IsFunc
-	bld.SrcKind = results.SrcFunc
+	memFn := NewFunc(bld, fn.Signature, name)
+	p.vmap[fn] = memFn.Loc()
 	p.vmap[fn] = bld.GenLoc()
 	bld.Reset()
 
-	// handle parameters
-	attrs := memory.IsParam
-	if token.IsExported(name) {
-		attrs |= memory.IsOpaque
-	}
-	for _, param := range fn.Params {
-		bld.Pos = param.Pos()
-		bld.Type = param.Type()
-		bld.Attrs = attrs
-		bld.Class = memory.Local
-		bld.SrcKind = results.SrcVar
-		p.vmap[param] = bld.GenLoc()
+	for i, param := range fn.Params {
+		p.vmap[param] = memFn.ParamLoc(i)
 	}
 	// free vars not needed here -- top level func def
 
 	// locals: *ssa.Alloc
 	for _, a := range fn.Locals {
+		if _, present := p.vmap[a]; present {
+			continue
+		}
 		bld.Reset()
 		bld.Class = memory.Local
 		if a.Heap {
@@ -188,7 +182,12 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 		bld.Type = a.Type()
 		bld.Pos = a.Pos()
 		bld.SrcKind = results.SrcVar
-		p.vmap[a] = bld.GenLoc()
+		ptr := bld.GenObj()
+		p.vmap[a] = ptr
+
+		if traceLocVal {
+			fmt.Printf("l %s %s %s\n", a.Name(), plain.String(ptr), a.Type())
+		}
 	}
 
 	// blocks
@@ -215,9 +214,22 @@ func (p *T) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlock) e
 }
 
 func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) error {
+	if traceGenI9n {
+		fmt.Printf("gen %s\n", i9n)
+	}
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Printf("on i9n %s in %s\n", i9n, fnName)
+			panic(e)
+		}
+	}()
 	bld.Pos = i9n.Pos()
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc:
+		if _, present := p.vmap[i9n]; present {
+			return nil
+		}
+		bld.Pos = i9n.Pos()
 		bld.Type = i9n.Type()
 		if i9n.Heap {
 			bld.SrcKind = results.SrcNew
@@ -226,7 +238,11 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			bld.SrcKind = results.SrcVar
 			bld.Class = memory.Local
 		}
-		bld.GenLoc()
+		ptr := bld.GenObj()
+		p.vmap[i9n] = ptr
+		if traceLocVal {
+			fmt.Printf("a %s %s\n", i9n.Name(), plain.String(ptr))
+		}
 	case *ssa.BinOp:
 	case *ssa.Call:
 		p.call(bld, i9n.Call)
@@ -238,9 +254,13 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		p.call(bld, i9n.Call)
 	case *ssa.Extract:
 	case *ssa.Field:
+		xloc := p.getLoc(bld, i9n.X)
+		floc := p.pkgres.MemModel.Field(xloc, i9n.Field)
+		p.vmap[i9n] = floc
+
 	case *ssa.FieldAddr:
 		xloc := p.getLoc(bld, i9n.X)
-		floc, err := p.pkgres.MemModel.AccessField(xloc, i9n.Field)
+		floc, err := p.pkgres.MemModel.AddField(xloc, i9n.Field)
 		if err != nil {
 			panic(err)
 		}
@@ -325,6 +345,12 @@ func (p *T) getLoc(b *results.Builder, v ssa.Value) memory.Loc {
 	b.Type = v.Type().Underlying()
 	loc = b.GenLoc()
 	p.vmap[v] = loc
+	if traceLocVal {
+		if err := b.Check(); err != nil {
+			panic(err)
+		}
+		fmt.Printf("i %s %s\n", v.Name(), plain.String(loc))
+	}
 	return loc
 }
 

@@ -1,13 +1,28 @@
 # Modeling golang.org/x/tools/go/ssa with pal
 
-## Calls
+## Field
+
+returns a field
+
+## FieldAddr(p pointer, i int), p a pointer to a struct
+
+return the address of the i'th field of the struct
+pointed to by p.
+
+## Index
+
+## IndexAddr(o point, x Expr), p a pointer to an (array or slice?).
+
+
+
+## Functions
 
 Each function object is associated with 
 
-1. a reference node, indicating "the" location of the function
+1. a reference memory.Loc, indicating "the" location of the function
 1. a types.Signature in T.
 1. if it is a method then a receiver node of appropriate type,
-   then an associated node
+   then an associated memory.Loc
 1. if it has params, then one root node per parameter
 1. if it has returns, then one root node per return
 1. whether or not declared
@@ -32,9 +47,20 @@ This will be used in the import/export mechanism of memory models.
 
 ## Calls
 
-Basic case:
+We apply calls to 'defers' and 'go f()'s and plain calls.
 
-args, rets
+In all cases, the problem is looking up the function to call.  This 
+needs to take into account 
+
+- lookup of declared functions
+- dynamic functions (functions which are assigned to a variable)
+- method invocation.
+
+The lookup will result in a set of possible functions to call.  The
+pointer analysis, being inclusion based, will just call all of them.
+
+## 
+
 
 
 

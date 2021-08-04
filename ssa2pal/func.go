@@ -33,10 +33,18 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 	bld.Class = memory.Global
 	bld.SrcKind = results.SrcFunc
 	bld.Pos = token.NoPos // XXX
+	bld.Type = sig
 	locs := make([]memory.Loc, 1, 5)
 	locs[0] = bld.GenLoc()
 
-	res := &Func{locs: locs, sig: sig, declName: declName}
+	// handle parameters
+	opaque := memory.Attrs(0)
+	if token.IsExported(declName) {
+		opaque |= memory.IsOpaque
+	}
+	bld.Class = memory.Local // always
+	bld.SrcKind = results.SrcVar
+
 	recv := sig.Recv()
 	if recv != nil {
 		bld.Class = memory.Local
@@ -44,10 +52,27 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 	}
 	params := sig.Params()
 	if params != nil {
+		N := params.Len()
+		for i := 0; i < N; i++ {
+			param := params.At(i)
+			bld.Pos = param.Pos()
+			bld.Type = param.Type()
+			bld.Attrs = memory.IsParam | opaque
+			locs = append(locs, bld.GenLoc())
+		}
 	}
 	rets := sig.Results()
 	if rets != nil {
+		N := rets.Len()
+		for i := 0; i < N; i++ {
+			ret := rets.At(i)
+			bld.Pos = ret.Pos()
+			bld.Type = ret.Type()
+			bld.Attrs = memory.IsReturn | opaque
+			locs = append(locs, bld.GenLoc())
+		}
 	}
+	res := &Func{locs: locs, sig: sig, declName: declName}
 	return res
 }
 
