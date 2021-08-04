@@ -17,5 +17,5 @@ package pal
 const doc = `pal -- pointer analysis library cli
 
 
-
+TODO: figure out what to put here
 `

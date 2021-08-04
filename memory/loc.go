@@ -31,6 +31,8 @@ import (
 // in a program.
 type Loc uint32
 
+const NoLoc = Loc(0)
+
 func (m Loc) PlainEncode(w io.Writer) error {
 	_, e := fmt.Fprintf(w, "%08x", m)
 	return e
