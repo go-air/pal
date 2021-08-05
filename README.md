@@ -1,6 +1,6 @@
 # pal
 
-pal -- generic pointer analysis library for Go
+pal -- pointer analysis library for Go
 
 ## Design
 
