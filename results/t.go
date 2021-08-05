@@ -22,7 +22,7 @@ import (
 
 type T struct {
 	mu   sync.Mutex
-	d    map[string]*ForPkg
+	d    map[string]*PkgRes
 	perm []int
 }
 
@@ -43,7 +43,7 @@ func init() {
 // New generates a new results.T object for managing pointer analysis
 // results.
 func New() (*T, error) {
-	return &T{d: make(map[string]*ForPkg)}, nil
+	return &T{d: make(map[string]*PkgRes)}, nil
 }
 
 // AFact satisfying golang.org/x/tools/go/analysis's Facts.
@@ -52,14 +52,14 @@ func New() (*T, error) {
 // analyzing the respective package.
 func (t *T) AFact() {}
 
-func (t *T) Lookup(pkgPath string) *ForPkg {
+func (t *T) Lookup(pkgPath string) *PkgRes {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	res, _ := t.d[pkgPath]
 	return res
 }
 
-func (t *T) Put(pkgName string, pkgR *ForPkg) error {
+func (t *T) Put(pkgName string, pkgR *PkgRes) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.d[pkgName] = pkgR

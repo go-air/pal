@@ -28,11 +28,11 @@ type Builder struct {
 	Type    types.Type
 	SrcKind SrcKind
 
-	pkg *ForPkg
+	pkg *PkgRes
 	mdl *memory.Model
 }
 
-func NewBuilder(pkg *ForPkg) *Builder {
+func NewBuilder(pkg *PkgRes) *Builder {
 	return &Builder{pkg: pkg, mdl: pkg.MemModel}
 }
 

@@ -25,8 +25,8 @@ import (
 	"github.com/go-air/pal/values"
 )
 
-// ForPkg represents results for a package.
-type ForPkg struct {
+// PkgRes represents results for a package.
+type PkgRes struct {
 	PkgPath  string
 	Values   values.T
 	Start    memory.Loc
@@ -34,9 +34,9 @@ type ForPkg struct {
 	SrcInfo  []SrcInfo     // indexed by memory.Loc
 }
 
-func NewForPkg(pkgPath string, vs values.T) *ForPkg {
+func NewForPkg(pkgPath string, vs values.T) *PkgRes {
 	mdl := memory.NewModel(vs)
-	return &ForPkg{
+	return &PkgRes{
 		PkgPath:  pkgPath,
 		Values:   vs,
 		Start:    memory.Loc(1),
@@ -44,7 +44,7 @@ func NewForPkg(pkgPath string, vs values.T) *ForPkg {
 		SrcInfo:  make([]SrcInfo, mdl.Len())}
 }
 
-func (pkg *ForPkg) set(m memory.Loc, info *SrcInfo) {
+func (pkg *PkgRes) set(m memory.Loc, info *SrcInfo) {
 	n := memory.Loc(uint32(cap(pkg.SrcInfo)))
 	if m < n {
 		pkg.SrcInfo[m] = *info
@@ -63,7 +63,7 @@ func (pkg *ForPkg) set(m memory.Loc, info *SrcInfo) {
 	pkg.SrcInfo = infos
 }
 
-func (pkg *ForPkg) PlainEncode(w io.Writer) error {
+func (pkg *PkgRes) PlainEncode(w io.Writer) error {
 	if _, e := fmt.Fprintf(w, "%s:%s:%d\n", pkg.PkgPath, plain.String(pkg.Start), len(pkg.SrcInfo)); e != nil {
 		return e
 	}
@@ -81,7 +81,7 @@ func (pkg *ForPkg) PlainEncode(w io.Writer) error {
 	return nil
 }
 
-func (pkg *ForPkg) PlainDecode(r io.Reader) error {
+func (pkg *PkgRes) PlainDecode(r io.Reader) error {
 	br := bufio.NewReader(r)
 	var err error
 	pkg.PkgPath, err = br.ReadString(':')

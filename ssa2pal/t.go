@@ -42,7 +42,7 @@ type T struct {
 	pkg     *ssa.Package
 	values  values.T
 	results *results.T
-	pkgres  *results.ForPkg
+	pkgres  *results.PkgRes
 	buildr  *results.Builder
 	vmap    map[ssa.Value]memory.Loc
 	omap    map[ssa.Value]memory.Loc
