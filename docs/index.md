@@ -1,3 +1,6 @@
 # pal -- pointer analysis library
 
-## This is a stub
+pal is a library for doing pointer analysis.
+
+
+
