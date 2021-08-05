@@ -26,11 +26,11 @@
 //
 // The above description is a simplification of what is implemented here.
 // First, nodes represent structured data.  Second, the edges are coded as a
-// set of constraints rather than explicitly.  Third, each model represents a
-// single (possibly main) package.  Fourth, the node sizes are parameterised on
-// a values type which may be used to model sizes and indices.  Finally, some
-// nodes are marked "Opaque" indicating that they represent unknown pointers.
-// Correspondingly, there is a (work in progress) mechanism to compose models
-// accross packages which allows eliminating local variables and substituting
-// opaque nodes with results in a calling package.
+// set of constraints rather than explicitly. Third, the node sizes are
+// parameterised on a values type which may be used to model sizes and indices.
+//
+// Finally, some nodes are marked "Opaque" indicating that they represent
+// unknown pointers.  Correspondingly, there is a (work in progress) mechanism
+// to compose models accross packages which allows eliminating local variables
+// and substituting opaque nodes with results in a calling package.
 package memory

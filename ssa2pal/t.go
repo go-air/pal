@@ -45,6 +45,7 @@ type T struct {
 	pkgres  *results.ForPkg
 	buildr  *results.Builder
 	vmap    map[ssa.Value]memory.Loc
+	omap    map[ssa.Value]memory.Loc
 	funcs   map[string]*Func
 }
 
@@ -72,6 +73,7 @@ func New(pass *analysis.Pass, vs values.T) (*T, error) {
 		values:  vs,
 		buildr:  results.NewBuilder(pkgRes),
 		vmap:    make(map[ssa.Value]memory.Loc, 8192),
+		omap:    make(map[ssa.Value]memory.Loc, 8192),
 		funcs:   make(map[string]*Func)}
 	return pal, nil
 }
@@ -127,16 +129,16 @@ func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 		buildr.Type = ty.Elem()
 		buildr.SrcKind = results.SrcVar
 		// gen what it points to
-		dst := buildr.GenLoc()
 		// pointer generated below
 		buildr.Type = ty
 
 		loc := buildr.GenLoc()
-		p.vmap[x] = loc
+		ptr := buildr.GenPointerTo(loc)
+		p.vmap[x] = ptr
+		p.omap[x] = loc
 		if traceLocVal {
 			fmt.Printf("g %s %s\n", x.Name(), plain.String(loc))
 		}
-		buildr.GenPointsTo(dst, loc)
 
 		return
 
@@ -179,10 +181,11 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 		if a.Heap {
 			bld.Class = memory.Global
 		}
-		bld.Type = a.Type()
+		bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
 		bld.Pos = a.Pos()
 		bld.SrcKind = results.SrcVar
-		ptr := bld.GenObj()
+		obj := bld.GenLoc()
+		ptr := bld.GenPointerTo(obj)
 		p.vmap[a] = ptr
 
 		if traceLocVal {
@@ -230,7 +233,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			return nil
 		}
 		bld.Pos = i9n.Pos()
-		bld.Type = i9n.Type()
+		bld.Type = i9n.Type().Underlying().(*types.Pointer).Elem()
 		if i9n.Heap {
 			bld.SrcKind = results.SrcNew
 			bld.Class = memory.Heap
@@ -238,8 +241,10 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			bld.SrcKind = results.SrcVar
 			bld.Class = memory.Local
 		}
-		ptr := bld.GenObj()
+		obj := bld.GenLoc()
+		ptr := bld.GenPointerTo(obj)
 		p.vmap[i9n] = ptr
+		p.omap[i9n] = obj
 		if traceLocVal {
 			fmt.Printf("a %s %s\n", i9n.Name(), plain.String(ptr))
 		}
@@ -259,13 +264,22 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		p.vmap[i9n] = floc
 
 	case *ssa.FieldAddr:
-		xloc := p.getLoc(bld, i9n.X)
-		floc, err := p.pkgres.MemModel.AddField(xloc, i9n.Field)
-		if err != nil {
-			panic(err)
+		// the requirements are subtle.  we need to be able
+		// to calculate deref(i9n.X) to get
+		var dobj memory.Loc
+		var ok bool
+		if dobj, ok = p.omap[i9n.X]; !ok {
+			bld.Reset()
+			elemTy := i9n.X.Type().Underlying().(*types.Pointer).Elem()
+			bld.Type = elemTy
+			bld.Class = memory.Local
+			bld.Pos = i9n.Pos()
+			dobj = bld.GenLoc()
+			bld.GenLoad(dobj, p.getLoc(bld, i9n.X))
 		}
-		pf := p.getLoc(bld, i9n)
-		p.buildr.GenPointsTo(floc, pf)
+		ptr := bld.GenPointerTo(dobj)
+		p.vmap[i9n] = ptr
+		p.omap[i9n] = dobj
 	case *ssa.Go:
 		p.call(bld, i9n.Call)
 	case *ssa.If:

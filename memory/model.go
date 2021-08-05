@@ -37,8 +37,8 @@ type Model struct {
 // (int) values.
 func NewModel(values values.T) *Model {
 	res := &Model{
-		// 0 -> not a mem
-		// 1 -> zero mem
+		// 0 -> NoLoc
+		// 1 -> Zero / nil/null
 		locs:   make([]loc, 2, 1024),
 		values: values}
 	zz := Loc(1)
@@ -82,23 +82,6 @@ func (mod *Model) Field(m Loc, i int) Loc {
 		n += Loc(isz)
 	}
 	return n
-}
-
-func (mod *Model) AddField(p Loc, i int) (Loc, error) {
-	// to where it points.
-	s := mod.locs[p].obj
-	if s == NoLoc {
-		panic("access field is not a ptr")
-	}
-	f := mod.Field(s, i)
-	hdl := mod.locs[f].hdl
-	if hdl == NoLoc {
-		sloc := &mod.locs[s]
-		hdl = mod.GenRoot(types.NewPointer(types.Typ[types.Invalid]),
-			sloc.class, sloc.attrs)
-		mod.locs[f].hdl = hdl
-	}
-	return hdl, nil
 }
 
 func (mod *Model) VSize(m Loc) values.V {
@@ -151,23 +134,6 @@ func (mod *Model) GenRoot(ty types.Type, class Class, attrs Attrs) Loc {
 	return mod.add(ty, class, attrs, p, p, &sum)
 }
 
-func (mod *Model) GenObj(ty types.Type, class Class, attrs Attrs) Loc {
-	objType := ty.Underlying().(*types.Pointer).Elem()
-	obj := mod.GenRoot(objType, class, attrs)
-	ptr := mod.GenRoot(ty, class, attrs)
-	mod.locs[ptr].obj = obj
-	mod.locs[obj].hdl = ptr
-	return ptr
-}
-
-func (mod *Model) Obj(m Loc) Loc {
-	return mod.locs[m].obj
-}
-
-func (mod *Model) Handle(m Loc) Loc {
-	return mod.locs[m].hdl
-}
-
 func (mod *Model) PlainCoderAt(i int) plain.Coder {
 	return &mod.locs[i]
 }
@@ -183,8 +149,7 @@ func (mod *Model) Cap(c int) {
 
 // validates that
 //
-// 1. n.vsz = 1 + Sum(c.vsz, c a child of n)
-// 2. n.obj != 0 => n.obj.hdl == n &&
+// n.vsz = 1 + Sum(c.vsz, c a child of n)
 func (mod *Model) Check() error {
 	N := len(mod.locs)
 	sizes := make(map[Loc]int)
@@ -321,6 +286,14 @@ func (mod *Model) SetAttrs(m Loc, a Attrs) {
 func (mod *Model) GenPointsTo(a, b Loc) {
 	loc := &mod.locs[a]
 	loc.pointsTo = append(loc.pointsTo, b)
+}
+
+// allocates the ptr
+func (mod *Model) GenPointerTo(obj Loc, c Class, as Attrs) (ptr Loc) {
+	ptr = Loc(len(mod.locs))
+	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, root: ptr})
+	mod.GenPointsTo(ptr, obj)
+	return ptr
 }
 
 // dst = *src

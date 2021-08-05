@@ -42,7 +42,7 @@ func SSAAnalyzer() *analysis.Analyzer {
 		Doc:        doc, // see file paldoc.go
 		Run:        run,
 		Requires:   []*analysis.Analyzer{buildssa.Analyzer},
-		ResultType: reflect.TypeOf((*results.T)(nil)),
+		ResultType: reflect.TypeOf(palRes),
 		FactTypes:  []analysis.Fact{palRes}}
 }
 

@@ -29,10 +29,11 @@ type Builder struct {
 	SrcKind SrcKind
 
 	pkg *ForPkg
+	mdl *memory.Model
 }
 
 func NewBuilder(pkg *ForPkg) *Builder {
-	return &Builder{pkg: pkg}
+	return &Builder{pkg: pkg, mdl: pkg.MemModel}
 }
 
 func (b *Builder) Reset() {
@@ -44,28 +45,33 @@ func (b *Builder) Reset() {
 }
 
 func (b *Builder) GenLoc() memory.Loc {
-	res := b.pkg.MemModel.GenRoot(b.Type, b.Class, b.Attrs)
+	res := b.mdl.GenRoot(b.Type, b.Class, b.Attrs)
 	b.pkg.set(res, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
 	return res
 }
 
-func (b *Builder) GenObj() memory.Loc {
-	mod := b.pkg.MemModel
-	res := mod.GenObj(b.Type, b.Class, b.Attrs)
-	si := &SrcInfo{Kind: b.SrcKind, Pos: b.Pos}
-	b.pkg.set(res, si)
-	b.pkg.set(mod.Obj(res), si)
-	return res
+func (b *Builder) Field(m memory.Loc, i int) memory.Loc {
+	return b.mdl.Field(m, i)
+}
+
+func (b *Builder) GenPointerTo(obj memory.Loc) (ptr memory.Loc) {
+	ptr = b.mdl.GenPointerTo(obj, b.Class, b.Attrs)
+	b.pkg.set(ptr, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
+	return
 }
 
 func (b *Builder) GenPointsTo(dst, p memory.Loc) {
-	b.pkg.MemModel.GenPointsTo(dst, p)
+	b.mdl.GenPointsTo(dst, p)
 }
 
 func (b *Builder) GenStore(dst, src memory.Loc) {
-	b.pkg.MemModel.GenStore(dst, src)
+	b.mdl.GenStore(dst, src)
+}
+
+func (b *Builder) GenLoad(dst, src memory.Loc) {
+	b.mdl.GenLoad(dst, src)
 }
 
 func (b *Builder) Check() error {
-	return b.pkg.MemModel.Check()
+	return b.mdl.Check()
 }

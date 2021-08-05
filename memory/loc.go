@@ -54,9 +54,6 @@ type loc struct {
 	root   Loc
 	parent Loc
 
-	obj Loc
-	hdl Loc
-
 	vsz values.V // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
 
 	// constraints
@@ -71,9 +68,9 @@ type loc struct {
 }
 
 func (m *loc) PlainEncode(w io.Writer) error {
-	_, e := fmt.Fprintf(w, "%s %s %s %s %s",
+	_, e := fmt.Fprintf(w, "%s %s %s",
 		plain.String(m.class), plain.String(m.attrs),
-		plain.String(m.parent), plain.String(m.obj), plain.String(m.hdl))
+		plain.String(m.parent))
 	return e
 }
 
@@ -92,17 +89,9 @@ func (m *loc) PlainDecode(r io.Reader) error {
 	if err := plain.Parse(&m.attrs, word); err != nil {
 		return err
 	}
-	word, err = br.ReadString(' ')
-	if err := plain.Parse(&m.parent, word); err != nil {
-		return err
-	}
-	word, err = br.ReadString(' ')
-	if err := plain.Parse(&m.obj, word); err != nil {
-		return err
-	}
 	word, err = br.ReadString('\n')
 	if err != nil && err != io.EOF {
 		return err
 	}
-	return plain.Parse(&m.hdl, word)
+	return plain.Parse(&m.parent, word)
 }
