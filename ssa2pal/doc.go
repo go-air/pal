@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package ssapal provides support for encoding golang.org/x/tools/go/ssa
+// Package ssa2pal provides support for encoding golang.org/x/tools/go/ssa
 // into pal's memory model.
-package ssapal
+package ssa2pal
