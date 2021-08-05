@@ -47,7 +47,7 @@ func SSAAnalyzer() *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	pal, err := ssapal.New(pass, values.ConstVals())
+	pal, err := ssa2pal.New(pass, values.ConstVals())
 	if err != nil {
 		return nil, err
 	}

@@ -15,7 +15,7 @@
 // This file provides support for generating and using the core pal
 // functions from golang.org/s/tools/go/ssa representation.
 
-package ssapal
+package ssa2pal
 
 import (
 	"errors"
