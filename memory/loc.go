@@ -89,9 +89,10 @@ func (m *loc) PlainDecode(r io.Reader) error {
 	if err := plain.Parse(&m.attrs, word); err != nil {
 		return err
 	}
-	word, err = br.ReadString('\n')
-	if err != nil && err != io.EOF {
+	buf := make([]byte, 8)
+	_, err = io.ReadFull(br, buf)
+	if err != nil {
 		return err
 	}
-	return plain.Parse(&m.parent, word)
+	return plain.Parse(&m.parent, string(buf))
 }

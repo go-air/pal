@@ -64,7 +64,7 @@ func (pkg *PkgRes) set(m memory.Loc, info *SrcInfo) {
 }
 
 func (pkg *PkgRes) PlainEncode(w io.Writer) error {
-	if _, e := fmt.Fprintf(w, "%s:%s:%d\n", pkg.PkgPath, plain.String(pkg.Start), len(pkg.SrcInfo)); e != nil {
+	if _, e := fmt.Fprintf(w, "%s:%s:%d\n", pkg.PkgPath, plain.String(pkg.Start), pkg.MemModel.Len()); e != nil {
 		return e
 	}
 	N := pkg.MemModel.Len()
@@ -88,6 +88,7 @@ func (pkg *PkgRes) PlainDecode(r io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("1 %w", err)
 	}
+	pkg.PkgPath = pkg.PkgPath[:len(pkg.PkgPath)-1]
 	var start int
 	var n int
 	_, err = fmt.Fscanf(br, "%d:%d\n", &start, &n)
@@ -106,14 +107,14 @@ func (pkg *PkgRes) PlainDecode(r io.Reader) error {
 		}
 		_, err = io.ReadFull(br, spaceBuf)
 		if err != nil {
-			return fmt.Errorf("4 %d-%w", i, err)
+			return fmt.Errorf("4 %d-'%s'-%w", i, string(spaceBuf), err)
 		}
 		if err = si.PlainDecode(br); err != nil {
 			return fmt.Errorf("5 %d-%w", i, err)
 		}
 		_, err = io.ReadFull(br, spaceBuf)
 		if err != nil {
-			return fmt.Errorf("6 %d-%w", i, err)
+			return fmt.Errorf("6 %d-'%s'-%w", i, string(spaceBuf), err)
 		}
 	}
 	return nil

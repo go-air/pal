@@ -2,7 +2,6 @@ package results
 
 import (
 	"bytes"
-	"fmt"
 	"go/types"
 	"strings"
 	"testing"
@@ -21,18 +20,14 @@ func TestPlain(t *testing.T) {
 	bld.Class = memory.Heap
 	bld.GenLoc()
 	buf := bytes.NewBuffer(nil)
-	fmt.Printf("encode\n")
 	if err := pkgres.PlainEncode(buf); err != nil {
 		t.Fatal(err)
 	}
 	s1 := buf.String()
-	t.Logf("encoded as\n\n%s\n", s1)
-	fmt.Printf("decode\n")
 	if err := pkgres.PlainDecode(strings.NewReader(s1)); err != nil {
 		t.Fatal(err)
 	}
 	buf = bytes.NewBuffer(nil)
-	fmt.Printf("recode\n")
 	if err := pkgres.PlainEncode(buf); err != nil {
 		t.Fatal(err)
 	}
