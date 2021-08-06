@@ -10,7 +10,7 @@ func Version() (string, error) {
 	// place per-package caching.
 	bi, ok := debug.ReadBuildInfo()
 	if !ok {
-		return "", fmt.Errorf("couldn't read build info (ar your running go test?)")
+		return "", fmt.Errorf("couldn't read build info (are you running go test?)")
 	}
 	return fmt.Sprintf("%s %s %s\n", bi.Main.Path, bi.Main.Version, bi.Main.Sum), nil
 }
