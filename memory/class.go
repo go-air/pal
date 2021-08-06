@@ -31,6 +31,14 @@ const (
 	Local
 	// Heap is the location associated with a heap allocation
 	Heap
+	// Rel is a relative location.  Rel has parent=root and
+	// non constant vsz, indicating the offset w.r.t. the root.
+	//
+	// wsc: this will be necessary for unsafe.Pointer conversion
+	// and pointer arithmetic.
+	//
+	// Also, we can use it to model slice index addresses &slice[x].
+	//Rel
 )
 
 func (c Class) String() string {

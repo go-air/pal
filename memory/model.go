@@ -84,6 +84,24 @@ func (mod *Model) Field(m Loc, i int) Loc {
 	return n
 }
 
+func (mod *Model) ArrayIndex(m Loc, i int) Loc {
+	n := m + 1
+	sz := mod.locs[n].vsz
+	isz, ok := mod.values.AsInt(sz)
+	if !ok {
+		return NoLoc
+
+	}
+	n += Loc(i * isz)
+	return n
+}
+
+// VSize returns the virtual size of memory associated
+// with m.
+//
+// The virtual size is the size according to the model,
+// which is 1 + the sum of the the vsizes of all locations
+// n such that mod.Parent(n) == m.
 func (mod *Model) VSize(m Loc) values.V {
 	return mod.locs[m].vsz
 }
@@ -134,10 +152,14 @@ func (mod *Model) GenRoot(ty types.Type, class Class, attrs Attrs) Loc {
 	return mod.add(ty, class, attrs, p, p, &sum)
 }
 
+// PlainCoderAt returns a plain.Coder for the information
+// associated with memory at index i.
 func (mod *Model) PlainCoderAt(i int) plain.Coder {
 	return &mod.locs[i]
 }
 
+// Cap destructively changes the total size of mod.
+//
 func (mod *Model) Cap(c int) {
 	if cap(mod.locs) < c {
 		tmp := make([]loc, c)

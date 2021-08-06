@@ -54,6 +54,10 @@ func (b *Builder) Field(m memory.Loc, i int) memory.Loc {
 	return b.mdl.Field(m, i)
 }
 
+func (b *Builder) ArrayIndex(m memory.Loc, i int) memory.Loc {
+	return b.mdl.ArrayIndex(m, i)
+}
+
 func (b *Builder) GenPointerTo(obj memory.Loc) (ptr memory.Loc) {
 	ptr = b.mdl.GenPointerTo(obj, b.Class, b.Attrs)
 	b.pkg.set(ptr, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
@@ -70,6 +74,10 @@ func (b *Builder) GenStore(dst, src memory.Loc) {
 
 func (b *Builder) GenLoad(dst, src memory.Loc) {
 	b.mdl.GenLoad(dst, src)
+}
+
+func (b *Builder) GenTransfer(dst, src memory.Loc) {
+	b.mdl.GenTransfer(dst, src)
 }
 
 func (b *Builder) Check() error {
