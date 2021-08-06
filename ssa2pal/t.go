@@ -60,7 +60,7 @@ type T struct {
 func New(pass *analysis.Pass, vs values.T) (*T, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
-	pkgRes := results.NewForPkg(pkgPath, vs)
+	pkgRes := results.NewPkgRes(pkgPath, vs)
 	for _, imp := range pass.Pkg.Imports() {
 		iPath := imp.Path()
 		//fmt.Printf("\t%s: importing %s\n", pkgPath, iPath)
@@ -180,13 +180,15 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 	}
 	memFn := NewFunc(bld, fn.Signature, name)
 	p.vmap[fn] = memFn.Loc()
-	p.vmap[fn] = bld.GenLoc()
 	bld.Reset()
 
 	for i, param := range fn.Params {
 		p.vmap[param] = memFn.ParamLoc(i)
 	}
 	// free vars not needed here -- top level func def
+
+	// need to do this for result below
+	p.funcs[fn.Name()] = memFn
 
 	// locals: *ssa.Alloc
 	for _, a := range fn.Locals {
@@ -347,8 +349,9 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			return fmt.Errorf("couldn't find func %s\n", ssaFn.Name())
 		}
 		// copy results to palFn results...
-		_ = i9n.Results
-		_ = palFn
+		for i, res := range i9n.Results {
+			p.vmap[res] = palFn.ResultLoc(i)
+		}
 
 	case *ssa.UnOp:
 

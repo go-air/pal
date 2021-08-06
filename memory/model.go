@@ -241,7 +241,6 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		mod.locs = append(mod.locs, l)
 		*sum++
 		nf := ty.NumFields()
-		fmt.Printf("add struct %d fields\n", nf)
 		for i := 0; i < nf; i++ {
 			fty := ty.Field(i).Type()
 			mod.add(fty, class, attrs, n, r, sum)

@@ -34,7 +34,7 @@ type PkgRes struct {
 	SrcInfo  []SrcInfo     // indexed by memory.Loc
 }
 
-func NewForPkg(pkgPath string, vs values.T) *PkgRes {
+func NewPkgRes(pkgPath string, vs values.T) *PkgRes {
 	mdl := memory.NewModel(vs)
 	return &PkgRes{
 		PkgPath:  pkgPath,
@@ -86,13 +86,13 @@ func (pkg *PkgRes) PlainDecode(r io.Reader) error {
 	var err error
 	pkg.PkgPath, err = br.ReadString(':')
 	if err != nil {
-		return err
+		return fmt.Errorf("1 %w", err)
 	}
 	var start int
 	var n int
-	_, err = fmt.Scanf("%d:%d\n", &start, &n)
+	_, err = fmt.Fscanf(br, "%d:%d\n", &start, &n)
 	if err != nil {
-		return err
+		return fmt.Errorf("2 %w", err)
 	}
 	pkg.Start = memory.Loc(start)
 	pkg.MemModel.Cap(n)
@@ -101,19 +101,19 @@ func (pkg *PkgRes) PlainDecode(r io.Reader) error {
 	for i := 0; i < n; i++ {
 		loc := pkg.MemModel.PlainCoderAt(i)
 		si := &pkg.SrcInfo[i]
-		if err = loc.PlainDecode(r); err != nil {
-			return err
+		if err = loc.PlainDecode(br); err != nil {
+			return fmt.Errorf("3 %d-%w", i, err)
 		}
-		_, err = io.ReadFull(r, spaceBuf)
+		_, err = io.ReadFull(br, spaceBuf)
 		if err != nil {
-			return err
+			return fmt.Errorf("4 %d-%w", i, err)
 		}
-		if err = si.PlainDecode(r); err != nil {
-			return err
+		if err = si.PlainDecode(br); err != nil {
+			return fmt.Errorf("5 %d-%w", i, err)
 		}
-		_, err = io.ReadFull(r, spaceBuf)
+		_, err = io.ReadFull(br, spaceBuf)
 		if err != nil {
-			return err
+			return fmt.Errorf("6 %d-%w", i, err)
 		}
 	}
 	return nil
