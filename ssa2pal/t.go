@@ -34,6 +34,7 @@ import (
 )
 
 type T struct {
+	// pass object: analyzer is "github.com/go-air/pal".SSAAnalyzer()
 	pass *analysis.Pass
 	ssa  *buildssa.SSA
 	// this is a state variable which
@@ -44,9 +45,16 @@ type T struct {
 	results *results.T
 	pkgres  *results.PkgRes
 	buildr  *results.Builder
-	vmap    map[ssa.Value]memory.Loc
-	omap    map[ssa.Value]memory.Loc
-	funcs   map[string]*Func
+	// map from ssa.Value to memory locs
+	vmap map[ssa.Value]memory.Loc
+	// map from ssa.Value of type pointer
+	// to the memory location of the unique object to which
+	// vmap[p] points (clearly not all pointers point to
+	// unique ops, but this is used for example to implement
+	// *ssa.FieldAddr(*ssa.Alloc, n).
+	omap map[ssa.Value]memory.Loc
+	//
+	funcs map[string]*Func
 }
 
 func New(pass *analysis.Pass, vs values.T) (*T, error) {
@@ -80,12 +88,17 @@ func New(pass *analysis.Pass, vs values.T) (*T, error) {
 
 func (p *T) GenResult() (*results.T, error) {
 	var err error
+	// for every member generate memory locations
+	// and constraints.
 	for name, mbr := range p.ssa.Pkg.Members {
 		err = p.genMember(name, mbr)
 		if err != nil {
 			return nil, err
 		}
 	}
+	// TBD: calc results from generation above
+
+	// place the results for current package in p.results.
 	p.putResults()
 	return p.results, nil
 }
@@ -100,6 +113,7 @@ func (p *T) genMember(name string, mbr ssa.Member) error {
 
 	switch x := mbr.(type) {
 	case *ssa.Global:
+		// globals are treated
 		p.genGlobal(buildr, name, x)
 		return nil
 
@@ -117,11 +131,14 @@ func (p *T) genMember(name string, mbr ssa.Member) error {
 }
 
 func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
-	// globals are in general pointers
+	// globals are in general pointers to the globally stored
+	// values
 	buildr.Pos = x.Pos()
 	buildr.Type = x.Type().Underlying()
 	buildr.Class = memory.Global
 	if token.IsExported(name) {
+		// mark opaque because packages which import this one
+		// may set the variable to whatever.
 		buildr.Attrs = memory.IsOpaque
 	}
 	switch ty := buildr.Type.(type) {
@@ -230,6 +247,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc:
 		if _, present := p.vmap[i9n]; present {
+			// we batch created the locals...
 			return nil
 		}
 		bld.Pos = i9n.Pos()
@@ -316,9 +334,21 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	case *ssa.Phi:
 	case *ssa.Range:
 	case *ssa.RunDefers:
+		// no-op b/c we treat defers like calls.
 	case *ssa.Select:
 	case *ssa.Send:
 	case *ssa.Return:
+		var ssaFn *ssa.Function = i9n.Parent()
+		var palFn *Func
+
+		var ok bool
+		palFn, ok = p.funcs[ssaFn.Name()]
+		if !ok {
+			return fmt.Errorf("couldn't find func %s\n", ssaFn.Name())
+		}
+		// copy results to palFn results...
+		_ = i9n.Results
+		_ = palFn
 
 	case *ssa.UnOp:
 

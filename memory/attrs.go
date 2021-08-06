@@ -28,6 +28,8 @@ const (
 	IsReturn
 )
 
+const NoAttrs Attrs = 0
+
 func (a Attrs) IsOpaque() bool {
 	return a&IsOpaque != 0
 }
