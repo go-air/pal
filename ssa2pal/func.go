@@ -26,6 +26,7 @@ type Func struct {
 	sig      *types.Signature
 	declName string
 	fnobj    memory.Loc
+	fnloc    memory.Loc
 	recv     memory.Loc
 	params   []memory.Loc
 	results  []memory.Loc
@@ -46,6 +47,7 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 	bld.Pos = token.NoPos // XXX
 	bld.Type = sig
 	fn.fnobj = bld.GenLoc()
+	fn.fnloc = bld.GenPointerTo(fn.fnobj)
 	fn.params = make([]memory.Loc, tupleLen(sig.Params()))
 	fn.results = make([]memory.Loc, tupleLen(sig.Results()))
 
@@ -97,6 +99,10 @@ func (f *Func) Name() string {
 }
 
 func (f *Func) Loc() memory.Loc {
+	return f.fnloc
+}
+
+func (f *Func) Obj() memory.Loc {
 	return f.fnobj
 }
 

@@ -241,7 +241,6 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		mod.locs = append(mod.locs, l)
 		*sum++
 		nf := ty.NumFields()
-		fmt.Printf("add struct %d fields\n", nf)
 		for i := 0; i < nf; i++ {
 			fty := ty.Field(i).Type()
 			mod.add(fty, class, attrs, n, r, sum)
@@ -381,10 +380,17 @@ func (mod *Model) PlainDecode(r io.Reader) error {
 		mod.locs = tmp
 	}
 	mod.locs = mod.locs[:N]
+	buf := make([]byte, 1)
 	for i := Loc(0); i < N; i++ {
 		p := &mod.locs[i]
 		if err = p.PlainDecode(br); err != nil {
 			return err
+		}
+		if _, err = io.ReadFull(br, buf); err != nil {
+			return err
+		}
+		if buf[0] != '\n' {
+			return fmt.Errorf("expected newline")
 		}
 	}
 	return nil
