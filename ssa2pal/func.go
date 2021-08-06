@@ -72,7 +72,7 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 			bld.Pos = param.Pos()
 			bld.Type = param.Type()
 			bld.Attrs = memory.IsParam | opaque
-			fn.params = append(fn.params, bld.GenLoc())
+			fn.params[i] = bld.GenLoc()
 		}
 	}
 	rets := sig.Results()
@@ -83,7 +83,7 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 			bld.Pos = ret.Pos()
 			bld.Type = ret.Type()
 			bld.Attrs = memory.IsReturn | opaque
-			fn.results = append(fn.results, bld.GenLoc())
+			fn.results[i] = bld.GenLoc()
 		}
 	}
 	// TBD: FreeVars
