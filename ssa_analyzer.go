@@ -26,6 +26,7 @@ import (
 )
 
 var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
+var bigV *bool = flagSet.Bool("V", false, "print version")
 
 // SSAAnalyzer produces an Analyzer which
 // works on golang.org/x/tools/go/ssa form.
@@ -47,6 +48,9 @@ func SSAAnalyzer() *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
+	if *bigV {
+		return Version()
+	}
 	pal, err := ssa2pal.New(pass, values.ConstVals())
 	if err != nil {
 		return nil, err

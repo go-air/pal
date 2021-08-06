@@ -25,20 +25,32 @@ import (
 type Func struct {
 	sig      *types.Signature
 	declName string
-	locs     []memory.Loc
+	fnobj    memory.Loc
+	recv     memory.Loc
+	params   []memory.Loc
+	results  []memory.Loc
+}
+
+func tupleLen(tuple *types.Tuple) int {
+	if tuple == nil {
+		return 0
+	}
+	return tuple.Len()
 }
 
 func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func {
+	fn := &Func{sig: sig, declName: declName}
 	bld.Reset()
 	bld.Class = memory.Global
 	bld.SrcKind = results.SrcFunc
 	bld.Pos = token.NoPos // XXX
 	bld.Type = sig
-	locs := make([]memory.Loc, 1, 5)
-	locs[0] = bld.GenLoc()
+	fn.fnobj = bld.GenLoc()
+	fn.params = make([]memory.Loc, tupleLen(sig.Params()))
+	fn.results = make([]memory.Loc, tupleLen(sig.Results()))
 
 	// handle parameters
-	opaque := memory.Attrs(0)
+	opaque := memory.NoAttrs
 	if token.IsExported(declName) {
 		opaque |= memory.IsOpaque
 	}
@@ -48,7 +60,7 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 	recv := sig.Recv()
 	if recv != nil {
 		bld.Class = memory.Local
-		bld.GenLoc()
+		fn.recv = bld.GenLoc()
 	}
 	params := sig.Params()
 	if params != nil {
@@ -58,7 +70,7 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 			bld.Pos = param.Pos()
 			bld.Type = param.Type()
 			bld.Attrs = memory.IsParam | opaque
-			locs = append(locs, bld.GenLoc())
+			fn.params = append(fn.params, bld.GenLoc())
 		}
 	}
 	rets := sig.Results()
@@ -69,11 +81,11 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 			bld.Pos = ret.Pos()
 			bld.Type = ret.Type()
 			bld.Attrs = memory.IsReturn | opaque
-			locs = append(locs, bld.GenLoc())
+			fn.results = append(fn.results, bld.GenLoc())
 		}
 	}
-	res := &Func{locs: locs, sig: sig, declName: declName}
-	return res
+	// TBD: FreeVars
+	return fn
 }
 
 func (f *Func) Declared() bool {
@@ -85,7 +97,7 @@ func (f *Func) Name() string {
 }
 
 func (f *Func) Loc() memory.Loc {
-	return f.locs[0]
+	return f.fnobj
 }
 
 func (f *Func) Sig() *types.Signature {
@@ -93,30 +105,22 @@ func (f *Func) Sig() *types.Signature {
 }
 
 func (f *Func) RecvLoc(i int) memory.Loc {
-	if f.sig.Recv() != nil {
-		return f.locs[i+1]
-	}
-	panic("oob")
+	return f.recv
+
 }
 
 func (f *Func) ParamLoc(i int) memory.Loc {
-	if f.sig.Recv() != nil {
-		i++
-	}
-	parms := f.sig.Params()
-	if parms != nil && i >= parms.Len() {
-		panic("oob")
-	}
-	return f.locs[i]
+	return f.params[i]
+}
+
+func (f *Func) NParams() int {
+	return len(f.params)
 }
 
 func (f *Func) ResultLoc(i int) memory.Loc {
-	if f.sig.Recv() != nil {
-		i++
-	}
-	parms := f.sig.Params()
-	if parms != nil {
-		i += parms.Len()
-	}
-	return f.locs[i]
+	return f.results[i]
+}
+
+func (f *Func) NResults() int {
+	return len(f.results)
 }

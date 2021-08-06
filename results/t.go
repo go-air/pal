@@ -15,8 +15,6 @@
 package results
 
 import (
-	"fmt"
-	"runtime/debug"
 	"sync"
 )
 
@@ -29,16 +27,6 @@ type T struct {
 const (
 	myModuleName = "github.com/go-air/pal"
 )
-
-func init() {
-	// something around this will be needed once we put in
-	// place per-package caching.
-	bi, ok := debug.ReadBuildInfo()
-	if !ok {
-		panic(fmt.Sprintf("couldn't read build info"))
-	}
-	fmt.Printf("bi.Main.Path: %s %s\n", bi.Main.Path, bi.Main.Version)
-}
 
 // New generates a new results.T object for managing pointer analysis
 // results.
