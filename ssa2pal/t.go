@@ -54,7 +54,7 @@ type T struct {
 	// *ssa.FieldAddr(*ssa.Alloc, n).
 	omap map[ssa.Value]memory.Loc
 	//
-	funcs map[string]*Func
+	funcs map[*ssa.Function]*Func
 }
 
 func New(pass *analysis.Pass, vs values.T) (*T, error) {
@@ -86,7 +86,7 @@ func New(pass *analysis.Pass, vs values.T) (*T, error) {
 		buildr:  results.NewBuilder(pkgRes),
 		vmap:    make(map[ssa.Value]memory.Loc, 8192),
 		omap:    make(map[ssa.Value]memory.Loc, 8192),
-		funcs:   make(map[string]*Func)}
+		funcs:   make(map[*ssa.Function]*Func)}
 	return pal, nil
 }
 
@@ -191,7 +191,7 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 	// free vars not needed here -- top level func def
 
 	// need to do this for result below
-	p.funcs[fn.Name()] = memFn
+	p.funcs[fn] = memFn
 
 	// locals: *ssa.Alloc
 	for _, a := range fn.Locals {
@@ -392,7 +392,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		var palFn *Func
 
 		var ok bool
-		palFn, ok = p.funcs[ssaFn.Name()]
+		palFn, ok = p.funcs[ssaFn]
 		if !ok {
 			return fmt.Errorf("couldn't find func %s\n", ssaFn.Name())
 		}

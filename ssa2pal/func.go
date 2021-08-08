@@ -46,8 +46,11 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 	bld.SrcKind = results.SrcFunc
 	bld.Pos = token.NoPos // XXX
 	bld.Type = sig
+	// object representing the function
+	// it behaves as a self-loop pointer
+	// so that on .Transfer()s, the info is propagated.
 	fn.fnobj = bld.GenLoc()
-	fn.fnloc = bld.GenPointerTo(fn.fnobj)
+	bld.GenPointsTo(fn.fnobj, fn.fnobj)
 	fn.params = make([]memory.Loc, tupleLen(sig.Params()))
 	fn.results = make([]memory.Loc, tupleLen(sig.Results()))
 
@@ -65,26 +68,22 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 		fn.recv = bld.GenLoc()
 	}
 	params := sig.Params()
-	if params != nil {
-		N := params.Len()
-		for i := 0; i < N; i++ {
-			param := params.At(i)
-			bld.Pos = param.Pos()
-			bld.Type = param.Type()
-			bld.Attrs = memory.IsParam | opaque
-			fn.params[i] = bld.GenLoc()
-		}
+	N := tupleLen(params)
+	for i := 0; i < N; i++ {
+		param := params.At(i)
+		bld.Pos = param.Pos()
+		bld.Type = param.Type()
+		bld.Attrs = memory.IsParam | opaque
+		fn.params[i] = bld.GenLoc()
 	}
 	rets := sig.Results()
-	if rets != nil {
-		N := rets.Len()
-		for i := 0; i < N; i++ {
-			ret := rets.At(i)
-			bld.Pos = ret.Pos()
-			bld.Type = ret.Type()
-			bld.Attrs = memory.IsReturn | opaque
-			fn.results[i] = bld.GenLoc()
-		}
+	N = tupleLen(rets)
+	for i := 0; i < N; i++ {
+		ret := rets.At(i)
+		bld.Pos = ret.Pos()
+		bld.Type = ret.Type()
+		bld.Attrs = memory.IsReturn | opaque
+		fn.results[i] = bld.GenLoc()
 	}
 	// TBD: FreeVars
 	return fn
