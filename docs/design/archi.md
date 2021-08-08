@@ -1,11 +1,21 @@
 # pal architecture
 
-The pal architecture is centered around the idea of  _persistant modular analysis_.
+The pal architecture is centered around the idea of  _persistant modular
+analysis_.
 
-This means that the analysis is bottom-up in the dependency graph, mirroring the Go build system and the go/tools analysis library.  However, the
-analysis is _persistent_, meaning the results are stored and may be used later to different ends.  
+This means that the analysis is bottom-up in the dependency graph, mirroring
+the Go build system and the go/tools analysis library.  However, the analysis
+is _persistent_, meaning the results are stored and may be used later to
+different ends.  
 
-In this bottom-up phase, pal constructs executable and queryable memory models for each exported symbol of each package. 
+In this bottom-up phase, pal constructs executable and queryable memory models
+for each exported symbol of each package. 
+
+## Applications
+
+### Command line
+
+### Module proxy
 
  
 ## Related Work

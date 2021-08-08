@@ -96,54 +96,68 @@ generated.
 
 TODO(wsc0)
 
+## Modularity
+
+Pal follows Go's packages, which form an acyclic dependency graph.  Pal
+results are stored on a per-package basis.
+
+
+### Coding
+
+This consists of encoding the package into the pal memory model.
+Notably, for modularity, we need to keep track of exportable
+symbols, opaqueness, param and return values of functions.
+
+### Solving
+
+This consists of finding the points-to relation for the package
+in terms of how it was coded.
+
+### Export
+
+This consists of projecting the memory model onto i/o relations
+between exported opaque memory locations (including parameters
+and returns of exported functions).
+
+### Import
+
+
+### Example
+
+Below is an example diamond 
+shaped package dependency graph which we will use to describe how
+modular solving works.
+
+```
+S -> A
+S -> B
+A -> D
+B -> D
+```
+Below is a list of actions for solving the points-to 
+incrementally
+
+
+1. D: Code 
+1. D: Solve
+1. D: Export
+1. A: Import D
+1. A: Code
+1. A: Solve
+1. A: Export
+1. B: Import D
+1. B: Code
+1. B: Solve
+1. B: Export
+1. S: Import A
+1. S: Import B
+1. S: Code
+1. S: Solve
+
+
+
+
 ## Solving
 
-Suppose we have a program or a fragment of a program for which we have created
-Mems, Constraints, and Values.  We would like to compute the points to set of
-Mems  
-
-In pal, all these scenarios share a common _Solver_ interface specified below.
 
 
-```go
-
-// Construct a solver from Mems (and so with the associated constraints)
-// and a modelling of the values.  Results are precomputed.
-func SolverForAll(ms Mems, vs Values) Solver
-// Results are on demand.
-func LazySolver(ms Mems, vs Values) Solver
-// Results are pre-ordered according to 'perm'
-func OrderedSolver(ms Mems, []int perm, vs Values) Solver
-
-// Results are selected from q and PointsTo means transitively to
-// things related to q (forward and backward )
-func SelectFwdSolver(ms Mems, q []Mem, vs Values) Solver {...}
-func SelectBwdSolver(ms Mems, q []Mem, vs Values) Solver {...}
-func SelectSolve(ms Mems, q []Mem, vs Values) Solver {...}
-
-// project the transitive closue of the points to onto 'on'
-func ProjectedSolver(ms Mems, on []Mem, vs Values) Solver
-
-type Solver interface {
-
-    // Overlaps determines complex aliasing.
-	Overlaps(m Mem, mext Value, n Mem, next Value) AbsTruth
-
-	// m == n ?
-	Equal(m, n Mem) AbsTruth
-
-
-	// PointsTo place the points to set of m into dst, starting
-	// at offset from with a max of 'ext',
-	//
-	// return the resulting dst.
-	PointsTo(dst []Mem, m Mem, ext Value) []Mem
-
-	// ReplaceOpaque
-	// for every Mem in the underlying Mems whose points-to set
-	// includes the points to set of 't', remove the points-to 
-	// set of 't' and add the PointsTo set of every rep in 'reps'
-	ReplaceOpaque(t Mem, reps ...Mem)
-
-}
-```

@@ -2,18 +2,29 @@
 
 ## Field
 
-returns a field
+returns a field, no derefernce involved.
 
 ## FieldAddr(p pointer, i int), p a pointer to a struct
 
 return the address of the i'th field of the struct
 pointed to by p.
 
+
+
 ## Index
+
+array, index
+
+- [x] const indices
+- [ ] non-const indices
 
 ## IndexAddr(o point, x Expr), p a pointer to an (array or slice?).
 
-
+- [ ] slice
+- [ ] array
+	- [x] const indices
+	- [ ] non-const indices
+	
 
 ## Functions
 
