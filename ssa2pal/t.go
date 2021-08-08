@@ -331,6 +331,11 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			eltLoc := bld.ArrayIndex(xloc, i)
 			p.vmap[i9n] = eltLoc
 		default:
+			ty := i9n.Type().Underlying().(*types.Array)
+			N := ty.Len()
+			for i := int64(0); i < N; i++ {
+				_ = i
+			}
 			// One idea:
 			panic("not yet handled: non-const array index")
 
