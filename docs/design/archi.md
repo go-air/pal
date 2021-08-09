@@ -41,8 +41,8 @@ between memory locations.
 
 Gillian [5] is also language agnostic, however it is based on modelling full
 programs by symbolic execution in a given IR (GIL) whereas pal only
-symbolically executes the numeric _Values_ in pointer arithmetic, allowing the
-caller to model these values in many different ways.
+symbolically executes the numeric _index_ in pointer arithmetic, allowing the
+caller to model these index in many different ways.
 
 Golang's pointer analysis [8] is Anderson style with less flexibility,
 dependency on an ssa package specific to Go.

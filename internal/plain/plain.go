@@ -21,6 +21,7 @@ package plain
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 
 	"strings"
@@ -50,6 +51,42 @@ type Encoder interface {
 // Decoder is the interface for a plain decoder.
 type Decoder interface {
 	PlainDecode(io.Reader) error
+}
+
+func EncodeJoin(w io.Writer, sep string, es ...Encoder) error {
+	sepBytes := []byte(sep)
+	var err error
+	for i, e := range es {
+		if i != 0 {
+			_, err = fmt.Fprint(w, sepBytes)
+			if err != nil {
+				return err
+			}
+		}
+		err = e.PlainEncode(w)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DecodeJoin(r io.Reader, sep string, ds ...Decoder) error {
+	var err error
+	buf := make([]byte, len(sep))
+	for i, d := range ds {
+		if i != 0 {
+			_, err = io.ReadFull(r, buf)
+			if string(buf) != sep {
+				return fmt.Errorf("unexpected: '%s'", string(buf))
+			}
+		}
+		err = d.PlainDecode(r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 type Coder interface {

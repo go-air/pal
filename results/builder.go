@@ -58,26 +58,27 @@ func (b *Builder) ArrayIndex(m memory.Loc, i int) memory.Loc {
 	return b.mdl.ArrayIndex(m, i)
 }
 
-func (b *Builder) GenPointerTo(obj memory.Loc) (ptr memory.Loc) {
-	ptr = b.mdl.GenPointerTo(obj, b.Class, b.Attrs)
+func (b *Builder) GenWithPointer() (obj, ptr memory.Loc) {
+	obj, ptr = b.mdl.GenWithPointer(b.Type, b.Class, b.Attrs)
+	b.pkg.set(obj, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
 	b.pkg.set(ptr, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
 	return
 }
 
 func (b *Builder) GenPointsTo(dst, p memory.Loc) {
-	b.mdl.GenPointsTo(dst, p)
+	b.mdl.AddPointsTo(dst, p)
 }
 
 func (b *Builder) GenStore(dst, src memory.Loc) {
-	b.mdl.GenStore(dst, src)
+	b.mdl.AddStore(dst, src)
 }
 
 func (b *Builder) GenLoad(dst, src memory.Loc) {
-	b.mdl.GenLoad(dst, src)
+	b.mdl.AddLoad(dst, src)
 }
 
 func (b *Builder) GenTransfer(dst, src memory.Loc) {
-	b.mdl.GenTransfer(dst, src)
+	b.mdl.AddTransfer(dst, src)
 }
 
 func (b *Builder) Check() error {

@@ -24,10 +24,10 @@ import (
 	"go/token"
 	"go/types"
 
+	"github.com/go-air/pal/index"
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/results"
-	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
@@ -41,7 +41,7 @@ type T struct {
 	// represents the current package under
 	// analysis.
 	pkg     *ssa.Package
-	values  values.T
+	index   index.T
 	results *results.T
 	pkgres  *results.PkgRes
 	buildr  *results.Builder
@@ -54,10 +54,10 @@ type T struct {
 	// *ssa.FieldAddr(*ssa.Alloc, n).
 	omap map[ssa.Value]memory.Loc
 	//
-	funcs map[string]*Func
+	funcs map[*ssa.Function]*Func
 }
 
-func New(pass *analysis.Pass, vs values.T) (*T, error) {
+func New(pass *analysis.Pass, vs index.T) (*T, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
 	if pkgPath == "internal/cpu" {
@@ -82,11 +82,11 @@ func New(pass *analysis.Pass, vs values.T) (*T, error) {
 		ssa:     ssapkg,
 		results: palres,
 		pkgres:  pkgRes,
-		values:  vs,
+		index:   vs,
 		buildr:  results.NewBuilder(pkgRes),
 		vmap:    make(map[ssa.Value]memory.Loc, 8192),
 		omap:    make(map[ssa.Value]memory.Loc, 8192),
-		funcs:   make(map[string]*Func)}
+		funcs:   make(map[*ssa.Function]*Func)}
 	return pal, nil
 }
 
@@ -136,7 +136,7 @@ func (p *T) genMember(name string, mbr ssa.Member) error {
 
 func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 	// globals are in general pointers to the globally stored
-	// values
+	// index
 	buildr.Pos = x.Pos()
 	buildr.Type = x.Type().Underlying()
 	buildr.Class = memory.Global
@@ -153,8 +153,7 @@ func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 		// pointer generated below
 		buildr.Type = ty
 
-		loc := buildr.GenLoc()
-		ptr := buildr.GenPointerTo(loc)
+		loc, ptr := buildr.GenWithPointer()
 		p.vmap[x] = ptr
 		p.omap[x] = loc
 		if traceLocVal {
@@ -191,7 +190,7 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 	// free vars not needed here -- top level func def
 
 	// need to do this for result below
-	p.funcs[fn.Name()] = memFn
+	p.funcs[fn] = memFn
 
 	// locals: *ssa.Alloc
 	for _, a := range fn.Locals {
@@ -207,8 +206,7 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 		bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
 		bld.Pos = a.Pos()
 		bld.SrcKind = results.SrcVar
-		obj := bld.GenLoc()
-		ptr := bld.GenPointerTo(obj)
+		obj, ptr := bld.GenWithPointer()
 		p.vmap[a] = ptr
 		p.omap[a] = obj
 
@@ -266,8 +264,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			bld.SrcKind = results.SrcVar
 			bld.Class = memory.Local
 		}
-		obj := bld.GenLoc()
-		ptr := bld.GenPointerTo(obj)
+		obj, ptr := bld.GenWithPointer()
 		p.vmap[i9n] = ptr
 		p.omap[i9n] = obj
 		if traceLocVal {
@@ -291,7 +288,11 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	case *ssa.FieldAddr:
 		// the requirements are subtle.  we need to be able
 		// to calculate deref(i9n.X) to get
+		elemTy := i9n.X.Type().Underlying().(*types.Pointer).Elem()
+		_ = elemTy
+
 		var dobj memory.Loc
+		fmt.Printf("FieldAdd: X=%v\n", i9n.X)
 		var ok bool
 		if dobj, ok = p.omap[i9n.X]; !ok {
 			if true {
@@ -308,8 +309,8 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			dobj = bld.GenLoc()
 			bld.GenLoad(dobj, p.getLoc(bld, i9n.X))
 		}
-		ptr := bld.GenPointerTo(dobj)
-		p.vmap[i9n] = ptr
+		//ptr := bld.GenPointerTo(dobj)
+		//p.vmap[i9n] = ptr
 		p.omap[i9n] = dobj
 	case *ssa.Go:
 		p.call(bld, i9n.Call)
@@ -319,7 +320,8 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		// if i9n.Index is constant, we can
 		// access its model
 		//
-		// if not, perhaps we should back off somehow for now...
+		// if not, perhaps we back off with transfer
+		// constraints and a new Loc
 		xloc := p.getLoc(bld, i9n.X)
 		switch idx := i9n.Index.(type) {
 		case *ssa.Const:
@@ -331,8 +333,17 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			eltLoc := bld.ArrayIndex(xloc, i)
 			p.vmap[i9n] = eltLoc
 		default:
-			// One idea:
-			panic("not yet handled: non-const array index")
+
+			ty := i9n.Type().Underlying().(*types.Array)
+			N := ty.Len()
+			bld.Type = ty
+			bld.Pos = i9n.Pos()
+			res := bld.GenLoc()
+			for i := int64(0); i < N; i++ {
+				eltLoc := bld.ArrayIndex(xloc, int(i))
+				bld.GenTransfer(res, eltLoc)
+			}
+			p.vmap[i9n] = res
 
 		}
 	case *ssa.IndexAddr:
@@ -392,7 +403,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		var palFn *Func
 
 		var ok bool
-		palFn, ok = p.funcs[ssaFn.Name()]
+		palFn, ok = p.funcs[ssaFn]
 		if !ok {
 			return fmt.Errorf("couldn't find func %s\n", ssaFn.Name())
 		}

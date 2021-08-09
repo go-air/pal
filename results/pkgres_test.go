@@ -20,12 +20,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-air/pal/index"
 	"github.com/go-air/pal/memory"
-	"github.com/go-air/pal/values"
 )
 
 func TestPlain(t *testing.T) {
-	pkgres := NewPkgRes("test", values.ConstVals())
+	pkgres := NewPkgRes("test", index.ConstVals())
 	bld := NewBuilder(pkgres)
 	bld.Type = types.Typ[types.Int]
 	bld.GenLoc()

@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package values provides support for abstract integral values to pal.
-package values
+// Package index provides support for abstract integral index to pal.
+package index
