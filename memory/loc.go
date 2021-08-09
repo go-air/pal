@@ -20,8 +20,8 @@ import (
 	"io"
 	"strconv"
 
+	"github.com/go-air/pal/index"
 	"github.com/go-air/pal/internal/plain"
-	"github.com/go-air/pal/values"
 )
 
 // Loc represents a memory location.
@@ -54,9 +54,11 @@ type loc struct {
 	root   Loc
 	parent Loc
 
-	vsz values.V // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
+	lsz index.I // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
+	vof index.I // == 0 for roots, const for regions, symbolic
 
 	// constraints
+	offsets   []Loc
 	pointsTo  []Loc // this loc points to that
 	transfers []Loc //
 	loads     []Loc // this loc = *(that loc)

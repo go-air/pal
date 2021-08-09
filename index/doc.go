@@ -12,35 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package values
-
-import (
-	"io"
-)
-
-type ValueKind int
-
-const (
-	ConstKind ValueKind = iota
-	VarKind
-	PlusKind
-)
-
-type V interface {
-}
-
-type T interface {
-	Zero() V
-	One() V
-	AsInt(v V) (i int, ok bool)
-	FromInt(i int) V
-	Var(v V) bool
-	Plus(a, b V) V
-	Equal(a, b V) AbsTruth
-	Less(a, b V) AbsTruth
-	Kind(v V) ValueKind
-	PalEncodeValue(io.Writer, V) error
-	PalDecodeValue(io.Reader) (V, error)
-	PalEncode(io.Writer) error
-	PalDecode(io.Reader) error
-}
+// Package index provides support for abstract integral index to pal.
+package index

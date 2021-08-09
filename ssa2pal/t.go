@@ -24,10 +24,10 @@ import (
 	"go/token"
 	"go/types"
 
+	"github.com/go-air/pal/index"
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/results"
-	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 	"golang.org/x/tools/go/ssa"
@@ -41,7 +41,7 @@ type T struct {
 	// represents the current package under
 	// analysis.
 	pkg     *ssa.Package
-	values  values.T
+	index   index.T
 	results *results.T
 	pkgres  *results.PkgRes
 	buildr  *results.Builder
@@ -57,7 +57,7 @@ type T struct {
 	funcs map[*ssa.Function]*Func
 }
 
-func New(pass *analysis.Pass, vs values.T) (*T, error) {
+func New(pass *analysis.Pass, vs index.T) (*T, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
 	if pkgPath == "internal/cpu" {
@@ -82,7 +82,7 @@ func New(pass *analysis.Pass, vs values.T) (*T, error) {
 		ssa:     ssapkg,
 		results: palres,
 		pkgres:  pkgRes,
-		values:  vs,
+		index:   vs,
 		buildr:  results.NewBuilder(pkgRes),
 		vmap:    make(map[ssa.Value]memory.Loc, 8192),
 		omap:    make(map[ssa.Value]memory.Loc, 8192),
@@ -136,7 +136,7 @@ func (p *T) genMember(name string, mbr ssa.Member) error {
 
 func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 	// globals are in general pointers to the globally stored
-	// values
+	// index
 	buildr.Pos = x.Pos()
 	buildr.Type = x.Type().Underlying()
 	buildr.Class = memory.Global
