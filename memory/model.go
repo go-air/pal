@@ -27,8 +27,9 @@ import (
 
 // Type Model represents a memory model for a package.
 type Model struct {
-	locs  []loc
-	index index.T
+	locs        []loc
+	constraints []Constraint
+	index       index.T
 }
 
 // NewModel generates a new memory model for a package.
@@ -37,10 +38,12 @@ type Model struct {
 // (int) index.
 func NewModel(index index.T) *Model {
 	res := &Model{
+
 		// 0 -> NoLoc
 		// 1 -> Zero / nil/null
-		locs:  make([]loc, 2, 1024),
-		index: index}
+		locs:        make([]loc, 2, 1024),
+		constraints: make([]Constraint, 0, 1024),
+		index:       index}
 	zz := Loc(1)
 	z := &res.locs[1]
 	z.class = Zero
@@ -72,6 +75,8 @@ func (mod *Model) Root(m Loc) Loc {
 // Access returns the T which results from
 // add vo to the virtual size of m.
 func (mod *Model) Field(m Loc, i int) Loc {
+	// @wsc: this can be done with a fuzzy binary
+	// search
 	n := m + 1 // first field
 	for j := 0; j < i; j++ {
 		sz := mod.locs[n].lsz
@@ -304,37 +309,35 @@ func (mod *Model) SetAttrs(m Loc, a Attrs) {
 }
 
 // a = &b
-func (mod *Model) GenPointsTo(a, b Loc) {
-	loc := &mod.locs[a]
-	loc.pointsTo = append(loc.pointsTo, b)
+func (mod *Model) AddPointsTo(a, b Loc) {
+	mod.constraints = append(mod.constraints, AddressOf(a, b))
 }
 
-// allocates the ptr
-func (mod *Model) GenPointerTo(obj Loc, c Class, as Attrs) (ptr Loc) {
+func (mod *Model) GenWithPointer(ty types.Type, c Class, as Attrs) (obj, ptr Loc) {
+	obj = mod.GenRoot(ty, c, as)
 	ptr = Loc(len(mod.locs))
 	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, root: ptr})
-	mod.GenPointsTo(ptr, obj)
-	return ptr
+	mod.AddPointsTo(ptr, obj)
+	return
 }
 
 // dst = *src
-func (mod *Model) GenLoad(dst, src Loc) {
-	loc := &mod.locs[dst]
-	loc.loads = append(loc.loads, src)
-
+func (mod *Model) AddLoad(dst, src Loc) {
+	mod.constraints = append(mod.constraints, Load(dst, src))
 }
 
 // *dst = src
-func (mod *Model) GenStore(dst, src Loc) {
-	loc := &mod.locs[dst]
-	loc.stores = append(loc.stores, src)
-
+func (mod *Model) AddStore(dst, src Loc) {
+	mod.constraints = append(mod.constraints, Store(dst, src))
 }
 
 // dst = src
-func (mod *Model) GenTransfer(dst, src Loc) {
-	loc := &mod.locs[dst]
-	_ = loc
+func (mod *Model) AddTransfer(dst, src Loc) {
+	mod.constraints = append(mod.constraints, Transfer(dst, src))
+}
+
+func (mod *Model) AddTransferIndex(dst, src Loc, i index.I) {
+	mod.constraints = append(mod.constraints, TransferIndex(dst, src, i))
 }
 
 func (mod *Model) Solve() {
@@ -368,6 +371,52 @@ func (mod *Model) Import(other *Model) {
 
 }
 
+func (mod *Model) PlainEncodeConstraints(w io.Writer) error {
+	_, err := fmt.Printf("%d\n", len(mod.constraints))
+	if err != nil {
+		return err
+	}
+	for i := range mod.constraints {
+		c := &mod.constraints[i]
+		if err := c.PlainEncode(w); err != nil {
+			return err
+		}
+		_, err := fmt.Fprint(w, "\n")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (mod *Model) PlainDecodeConstraints(r io.Reader) error {
+	var N int
+	var err error
+	_, err = fmt.Fscanf(r, "%d\n", &N)
+	if err != nil {
+		return err
+	}
+	mod.constraints = nil
+	constraints := make([]Constraint, N)
+	buf := make([]byte, 1)
+	for i := 0; i < N; i++ {
+		c := &constraints[i]
+		err = c.PlainDecode(r)
+		if err != nil {
+			return err
+		}
+		_, err = io.ReadFull(r, buf)
+		if err != nil {
+			return err
+		}
+		if buf[0] != byte('\n') {
+			return fmt.Errorf("unexpected '%s'", string(buf))
+		}
+	}
+	mod.constraints = constraints
+	return nil
+}
+
 func (mod *Model) PlainEncode(w io.Writer) error {
 	fmt.Fprintf(w, "%d locs\n", len(mod.locs))
 	var err error
@@ -382,7 +431,7 @@ func (mod *Model) PlainEncode(w io.Writer) error {
 			return err
 		}
 	}
-	return nil
+	return mod.PlainEncodeConstraints(w)
 }
 
 func (mod *Model) PlainDecode(r io.Reader) error {
@@ -395,7 +444,7 @@ func (mod *Model) PlainDecode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	// OVFL
+	// OVFL?
 	N := Loc(uint32(nLocsInt))
 	if N > Loc(uint32(cap(mod.locs))) {
 		tmp := make([]loc, N)
@@ -415,5 +464,5 @@ func (mod *Model) PlainDecode(r io.Reader) error {
 			return fmt.Errorf("expected newline")
 		}
 	}
-	return nil
+	return mod.PlainDecodeConstraints(r)
 }

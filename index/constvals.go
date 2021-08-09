@@ -39,10 +39,6 @@ func (c consts) Var(v I) bool {
 	return false
 }
 
-func (c consts) Kind(_ I) ValueKind {
-	return ConstKind
-}
-
 func (c consts) FromInt(v int) I {
 	return v
 }

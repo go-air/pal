@@ -14,18 +14,6 @@
 
 package index
 
-import (
-	"io"
-)
-
-type ValueKind int
-
-const (
-	ConstKind ValueKind = iota
-	VarKind
-	PlusKind
-)
-
 type I interface {
 }
 
@@ -38,9 +26,4 @@ type T interface {
 	Plus(a, b I) I
 	Equal(a, b I) AbsTruth
 	Less(a, b I) AbsTruth
-	Kind(v I) ValueKind
-	PalEncodeValue(io.Writer, I) error
-	PalDecodeValue(io.Reader) (I, error)
-	PalEncode(io.Writer) error
-	PalDecode(io.Reader) error
 }

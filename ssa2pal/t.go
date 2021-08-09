@@ -153,8 +153,7 @@ func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 		// pointer generated below
 		buildr.Type = ty
 
-		loc := buildr.GenLoc()
-		ptr := buildr.GenPointerTo(loc)
+		loc, ptr := buildr.GenWithPointer()
 		p.vmap[x] = ptr
 		p.omap[x] = loc
 		if traceLocVal {
@@ -207,8 +206,7 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 		bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
 		bld.Pos = a.Pos()
 		bld.SrcKind = results.SrcVar
-		obj := bld.GenLoc()
-		ptr := bld.GenPointerTo(obj)
+		obj, ptr := bld.GenWithPointer()
 		p.vmap[a] = ptr
 		p.omap[a] = obj
 
@@ -266,8 +264,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			bld.SrcKind = results.SrcVar
 			bld.Class = memory.Local
 		}
-		obj := bld.GenLoc()
-		ptr := bld.GenPointerTo(obj)
+		obj, ptr := bld.GenWithPointer()
 		p.vmap[i9n] = ptr
 		p.omap[i9n] = obj
 		if traceLocVal {
@@ -291,7 +288,11 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	case *ssa.FieldAddr:
 		// the requirements are subtle.  we need to be able
 		// to calculate deref(i9n.X) to get
+		elemTy := i9n.X.Type().Underlying().(*types.Pointer).Elem()
+		_ = elemTy
+
 		var dobj memory.Loc
+		fmt.Printf("FieldAdd: X=%v\n", i9n.X)
 		var ok bool
 		if dobj, ok = p.omap[i9n.X]; !ok {
 			if true {
@@ -308,8 +309,8 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			dobj = bld.GenLoc()
 			bld.GenLoad(dobj, p.getLoc(bld, i9n.X))
 		}
-		ptr := bld.GenPointerTo(dobj)
-		p.vmap[i9n] = ptr
+		//ptr := bld.GenPointerTo(dobj)
+		//p.vmap[i9n] = ptr
 		p.omap[i9n] = dobj
 	case *ssa.Go:
 		p.call(bld, i9n.Call)
@@ -319,7 +320,8 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		// if i9n.Index is constant, we can
 		// access its model
 		//
-		// if not, perhaps we should back off somehow for now...
+		// if not, perhaps we back off with transfer
+		// constraints and a new Loc
 		xloc := p.getLoc(bld, i9n.X)
 		switch idx := i9n.Index.(type) {
 		case *ssa.Const:
@@ -331,13 +333,17 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			eltLoc := bld.ArrayIndex(xloc, i)
 			p.vmap[i9n] = eltLoc
 		default:
+
 			ty := i9n.Type().Underlying().(*types.Array)
 			N := ty.Len()
+			bld.Type = ty
+			bld.Pos = i9n.Pos()
+			res := bld.GenLoc()
 			for i := int64(0); i < N; i++ {
-				_ = i
+				eltLoc := bld.ArrayIndex(xloc, int(i))
+				bld.GenTransfer(res, eltLoc)
 			}
-			// One idea:
-			panic("not yet handled: non-const array index")
+			p.vmap[i9n] = res
 
 		}
 	case *ssa.IndexAddr:
