@@ -29,11 +29,11 @@ As our first IR is "golang.org/x/tools/go/ssa", we recommend taking a look at th
 
 #### github.com/go-air/pal/results
 
-#### github.com/go-air/pal/values
+#### github.com/go-air/pal/index
 
 ### Memory
 
 ### Results
 
-### Working with Values
+### Working with index
 

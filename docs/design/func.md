@@ -10,7 +10,7 @@ specific to control flow and/or call flow context.  However, pal leaves this
 opaque to the user, at least at the level of the memory model.
 
 Sets of locs may or may not support non-constant values for their size.  For non-constant
-values which occur in the program under analysis, a special Value type is provided and
+index which occur in the program under analysis, a special Value type is provided and
 detailed below.
 
 Sets of locs must provide an efficient means to determine if two locs 'm', 'n' may overlap
@@ -29,7 +29,7 @@ and/or locations in the program of heap allocations such as `malloc`.
 
 In Go's x/tools/go/pointer, a loc correponds to a node, so for example a 
 map would would be represented by a node representing a (key, value) pair;
-all the values in the map are abstracted to a single pair.
+all the index in the map are abstracted to a single pair.
 
 For flow sensitivity, an SSA form in combination with such a representation
 can be used.  For more flow sensitivity an SSI form can be used.  These
@@ -50,18 +50,18 @@ type Constraints interface {
 }
 ```
 
-## Values
+## index
 
 Traditional pointer analyses such as Anderson, SteensGaard are independent of
 numerical analysis.  Often such analysis are useful because they can bootstrap a
 numerical analysis and they are usually much faster (albeit less precise) than
 methods which combine numerical and points-to analysis.
 
-pal provides opaque support for numerical constraints in a _Values_ type, defined
+pal provides opaque support for numerical constraints in a _index_ type, defined
 below.
 
 ```go
-type Values interface {
+type index interface {
 	ToInt(v Value) (int, bool)
 	FromInt(int) V
 	Plus(a, b Value) Value
@@ -72,19 +72,19 @@ type Values interface {
 
 
 The idea is that the pointer operations only use addition and tests for 
-Values in order to implement the Mems interface; however, Values in programs
+index in order to implement the Mems interface; however, index in programs
 may be arbitrary expressions in the target language, which, over the 
 set of all possible executions of the program, may contain any sort of
 concrete value.  
 
-A client of pal must decide how to model these concrete values, however any such
-model will provide the Values interface above.
+A client of pal must decide how to model these concrete index, however any such
+model will provide the index interface above.
 
 pal will provide some basic models
 
-### Const Values
+### Const index
 
-Constant values, corresponding to types\' offsets.  In this model, every load or store
+Constant index, corresponding to types\' offsets.  In this model, every load or store
 to a Mem with non-constant offset are collapsed onto a single Mem with zero offset.  
 This is an abstraction which is simple, efficient, and imprecise for containers
 containing lots of pointers.  
@@ -106,7 +106,7 @@ results are stored on a per-package basis.
 
 This consists of encoding the package into the pal memory model.
 Notably, for modularity, we need to keep track of exportable
-symbols, opaqueness, param and return values of functions.
+symbols, opaqueness, param and return index of functions.
 
 ### Solving
 

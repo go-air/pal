@@ -18,9 +18,9 @@ import (
 	"flag"
 	"reflect"
 
+	"github.com/go-air/pal/index"
 	"github.com/go-air/pal/results"
 	"github.com/go-air/pal/ssa2pal"
-	"github.com/go-air/pal/values"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 )
@@ -51,7 +51,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	if *bigV {
 		return Version()
 	}
-	pal, err := ssa2pal.New(pass, values.ConstVals())
+	pal, err := ssa2pal.New(pass, index.ConstVals())
 	if err != nil {
 		return nil, err
 	}

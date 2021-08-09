@@ -12,5 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package values provides support for abstract integral values to pal.
-package values
+package index
+
+import (
+	"io"
+)
+
+type ValueKind int
+
+const (
+	ConstKind ValueKind = iota
+	VarKind
+	PlusKind
+)
+
+type I interface {
+}
+
+type T interface {
+	Zero() I
+	One() I
+	AsInt(v I) (i int, ok bool)
+	FromInt(i int) I
+	Var(v I) bool
+	Plus(a, b I) I
+	Equal(a, b I) AbsTruth
+	Less(a, b I) AbsTruth
+	Kind(v I) ValueKind
+	PalEncodeValue(io.Writer, I) error
+	PalDecodeValue(io.Reader) (I, error)
+	PalEncode(io.Writer) error
+	PalDecode(io.Reader) error
+}

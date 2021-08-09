@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package values
+package index
 
 import (
 	"fmt"
@@ -27,27 +27,27 @@ func ConstVals() T {
 	return consts{}
 }
 
-func (c consts) Zero() V {
-	return V(0)
+func (c consts) Zero() I {
+	return I(0)
 }
 
-func (c consts) One() V {
-	return V(1)
+func (c consts) One() I {
+	return I(1)
 }
 
-func (c consts) Var(v V) bool {
+func (c consts) Var(v I) bool {
 	return false
 }
 
-func (c consts) Kind(_ V) ValueKind {
+func (c consts) Kind(_ I) ValueKind {
 	return ConstKind
 }
 
-func (c consts) FromInt(v int) V {
+func (c consts) FromInt(v int) I {
 	return v
 }
 
-func (c consts) AsInt(v V) (int, bool) {
+func (c consts) AsInt(v I) (int, bool) {
 	vv, ok := v.(int)
 	if !ok {
 		return 0, false
@@ -55,12 +55,12 @@ func (c consts) AsInt(v V) (int, bool) {
 	return vv, true
 }
 
-func (c consts) Plus(a, b V) V {
+func (c consts) Plus(a, b I) I {
 	aa, bb := a.(int), b.(int)
-	return V(aa + bb)
+	return I(aa + bb)
 }
 
-func (c consts) Less(a, b V) AbsTruth {
+func (c consts) Less(a, b I) AbsTruth {
 	aa, bb := a.(int), b.(int)
 	if aa < bb {
 		return True
@@ -68,7 +68,7 @@ func (c consts) Less(a, b V) AbsTruth {
 	return False
 }
 
-func (c consts) Equal(a, b V) AbsTruth {
+func (c consts) Equal(a, b I) AbsTruth {
 	aa, bb := a.(int), b.(int)
 	if aa == bb {
 		return True
@@ -76,7 +76,7 @@ func (c consts) Equal(a, b V) AbsTruth {
 	return False
 }
 
-func (c consts) PalEncodeValue(w io.Writer, v V) error {
+func (c consts) PalEncodeValue(w io.Writer, v I) error {
 	buf := make([]byte, 8)
 	bo := byteorder.ByteOrder()
 	bo.PutUint64(buf, uint64(v.(int)))
@@ -84,7 +84,7 @@ func (c consts) PalEncodeValue(w io.Writer, v V) error {
 	return e
 }
 
-func (c consts) PalDecodeValue(r io.Reader) (V, error) {
+func (c consts) PalDecodeValue(r io.Reader) (I, error) {
 	buf := make([]byte, 8)
 	n, err := r.Read(buf)
 	if err != nil {
