@@ -46,7 +46,9 @@ type T struct {
 	pkgres  *results.PkgRes
 	buildr  *results.Builder
 	// map from ssa.Value to memory locs
+
 	vmap  map[ssa.Value]memory.Loc
+
 	funcs map[*ssa.Function]*Func
 }
 
@@ -78,6 +80,7 @@ func New(pass *analysis.Pass, vs index.T) (*T, error) {
 		index:   vs,
 		buildr:  results.NewBuilder(pkgRes),
 		vmap:    make(map[ssa.Value]memory.Loc, 8192),
+
 		funcs:   make(map[*ssa.Function]*Func)}
 	return pal, nil
 }
@@ -188,7 +191,9 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 		bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
 		bld.Pos = a.Pos()
 		bld.SrcKind = results.SrcVar
+
 		_, ptr := bld.GenWithPointer()
+
 		p.vmap[a] = ptr
 
 		if traceLocVal {
@@ -245,6 +250,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			bld.SrcKind = results.SrcVar
 			bld.Class = memory.Local
 		}
+
 		_, ptr := bld.GenWithPointer()
 		p.vmap[i9n] = ptr
 		if traceLocVal {
@@ -268,7 +274,9 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		p.vmap[i9n] = iloc
 
 	case *ssa.FieldAddr:
+
 		var ptr memory.Loc
+
 		var ok bool
 		if ptr, ok = p.vmap[i9n.X]; !ok {
 			// we need to make sure other ops
@@ -289,6 +297,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			mdl.AddTransferIndex(res, ptr, i9n.Field)
 		}
 
+
 	case *ssa.Go:
 		p.call(bld, i9n.Call)
 	case *ssa.If:
@@ -297,7 +306,9 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		// if i9n.Index is constant, we can
 		// access its model
 		//
+
 		// if not, we back off with transfer constraints and a new Loc
+
 		xloc := p.getLoc(bld, i9n.X)
 		switch idx := i9n.Index.(type) {
 		case *ssa.Const:
@@ -309,6 +320,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			eltLoc := bld.ArrayIndex(xloc, i)
 			p.vmap[i9n] = eltLoc
 		default:
+
 			ty := i9n.Type().Underlying().(*types.Array)
 			N := ty.Len()
 			bld.Type = ty

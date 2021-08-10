@@ -54,7 +54,9 @@ type loc struct {
 	parent Loc
 
 	lsz  index.I // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
+
 	obj  Loc     // locals and globals are passed by addr...  NoLoc if unknown
+
 	mark int     // scratch space for internal algos
 }
 

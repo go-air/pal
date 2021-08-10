@@ -83,6 +83,7 @@ func (b *Builder) GenTransfer(dst, src memory.Loc) {
 
 func (b *Builder) Model() *memory.Model {
 	return b.mdl
+
 }
 
 func (b *Builder) Check() error {
