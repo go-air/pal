@@ -23,6 +23,7 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
+	"os"
 
 	"github.com/go-air/pal/index"
 	"github.com/go-air/pal/internal/plain"
@@ -46,14 +47,7 @@ type T struct {
 	pkgres  *results.PkgRes
 	buildr  *results.Builder
 	// map from ssa.Value to memory locs
-	vmap map[ssa.Value]memory.Loc
-	// map from ssa.Value of type pointer
-	// to the memory location of the unique object to which
-	// vmap[p] points (clearly not all pointers point to
-	// unique ops, but this is used for example to implement
-	// *ssa.FieldAddr(*ssa.Alloc, n).
-	omap map[ssa.Value]memory.Loc
-	//
+	vmap  map[ssa.Value]memory.Loc
 	funcs map[*ssa.Function]*Func
 }
 
@@ -85,7 +79,6 @@ func New(pass *analysis.Pass, vs index.T) (*T, error) {
 		index:   vs,
 		buildr:  results.NewBuilder(pkgRes),
 		vmap:    make(map[ssa.Value]memory.Loc, 8192),
-		omap:    make(map[ssa.Value]memory.Loc, 8192),
 		funcs:   make(map[*ssa.Function]*Func)}
 	return pal, nil
 }
@@ -155,7 +148,6 @@ func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 
 		loc, ptr := buildr.GenWithPointer()
 		p.vmap[x] = ptr
-		p.omap[x] = loc
 		if traceLocVal {
 			fmt.Printf("g %s %s %s\n", x.Name(), plain.String(loc), buildr.Type)
 		}
@@ -206,9 +198,8 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 		bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
 		bld.Pos = a.Pos()
 		bld.SrcKind = results.SrcVar
-		obj, ptr := bld.GenWithPointer()
+		_, ptr := bld.GenWithPointer()
 		p.vmap[a] = ptr
-		p.omap[a] = obj
 
 		if traceLocVal {
 			fmt.Printf("l %s %s %s\n", a.Name(), plain.String(ptr), a.Type())
@@ -264,9 +255,8 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			bld.SrcKind = results.SrcVar
 			bld.Class = memory.Local
 		}
-		obj, ptr := bld.GenWithPointer()
+		_, ptr := bld.GenWithPointer()
 		p.vmap[i9n] = ptr
-		p.omap[i9n] = obj
 		if traceLocVal {
 			fmt.Printf("a %s %s\n", i9n.Name(), plain.String(ptr))
 		}
@@ -283,35 +273,24 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	case *ssa.Field:
 		xloc := p.getLoc(bld, i9n.X)
 		floc := bld.Field(xloc, i9n.Field)
-		p.vmap[i9n] = floc
+		iloc := bld.GenLoc()
+		bld.GenTransfer(iloc, floc)
+		p.vmap[i9n] = iloc
 
 	case *ssa.FieldAddr:
-		// the requirements are subtle.  we need to be able
-		// to calculate deref(i9n.X) to get
-		elemTy := i9n.X.Type().Underlying().(*types.Pointer).Elem()
-		_ = elemTy
-
+		fmt.Printf("FieldAddr of %s\n", i9n.X.Type().Underlying())
 		var dobj memory.Loc
-		fmt.Printf("FieldAdd: X=%v\n", i9n.X)
 		var ok bool
-		if dobj, ok = p.omap[i9n.X]; !ok {
-			if true {
-				// we need to make sure other ops
-				// which can lead to this are modelled
+		if dobj, ok = p.vmap[i9n.X]; !ok {
+			// we need to make sure other ops
+			// which can lead to this are modelled
 
-				panic(fmt.Sprintf("&o.f o=%s i9n %s\n", i9n.X, i9n))
-			}
-			bld.Reset()
-			elemTy := i9n.X.Type().Underlying().(*types.Pointer).Elem()
-			bld.Type = elemTy
-			bld.Class = memory.Local
-			bld.Pos = i9n.Pos()
-			dobj = bld.GenLoc()
-			bld.GenLoad(dobj, p.getLoc(bld, i9n.X))
+			panic(fmt.Sprintf("&o.f o=%s i9n %s\n", i9n.X, i9n))
 		}
-		//ptr := bld.GenPointerTo(dobj)
-		//p.vmap[i9n] = ptr
-		p.omap[i9n] = dobj
+		ptr := bld.GenLoc()
+		dobj = bld.Field(dobj, i9n.Field)
+		bld.GenPointsTo(ptr, dobj)
+		p.vmap[i9n] = ptr
 	case *ssa.Go:
 		p.call(bld, i9n.Call)
 	case *ssa.If:
@@ -347,6 +326,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 
 		}
 	case *ssa.IndexAddr:
+		fmt.Printf("IndexAddr  of %s\n", i9n.X.Type().Underlying())
 
 		switch i9n.X.Type().Underlying().(type) {
 		case *types.Array:
@@ -466,7 +446,7 @@ func (p *T) getLoc(b *results.Builder, v ssa.Value) memory.Loc {
 func (p *T) putResults() {
 	if debugLogModel {
 		fmt.Printf("built pal model for %s\n", p.pkgres.PkgPath)
-		//p.pkgres.PlainEncode(os.Stdout)
+		p.pkgres.PlainEncode(os.Stdout)
 	}
 	p.results.Put(p.pass.Pkg.Path(), p.pkgres)
 }

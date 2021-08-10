@@ -372,9 +372,9 @@ func (mod *Model) Import(other *Model) {
 }
 
 func (mod *Model) PlainEncodeConstraints(w io.Writer) error {
-	_, err := fmt.Printf("%d\n", len(mod.constraints))
+	_, err := fmt.Fprintf(w, "%d\n", len(mod.constraints))
 	if err != nil {
-		return err
+		return fmt.Errorf("mod:constraints: %w", err)
 	}
 	for i := range mod.constraints {
 		c := &mod.constraints[i]
@@ -394,7 +394,7 @@ func (mod *Model) PlainDecodeConstraints(r io.Reader) error {
 	var err error
 	_, err = fmt.Fscanf(r, "%d\n", &N)
 	if err != nil {
-		return err
+		return fmt.Errorf("mod:constraints:N: %d %w", N, err)
 	}
 	mod.constraints = nil
 	constraints := make([]Constraint, N)
@@ -403,11 +403,11 @@ func (mod *Model) PlainDecodeConstraints(r io.Reader) error {
 		c := &constraints[i]
 		err = c.PlainDecode(r)
 		if err != nil {
-			return err
+			return fmt.Errorf("mod:constraints[%d]: %w", i, err)
 		}
 		_, err = io.ReadFull(r, buf)
 		if err != nil {
-			return err
+			return fmt.Errorf("mod:constraintsnl[%d]: %w", i, err)
 		}
 		if buf[0] != byte('\n') {
 			return fmt.Errorf("unexpected '%s'", string(buf))
