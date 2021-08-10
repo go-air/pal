@@ -78,7 +78,7 @@ func (pkg *PkgRes) PlainEncode(w io.Writer) error {
 			return nil
 		}
 	}
-	return nil
+	return pkg.MemModel.PlainEncodeConstraints(w)
 }
 
 func (pkg *PkgRes) PlainDecode(r io.Reader) error {
@@ -106,16 +106,16 @@ func (pkg *PkgRes) PlainDecode(r io.Reader) error {
 			return fmt.Errorf("3 %d-%w", i, err)
 		}
 		_, err = io.ReadFull(br, spaceBuf)
-		if err != nil {
+		if err != nil || spaceBuf[0] != byte(' ') {
 			return fmt.Errorf("4 %d-'%s'-%w", i, string(spaceBuf), err)
 		}
 		if err = si.PlainDecode(br); err != nil {
 			return fmt.Errorf("5 %d-%w", i, err)
 		}
 		_, err = io.ReadFull(br, spaceBuf)
-		if err != nil {
+		if err != nil || spaceBuf[0] != byte('\n') {
 			return fmt.Errorf("6 %d-'%s'-%w", i, string(spaceBuf), err)
 		}
 	}
-	return nil
+	return pkg.MemModel.PlainDecodeConstraints(br)
 }

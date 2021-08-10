@@ -72,6 +72,14 @@ func (mod *Model) Root(m Loc) Loc {
 	return mod.locs[m].root
 }
 
+func (mod *Model) Obj(ptr Loc) Loc {
+	return mod.locs[ptr].obj
+}
+
+func (mod *Model) SetObj(ptr, dst Loc) {
+	mod.locs[ptr].obj = dst
+}
+
 // Access returns the T which results from
 // add vo to the virtual size of m.
 func (mod *Model) Field(m Loc, i int) Loc {
@@ -316,7 +324,8 @@ func (mod *Model) AddPointsTo(a, b Loc) {
 func (mod *Model) GenWithPointer(ty types.Type, c Class, as Attrs) (obj, ptr Loc) {
 	obj = mod.GenRoot(ty, c, as)
 	ptr = Loc(len(mod.locs))
-	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, root: ptr})
+
+	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, root: ptr, obj: obj})
 	mod.AddPointsTo(ptr, obj)
 	return
 }
@@ -372,9 +381,11 @@ func (mod *Model) Import(other *Model) {
 }
 
 func (mod *Model) PlainEncodeConstraints(w io.Writer) error {
-	_, err := fmt.Printf("%d\n", len(mod.constraints))
+
+	_, err := fmt.Fprintf(w, "%d\n", len(mod.constraints))
 	if err != nil {
-		return err
+		return fmt.Errorf("mod:constraints: %w", err)
+
 	}
 	for i := range mod.constraints {
 		c := &mod.constraints[i]
@@ -394,7 +405,8 @@ func (mod *Model) PlainDecodeConstraints(r io.Reader) error {
 	var err error
 	_, err = fmt.Fscanf(r, "%d\n", &N)
 	if err != nil {
-		return err
+
+		return fmt.Errorf("mod:constraints:N: %d %w", N, err)
 	}
 	mod.constraints = nil
 	constraints := make([]Constraint, N)
@@ -403,11 +415,13 @@ func (mod *Model) PlainDecodeConstraints(r io.Reader) error {
 		c := &constraints[i]
 		err = c.PlainDecode(r)
 		if err != nil {
-			return err
+
+			return fmt.Errorf("mod:constraints[%d]: %w", i, err)
 		}
 		_, err = io.ReadFull(r, buf)
 		if err != nil {
-			return err
+			return fmt.Errorf("mod:constraintsnl[%d]: %w", i, err)
+
 		}
 		if buf[0] != byte('\n') {
 			return fmt.Errorf("unexpected '%s'", string(buf))

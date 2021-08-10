@@ -18,8 +18,6 @@ import (
 	"fmt"
 	"go/token"
 	"io"
-
-	"github.com/go-air/pal/internal/byteorder"
 )
 
 type SrcKind int
@@ -108,42 +106,9 @@ func (si *SrcInfo) PlainDecode(r io.Reader) error {
 	var err error
 	p := &si.Kind
 	if err = p.PlainDecode(r); err != nil {
-		return err
+		return fmt.Errorf("si decode: %w", err)
 	}
 	q := &si.Pos
 	_, err = fmt.Fscanf(r, " %08x", q)
 	return err
-}
-
-// PalEncode encodes si onto w, returning
-// a non-nil error if there was a problem
-// writing.
-func (si *SrcInfo) PalEncode(w io.Writer) error {
-	buf := make([]byte, 9)
-	buf[0] = byte(si.Kind)
-	byteorder.ByteOrder().PutUint64(buf[1:], uint64(si.Pos))
-	_, e := w.Write([]byte{byte(si.Kind)})
-	return e
-}
-
-// PalDecode decodes r into si, overwriting
-// si's fields
-func (si *SrcInfo) PalDecode(r io.Reader) error {
-	buf := make([]byte, 9)
-	var s, n int
-	var err error
-	for {
-		n, err = r.Read(buf)
-		s += n
-		if s == 9 && (err == nil || err == io.EOF) {
-			break
-		}
-		if err != nil {
-			return err
-		}
-		buf = buf[n:]
-	}
-	si.Kind = SrcKind(buf[0])
-	si.Pos = token.Pos(byteorder.ByteOrder().Uint64(buf[1:]))
-	return nil
 }

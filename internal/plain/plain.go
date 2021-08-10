@@ -58,7 +58,7 @@ func EncodeJoin(w io.Writer, sep string, es ...Encoder) error {
 	var err error
 	for i, e := range es {
 		if i != 0 {
-			_, err = fmt.Fprint(w, sepBytes)
+			_, err = w.Write(sepBytes)
 			if err != nil {
 				return err
 			}

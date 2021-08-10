@@ -15,7 +15,6 @@
 package memory
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"strconv"
@@ -41,7 +40,7 @@ func (m Loc) PlainEncode(w io.Writer) error {
 func (m *Loc) PlainDecode(r io.Reader) error {
 	var buf = make([]byte, 8)
 	if _, err := io.ReadFull(r, buf); err != nil {
-		return err
+		return fmt.Errorf("decode loc: %w", err)
 	}
 	n, e := strconv.ParseUint(string(buf), 16, 32)
 	*m = Loc(uint32(n))
@@ -55,35 +54,16 @@ type loc struct {
 	parent Loc
 
 	lsz  index.I // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
+
+	obj  Loc     // locals and globals are passed by addr...  NoLoc if unknown
+
 	mark int     // scratch space for internal algos
 }
 
 func (m *loc) PlainEncode(w io.Writer) error {
-	_, e := fmt.Fprintf(w, "%s %s %s",
-		plain.String(m.class), plain.String(m.attrs),
-		plain.String(m.parent))
-	return e
+	return plain.EncodeJoin(w, " ", m.class, m.attrs, m.parent, m.obj)
 }
 
 func (m *loc) PlainDecode(r io.Reader) error {
-	var word string
-	var err error
-	br := bufio.NewReader(r)
-	word, err = br.ReadString(' ')
-	if err != nil {
-		return err
-	}
-	if err = plain.Parse(&m.class, word); err != nil {
-		return err
-	}
-	word, err = br.ReadString(' ')
-	if err := plain.Parse(&m.attrs, word); err != nil {
-		return err
-	}
-	buf := make([]byte, 8)
-	_, err = io.ReadFull(br, buf)
-	if err != nil {
-		return err
-	}
-	return plain.Parse(&m.parent, string(buf))
+	return plain.DecodeJoin(r, " ", &m.class, &m.attrs, &m.parent, &m.obj)
 }
