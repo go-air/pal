@@ -80,11 +80,11 @@
 //
 // Load constraints 'd = *p' indicate that for any v in the points to set of p,
 // v is in the points to set of d, recursively descending structured data at
-// *p.
+// *p in tandem with d.
 //
 // Store constraints '*p = v' indicate that for any d in the points to set of p
 // and any w in the points to set of v, w is in the points to set of d,
-// recursively descending structured data at v.
+// recursively descending structured data at v, in tandem with d.
 //
 // Transfer constraints 'dst = src + i' indicate the points to set of src at
 // index i is contained in the points to set of dst.  i may either be a
@@ -92,8 +92,5 @@
 // constant 0 for any pointer to non-structured data. i must be a constant if
 // src is a pointer to a struct.  i may be an int64 expression if src is a
 // pointer to an array or slice.
-//
-// The indices i are abstract: they represent sets of possible values during
-// any execution of the program under analysis.
 //
 package memory

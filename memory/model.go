@@ -72,6 +72,14 @@ func (mod *Model) Root(m Loc) Loc {
 	return mod.locs[m].root
 }
 
+func (mod *Model) Obj(ptr Loc) Loc {
+	return mod.locs[ptr].obj
+}
+
+func (mod *Model) SetObj(ptr, dst Loc) {
+	mod.locs[ptr].obj = dst
+}
+
 // Access returns the T which results from
 // add vo to the virtual size of m.
 func (mod *Model) Field(m Loc, i int) Loc {
@@ -316,7 +324,7 @@ func (mod *Model) AddPointsTo(a, b Loc) {
 func (mod *Model) GenWithPointer(ty types.Type, c Class, as Attrs) (obj, ptr Loc) {
 	obj = mod.GenRoot(ty, c, as)
 	ptr = Loc(len(mod.locs))
-	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, root: ptr})
+	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, root: ptr, obj: obj})
 	mod.AddPointsTo(ptr, obj)
 	return
 }

@@ -18,7 +18,6 @@
 package ssa2pal
 
 import (
-	"errors"
 	"fmt"
 	"go/constant"
 	"go/token"
@@ -85,12 +84,30 @@ func New(pass *analysis.Pass, vs index.T) (*T, error) {
 
 func (p *T) GenResult() (*results.T, error) {
 	var err error
-	// for every member generate memory locations
-	// and constraints.
+	// generate globals
 	for name, mbr := range p.ssa.Pkg.Members {
-		err = p.genMember(name, mbr)
-		if err != nil {
-			return nil, err
+		switch mbr.Token() {
+		case token.TYPE, token.CONST:
+			continue
+		}
+		switch g := mbr.(type) {
+		case *ssa.Global:
+			p.buildr.Reset()
+			p.genGlobal(p.buildr, name, g)
+		}
+	}
+	// generate functions
+	for name, mbr := range p.ssa.Pkg.Members {
+		switch mbr.Token() {
+		case token.TYPE, token.CONST:
+			continue
+		}
+		switch fn := mbr.(type) {
+		case *ssa.Function:
+			p.buildr.Reset()
+			if err = p.addFuncDecl(p.buildr, name, fn); err != nil {
+				return nil, err
+			}
 		}
 	}
 	// TBD: calc results from generation above
@@ -98,33 +115,6 @@ func (p *T) GenResult() (*results.T, error) {
 	// place the results for current package in p.results.
 	p.putResults()
 	return p.results, nil
-}
-
-func (p *T) genMember(name string, mbr ssa.Member) error {
-	switch mbr.Token() {
-	case token.TYPE, token.CONST:
-		return nil
-	}
-	buildr := p.buildr
-	buildr.Reset()
-
-	switch x := mbr.(type) {
-	case *ssa.Global:
-		// globals are treated
-		p.genGlobal(buildr, name, x)
-		return nil
-
-	case *ssa.Function:
-		return p.addFuncDecl(buildr, name, x)
-	default:
-		// NB(wsc) I think we can panic here...
-		msg := fmt.Sprintf(
-			"unexpected ssa member for %s %s %#v\n",
-			name,
-			x.Type(),
-			x)
-		return errors.New(msg)
-	}
 }
 
 func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
@@ -148,8 +138,8 @@ func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 
 		loc, ptr := buildr.GenWithPointer()
 		p.vmap[x] = ptr
-		if traceLocVal {
-			fmt.Printf("g %s %s %s\n", x.Name(), plain.String(loc), buildr.Type)
+		if true || traceLocVal {
+			fmt.Printf("g %s %s %s %v\n", x.Name(), plain.String(loc), buildr.Type, x)
 		}
 
 		return
@@ -278,19 +268,27 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		p.vmap[i9n] = iloc
 
 	case *ssa.FieldAddr:
-		fmt.Printf("FieldAddr of %s\n", i9n.X.Type().Underlying())
-		var dobj memory.Loc
+		var ptr memory.Loc
 		var ok bool
-		if dobj, ok = p.vmap[i9n.X]; !ok {
+		if ptr, ok = p.vmap[i9n.X]; !ok {
 			// we need to make sure other ops
 			// which can lead to this are modelled
-
 			panic(fmt.Sprintf("&o.f o=%s i9n %s\n", i9n.X, i9n))
 		}
-		ptr := bld.GenLoc()
-		dobj = bld.Field(dobj, i9n.Field)
-		bld.GenPointsTo(ptr, dobj)
-		p.vmap[i9n] = ptr
+
+		res := bld.GenLoc()
+		p.vmap[i9n] = res
+		mdl := bld.Model()
+		obj := mdl.Obj(ptr)
+		fobj := memory.NoLoc
+		if obj != memory.NoLoc {
+			fobj = mdl.Field(obj, i9n.Field)
+			bld.GenPointsTo(res, fobj)
+			mdl.SetObj(res, fobj)
+		} else {
+			mdl.AddTransferIndex(res, ptr, i9n.Field)
+		}
+
 	case *ssa.Go:
 		p.call(bld, i9n.Call)
 	case *ssa.If:
@@ -299,8 +297,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		// if i9n.Index is constant, we can
 		// access its model
 		//
-		// if not, perhaps we back off with transfer
-		// constraints and a new Loc
+		// if not, we back off with transfer constraints and a new Loc
 		xloc := p.getLoc(bld, i9n.X)
 		switch idx := i9n.Index.(type) {
 		case *ssa.Const:
@@ -312,7 +309,6 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			eltLoc := bld.ArrayIndex(xloc, i)
 			p.vmap[i9n] = eltLoc
 		default:
-
 			ty := i9n.Type().Underlying().(*types.Array)
 			N := ty.Len()
 			bld.Type = ty
@@ -326,25 +322,22 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 
 		}
 	case *ssa.IndexAddr:
-		fmt.Printf("IndexAddr  of %s\n", i9n.X.Type().Underlying())
-
-		switch i9n.X.Type().Underlying().(type) {
+		fmt.Printf("IndexAddr  of %s: %v\n", i9n.X.Type().Underlying(), i9n.X)
+		ptr, ok := p.vmap[i9n.X]
+		if !ok {
+			panic("wilma!")
+		}
+		obj := p.buildr.Model().Obj(ptr)
+		if obj != memory.NoLoc {
+		}
+		res := p.buildr.GenLoc()
+		p.vmap[i9n] = res
+		ptdTy := i9n.X.Type().Underlying().(*types.Pointer).Elem()
+		switch ptdTy.Underlying().(type) {
 		case *types.Array:
-			switch idx := i9n.Index.(type) {
-			case *ssa.Const:
-				i, ok := constant.Val(idx.Value).(int)
-				if !ok {
-					panic(fmt.Sprintf("const int %v\n", idx.Value))
-				}
-				xloc := p.vmap[i9n.X]
-				p.vmap[i9n] = bld.ArrayIndex(xloc, i)
-			default:
-				// TBD
-			}
 		case *types.Slice:
-			p.vmap[i9n] = p.vmap[i9n.X]
 		default:
-			// TBD
+			panic("barney!")
 		}
 
 	case *ssa.Jump:
