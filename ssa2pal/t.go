@@ -23,6 +23,7 @@ import (
 	"go/token"
 	"go/types"
 	"os"
+	"sort"
 
 	"github.com/go-air/pal/index"
 	"github.com/go-air/pal/internal/plain"
@@ -47,7 +48,7 @@ type T struct {
 	buildr  *results.Builder
 	// map from ssa.Value to memory locs
 
-	vmap  map[ssa.Value]memory.Loc
+	vmap map[ssa.Value]memory.Loc
 
 	funcs map[*ssa.Function]*Func
 }
@@ -81,30 +82,35 @@ func New(pass *analysis.Pass, vs index.T) (*T, error) {
 		buildr:  results.NewBuilder(pkgRes),
 		vmap:    make(map[ssa.Value]memory.Loc, 8192),
 
-		funcs:   make(map[*ssa.Function]*Func)}
+		funcs: make(map[*ssa.Function]*Func)}
 	return pal, nil
 }
 
 func (p *T) GenResult() (*results.T, error) {
 	var err error
 	// generate globals
-	for name, mbr := range p.ssa.Pkg.Members {
+	mbrs := p.ssa.Pkg.Members
+	mbrKeys := make([]string, 0, len(mbrs))
+	// get and sort keys for determinism
+	for name, mbr := range mbrs {
 		switch mbr.Token() {
 		case token.TYPE, token.CONST:
 			continue
 		}
+		mbrKeys = append(mbrKeys, name)
+	}
+	sort.Strings(mbrKeys)
+	// add globals
+	for _, name := range mbrKeys {
+		mbr := mbrs[name]
 		switch g := mbr.(type) {
 		case *ssa.Global:
 			p.buildr.Reset()
 			p.genGlobal(p.buildr, name, g)
 		}
 	}
-	// generate functions
+
 	for name, mbr := range p.ssa.Pkg.Members {
-		switch mbr.Token() {
-		case token.TYPE, token.CONST:
-			continue
-		}
 		switch fn := mbr.(type) {
 		case *ssa.Function:
 			p.buildr.Reset()
@@ -296,7 +302,6 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		} else {
 			mdl.AddTransferIndex(res, ptr, i9n.Field)
 		}
-
 
 	case *ssa.Go:
 		p.call(bld, i9n.Call)
