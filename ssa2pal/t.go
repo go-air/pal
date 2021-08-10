@@ -185,26 +185,7 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 
 	// locals: *ssa.Alloc
 	for _, a := range fn.Locals {
-		if _, present := p.vmap[a]; present {
-			panic("double local?")
-			continue
-		}
-		bld.Reset()
-		bld.Class = memory.Local
-		if a.Heap {
-			bld.Class = memory.Global
-		}
-		bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
-		bld.Pos = a.Pos()
-		bld.SrcKind = results.SrcVar
-
-		_, ptr := bld.GenWithPointer()
-
-		p.vmap[a] = ptr
-
-		if traceLocVal {
-			fmt.Printf("l %s %s %s\n", a.Name(), plain.String(ptr), a.Type())
-		}
+		p.genAlloc(bld, a)
 	}
 
 	// blocks
@@ -219,6 +200,24 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 		}
 	}
 	return nil
+}
+
+func (p *T) genAlloc(bld *results.Builder, a *ssa.Alloc) {
+	if _, present := p.vmap[a]; present {
+		return
+	}
+	bld.Reset()
+	bld.Class = memory.Local
+	if a.Heap {
+		bld.Class = memory.Global
+	}
+	bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
+	bld.Pos = a.Pos()
+	bld.SrcKind = results.SrcVar
+
+	_, ptr := bld.GenWithPointer()
+
+	p.vmap[a] = ptr
 }
 
 func (p *T) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlock) error {
@@ -243,25 +242,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	bld.Pos = i9n.Pos()
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc:
-		if _, present := p.vmap[i9n]; present {
-			// we batch created the locals...
-			return nil
-		}
-		bld.Pos = i9n.Pos()
-		bld.Type = i9n.Type().Underlying().(*types.Pointer).Elem().Underlying()
-		if i9n.Heap {
-			bld.SrcKind = results.SrcNew
-			bld.Class = memory.Heap
-		} else {
-			bld.SrcKind = results.SrcVar
-			bld.Class = memory.Local
-		}
-
-		_, ptr := bld.GenWithPointer()
-		p.vmap[i9n] = ptr
-		if traceLocVal {
-			fmt.Printf("a %s %s\n", i9n.Name(), plain.String(ptr))
-		}
+		p.genAlloc(bld, i9n)
 	case *ssa.BinOp:
 	case *ssa.Call:
 		p.call(bld, i9n.Call)
@@ -346,6 +327,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		}
 		obj := p.buildr.Model().Obj(ptr)
 		if obj != memory.NoLoc {
+
 		}
 		res := p.buildr.GenLoc()
 		p.vmap[i9n] = res
@@ -401,10 +383,12 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		for i, res := range i9n.Results {
 			resLoc := palFn.ResultLoc(i)
 			// need to deal with things
-			// which don't have pointers....
-			if vloc, ok := p.vmap[res]; ok {
-				bld.GenTransfer(resLoc, vloc)
+			// which don't have pointers associated
+			vloc, ok := p.vmap[res]
+			if !ok {
+				continue
 			}
+			bld.GenTransfer(resLoc, vloc)
 		}
 
 	case *ssa.UnOp:
