@@ -110,6 +110,7 @@ func (p *T) GenResult() (*results.T, error) {
 		}
 	}
 
+	// add funcs
 	for name, mbr := range p.ssa.Pkg.Members {
 		switch fn := mbr.(type) {
 		case *ssa.Function:
@@ -130,25 +131,21 @@ func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 	// globals are in general pointers to the globally stored
 	// index
 	buildr.Pos = x.Pos()
-	buildr.Type = x.Type().Underlying()
 	buildr.Class = memory.Global
 	if token.IsExported(name) {
 		// mark opaque because packages which import this one
 		// may set the variable to whatever.
 		buildr.Attrs = memory.IsOpaque
 	}
-	switch ty := buildr.Type.(type) {
+	switch ty := x.Type().Underlying().(type) {
 	case *types.Pointer:
 		buildr.Type = ty.Elem()
 		buildr.SrcKind = results.SrcVar
-		// gen what it points to
-		// pointer generated below
-		buildr.Type = ty
 
 		loc, ptr := buildr.GenWithPointer()
 		p.vmap[x] = ptr
-		if true || traceLocVal {
-			fmt.Printf("g %s %s %s %v\n", x.Name(), plain.String(loc), buildr.Type, x)
+		if traceLocVal {
+			fmt.Printf("g %s %s %s %v %p\n", x.Name(), plain.String(loc), buildr.Type, x, x)
 		}
 
 		return
@@ -189,15 +186,28 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 	}
 
 	// blocks
-	for _, blk := range fn.Blocks {
-		if err := p.genBlock(bld, name, blk); err != nil {
+	return p.genBlocks(bld, name, fn)
+}
+
+func (p *T) genBlocks(bld *results.Builder, name string, fn *ssa.Function) error {
+	if len(fn.Blocks) == 0 {
+		// intrinsic
+		return nil
+	}
+	cur := fn.Blocks[0]
+	q := make([]*ssa.BasicBlock, 0, len(fn.Blocks))
+	q = append(q, cur)
+	i := 0
+	for i < len(q) {
+		cur = q[i]
+		i++
+		if err := p.genBlock(bld, name, cur); err != nil {
 			return err
 		}
+		q = append(q, cur.Dominees()...)
 	}
 	if fn.Recover != nil {
-		if err := p.genBlock(bld, name, fn.Recover); err != nil {
-			return err
-		}
+		return p.genBlock(bld, name, fn.Recover)
 	}
 	return nil
 }
@@ -221,6 +231,7 @@ func (p *T) genAlloc(bld *results.Builder, a *ssa.Alloc) {
 }
 
 func (p *T) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlock) error {
+
 	for _, i9n := range blk.Instrs {
 		if err := p.genI9n(bld, fnName, i9n); err != nil {
 			return err
@@ -233,12 +244,12 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	if traceGenI9n {
 		fmt.Printf("gen %s\n", i9n)
 	}
-	defer func() {
-		if e := recover(); e != nil {
-			fmt.Printf("on i9n %s in %s\n", i9n, fnName)
-			panic(e)
-		}
-	}()
+	// defer func() {
+	// 	if e := recover(); e != nil {
+	// 		fmt.Printf("on i9n %s in %s\n", i9n, fnName)
+	// 		panic(e)
+	// 	}
+	// }()
 	bld.Pos = i9n.Pos()
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc:
@@ -268,7 +279,7 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		if ptr, ok = p.vmap[i9n.X]; !ok {
 			// we need to make sure other ops
 			// which can lead to this are modelled
-			panic(fmt.Sprintf("&o.f o=%s i9n %s\n", i9n.X, i9n))
+			panic(fmt.Sprintf("&o.f o=%s i9n %v\n", i9n.X, i9n))
 		}
 
 		res := bld.GenLoc()
@@ -320,23 +331,21 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 
 		}
 	case *ssa.IndexAddr:
-		fmt.Printf("IndexAddr  of %s: %v\n", i9n.X.Type().Underlying(), i9n.X)
 		ptr, ok := p.vmap[i9n.X]
 		if !ok {
-			panic("wilma!")
+			// we need to deal with cyclic flow...
+			panic(fmt.Sprintf("wilma! %v %s", i9n.X, i9n.X.Type()))
 		}
-		obj := p.buildr.Model().Obj(ptr)
-		if obj != memory.NoLoc {
-
-		}
+		p.buildr.Type = i9n.Type()
 		res := p.buildr.GenLoc()
 		p.vmap[i9n] = res
-		ptdTy := i9n.X.Type().Underlying().(*types.Pointer).Elem()
-		switch ptdTy.Underlying().(type) {
-		case *types.Array:
+		switch i9n.X.Type().Underlying().(type) {
+		case *types.Pointer: // to array?
+			p.buildr.GenTransfer(res, ptr)
 		case *types.Slice:
+			p.buildr.GenTransfer(res, ptr)
 		default:
-			panic("barney!")
+			panic("unexpected type of ssa.IndexAddr.X")
 		}
 
 	case *ssa.Jump:
@@ -349,13 +358,26 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	case *ssa.MakeClosure:
 	case *ssa.MakeChan:
 	case *ssa.MakeSlice:
-		bld.Type = i9n.Type()
+		bld.Type = i9n.Type().Underlying().(*types.Slice).Elem()
 		bld.Class = memory.Heap
 		bld.SrcKind = results.SrcMakeSlice
 		obj := bld.GenLoc()
 		p.vmap[i9n] = obj
 	case *ssa.MakeMap:
+		ty := i9n.Type().Underlying().(*types.Map)
+		keyType := ty.Key()
+		valType := ty.Elem()
+		bld.Reset()
+		bld.Pos = i9n.Pos()
+		bld.Type = keyType
+		keyLoc := bld.GenLoc()
+		bld.Type = valType
+		valLoc := bld.GenLoc()
+		_ = keyLoc
+		_ = valLoc
+
 	case *ssa.MapUpdate:
+
 	case *ssa.Next: // either string iterator or map
 		if !i9n.IsString {
 			// not addressable
@@ -365,6 +387,19 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		// it is a map, type Tuple
 	case *ssa.Panic:
 	case *ssa.Phi:
+		bld.Type = i9n.Type()
+		v := bld.GenLoc()
+		p.vmap[i9n] = v
+		for _, x := range i9n.Edges {
+			ev, ok := p.vmap[x]
+			if !ok {
+				// need to deal with
+				// cyclic blocks and numerics
+				continue
+				//panic(fmt.Sprintf("phi: edge %v, no val", ev))
+			}
+			bld.GenTransfer(v, ev)
+		}
 	case *ssa.Range:
 	case *ssa.RunDefers:
 		// no-op b/c we treat defers like calls.
@@ -386,6 +421,8 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 			// which don't have pointers associated
 			vloc, ok := p.vmap[res]
 			if !ok {
+				// acyclic values.
+				fmt.Printf("xxx %s\n", res.Type())
 				continue
 			}
 			bld.GenTransfer(resLoc, vloc)
