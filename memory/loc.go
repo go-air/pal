@@ -32,10 +32,6 @@ type Loc uint32
 
 const NoLoc = Loc(0)
 
-func (m Loc) String() string {
-	return fmt.Sprintf("%08x", m)
-}
-
 func (m Loc) PlainEncode(w io.Writer) error {
 	_, e := fmt.Fprintf(w, "%08x", m)
 	return e

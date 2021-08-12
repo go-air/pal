@@ -289,6 +289,13 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		*sum++
 		mod.add(ty.Elem(), class, attrs, n, r, sum)
 
+	case *types.Tuple:
+		mod.locs = append(mod.locs, l)
+		*sum++
+		tn := ty.Len()
+		for i := 0; i < tn; i++ {
+			mod.add(ty.At(i).Type(), class, attrs, n, r, sum)
+		}
 	case *types.Named:
 		// no space reserved for named types, go to
 		// underlying
