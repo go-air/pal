@@ -25,7 +25,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/go-air/pal/index"
+	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/results"
@@ -42,7 +42,7 @@ type T struct {
 	// represents the current package under
 	// analysis.
 	pkg     *ssa.Package
-	index   index.T
+	index   indexing.T
 	results *results.T
 	pkgres  *results.PkgRes
 	buildr  *results.Builder
@@ -53,12 +53,9 @@ type T struct {
 	funcs map[*ssa.Function]*Func
 }
 
-func New(pass *analysis.Pass, vs index.T) (*T, error) {
+func New(pass *analysis.Pass, vs indexing.T) (*T, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
-	if pkgPath == "internal/cpu" {
-		return nil, fmt.Errorf("skip %s", pkgPath)
-	}
 	fmt.Printf("ssa2pal: %s\n", pkgPath)
 	pkgRes := results.NewPkgRes(pkgPath, vs)
 	for _, imp := range pass.Pkg.Imports() {
@@ -91,7 +88,7 @@ func (p *T) GenResult() (*results.T, error) {
 	// generate globals
 	mbrs := p.ssa.Pkg.Members
 	mbrKeys := make([]string, 0, len(mbrs))
-	// get and sort keys for determinism
+	// get and sort relevant member keys for determinism
 	for name, mbr := range mbrs {
 		switch mbr.Token() {
 		case token.TYPE, token.CONST:
@@ -130,25 +127,21 @@ func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 	// globals are in general pointers to the globally stored
 	// index
 	buildr.Pos = x.Pos()
-	buildr.Type = x.Type().Underlying()
 	buildr.Class = memory.Global
 	if token.IsExported(name) {
 		// mark opaque because packages which import this one
 		// may set the variable to whatever.
 		buildr.Attrs = memory.IsOpaque
 	}
-	switch ty := buildr.Type.(type) {
+	switch ty := x.Type().Underlying().(type) {
 	case *types.Pointer:
 		buildr.Type = ty.Elem()
 		buildr.SrcKind = results.SrcVar
-		// gen what it points to
-		// pointer generated below
-		buildr.Type = ty
 
 		loc, ptr := buildr.GenWithPointer()
 		p.vmap[x] = ptr
-		if true || traceLocVal {
-			fmt.Printf("g %s %s %s %v\n", x.Name(), plain.String(loc), buildr.Type, x)
+		if traceLocVal {
+			fmt.Printf("g %s %s %s %v %p\n", x.Name(), plain.String(loc), buildr.Type, x, x)
 		}
 
 		return
@@ -180,88 +173,124 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 	}
 	// free vars not needed here -- top level func def
 
-	// need to do this for result below
 	p.funcs[fn] = memFn
+	p.genBlocksValues(bld, name, fn)
+	p.genConstraints(bld, name, fn)
 
-	// locals: *ssa.Alloc
-	for _, a := range fn.Locals {
-		if _, present := p.vmap[a]; present {
-			panic("double local?")
-			continue
-		}
-		bld.Reset()
-		bld.Class = memory.Local
-		if a.Heap {
-			bld.Class = memory.Global
-		}
-		bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
-		bld.Pos = a.Pos()
-		bld.SrcKind = results.SrcVar
+	return nil
+}
 
-		_, ptr := bld.GenWithPointer()
-
-		p.vmap[a] = ptr
-
-		if traceLocVal {
-			fmt.Printf("l %s %s %s\n", a.Name(), plain.String(ptr), a.Type())
-		}
-	}
-
-	// blocks
+func (p *T) genBlocksValues(bld *results.Builder, name string, fn *ssa.Function) {
 	for _, blk := range fn.Blocks {
-		if err := p.genBlock(bld, name, blk); err != nil {
-			return err
-		}
+		p.genBlockValues(bld, name, blk)
 	}
 	if fn.Recover != nil {
-		if err := p.genBlock(bld, name, fn.Recover); err != nil {
-			return err
-		}
+		p.genBlockValues(bld, name, fn.Recover)
 	}
-	return nil
 }
 
-func (p *T) genBlock(bld *results.Builder, fnName string, blk *ssa.BasicBlock) error {
+func (p *T) genConstraints(bld *results.Builder, name string, fn *ssa.Function) {
+	for _, blk := range fn.Blocks {
+		p.genBlockConstraints(bld, name, blk)
+	}
+	if fn.Recover != nil {
+		p.genBlockConstraints(bld, name, fn.Recover)
+	}
+}
+
+func (p *T) genBlockValues(bld *results.Builder, name string, blk *ssa.BasicBlock) {
 	for _, i9n := range blk.Instrs {
-		if err := p.genI9n(bld, fnName, i9n); err != nil {
+		switch v := i9n.(type) {
+		case *ssa.DebugRef, *ssa.Defer, *ssa.Go, *ssa.If, *ssa.Jump,
+			*ssa.MapUpdate, *ssa.Panic, *ssa.Return,
+			*ssa.RunDefers, *ssa.Send, *ssa.Store:
+			// these are not values
+		default:
+			p.genValueLoc(bld, v.(ssa.Value))
+		}
+	}
+}
+
+func (p *T) genValueLoc(bld *results.Builder, v ssa.Value) memory.Loc {
+	bld.Reset()
+	bld.Pos = v.Pos()
+	bld.Type = v.Type().Underlying()
+	bld.Class = memory.Local
+	var res memory.Loc
+	switch v := v.(type) {
+	case *ssa.Alloc:
+		res = p.genAlloc(bld, v)
+	case *ssa.Field:
+		xloc, ok := p.vmap[v.X]
+		if !ok {
+			xloc = p.genValueLoc(bld, v.X)
+		}
+		res = bld.Field(xloc, v.Field)
+
+	case *ssa.Index:
+		xloc, ok := p.vmap[v.X]
+		if !ok {
+			xloc = p.genValueLoc(bld, v.X)
+		}
+		switch v := v.Index.(type) {
+		case *ssa.Const:
+			i64, ok := constant.Int64Val(v.Value)
+			if !ok {
+				panic("type checked const index not precise as int64")
+			}
+			i := int(i64) // should be ok also b/c it is type checked.
+			res = bld.ArrayIndex(xloc, i)
+		default:
+
+			ty := v.Type().Underlying().(*types.Array)
+			eltTy := ty.Elem()
+			bld.Type = eltTy
+			bld.Pos = v.Pos()
+			res = bld.GenLoc()
+			N := ty.Len()
+			for i := int64(0); i < N; i++ {
+				eltLoc := bld.ArrayIndex(xloc, int(i))
+				bld.GenTransfer(res, eltLoc)
+			}
+		}
+
+	default:
+		res = bld.GenLoc()
+	}
+	p.vmap[v] = res
+	return res
+}
+
+func (p *T) genAlloc(bld *results.Builder, a *ssa.Alloc) memory.Loc {
+	bld.Reset()
+	bld.Class = memory.Local
+	if a.Heap {
+		bld.Class = memory.Global
+	}
+	bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
+	bld.Pos = a.Pos()
+	bld.SrcKind = results.SrcVar
+
+	_, ptr := bld.GenWithPointer()
+	return ptr
+}
+
+func (p *T) genBlockConstraints(bld *results.Builder, fnName string, blk *ssa.BasicBlock) error {
+
+	for _, i9n := range blk.Instrs {
+		if err := p.genI9nConstraints(bld, fnName, i9n); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) error {
+func (p *T) genI9nConstraints(bld *results.Builder, fnName string, i9n ssa.Instruction) error {
 	if traceGenI9n {
 		fmt.Printf("gen %s\n", i9n)
 	}
-	defer func() {
-		if e := recover(); e != nil {
-			fmt.Printf("on i9n %s in %s\n", i9n, fnName)
-			panic(e)
-		}
-	}()
-	bld.Pos = i9n.Pos()
 	switch i9n := i9n.(type) {
-	case *ssa.Alloc:
-		if _, present := p.vmap[i9n]; present {
-			// we batch created the locals...
-			return nil
-		}
-		bld.Pos = i9n.Pos()
-		bld.Type = i9n.Type().Underlying().(*types.Pointer).Elem().Underlying()
-		if i9n.Heap {
-			bld.SrcKind = results.SrcNew
-			bld.Class = memory.Heap
-		} else {
-			bld.SrcKind = results.SrcVar
-			bld.Class = memory.Local
-		}
-
-		_, ptr := bld.GenWithPointer()
-		p.vmap[i9n] = ptr
-		if traceLocVal {
-			fmt.Printf("a %s %s\n", i9n.Name(), plain.String(ptr))
-		}
+	case *ssa.Alloc: // done in gen locs
 	case *ssa.BinOp:
 	case *ssa.Call:
 		p.call(bld, i9n.Call)
@@ -272,89 +301,40 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	case *ssa.Defer:
 		p.call(bld, i9n.Call)
 	case *ssa.Extract:
-	case *ssa.Field:
-		xloc := p.getLoc(bld, i9n.X)
-		floc := bld.Field(xloc, i9n.Field)
-		iloc := bld.GenLoc()
-		bld.GenTransfer(iloc, floc)
-		p.vmap[i9n] = iloc
+	case *ssa.Field: // done in gen locs
 
 	case *ssa.FieldAddr:
 
-		var ptr memory.Loc
+		ptr := p.vmap[i9n.X]
+		out := p.vmap[i9n]
 
-		var ok bool
-		if ptr, ok = p.vmap[i9n.X]; !ok {
-			// we need to make sure other ops
-			// which can lead to this are modelled
-			panic(fmt.Sprintf("&o.f o=%s i9n %s\n", i9n.X, i9n))
-		}
-
-		res := bld.GenLoc()
-		p.vmap[i9n] = res
 		mdl := bld.Model()
 		obj := mdl.Obj(ptr)
 		fobj := memory.NoLoc
 		if obj != memory.NoLoc {
 			fobj = mdl.Field(obj, i9n.Field)
-			bld.GenPointsTo(res, fobj)
-			mdl.SetObj(res, fobj)
+			bld.GenPointsTo(out, fobj)
+			mdl.SetObj(out, fobj)
 		} else {
-			mdl.AddTransferIndex(res, ptr, i9n.Field)
+			mdl.AddTransferIndex(out, ptr, i9n.Field)
 		}
 
 	case *ssa.Go:
 		p.call(bld, i9n.Call)
 	case *ssa.If:
-	case *ssa.Index:
-		// i9n.X is array.
-		// if i9n.Index is constant, we can
-		// access its model
-		//
-
-		// if not, we back off with transfer constraints and a new Loc
-
-		xloc := p.getLoc(bld, i9n.X)
-		switch idx := i9n.Index.(type) {
-		case *ssa.Const:
-			i64, ok := constant.Int64Val(idx.Value)
-			if !ok {
-				panic("type checked const index not precise as int64")
-			}
-			i := int(i64) // should be ok also b/c it is type checked.
-			eltLoc := bld.ArrayIndex(xloc, i)
-			p.vmap[i9n] = eltLoc
-		default:
-
-			ty := i9n.Type().Underlying().(*types.Array)
-			N := ty.Len()
-			bld.Type = ty
-			bld.Pos = i9n.Pos()
-			res := bld.GenLoc()
-			for i := int64(0); i < N; i++ {
-				eltLoc := bld.ArrayIndex(xloc, int(i))
-				bld.GenTransfer(res, eltLoc)
-			}
-			p.vmap[i9n] = res
-
-		}
+	case *ssa.Index: // done in gen locs
 	case *ssa.IndexAddr:
-		fmt.Printf("IndexAddr  of %s: %v\n", i9n.X.Type().Underlying(), i9n.X)
-		ptr, ok := p.vmap[i9n.X]
-		if !ok {
-			panic("wilma!")
-		}
-		obj := p.buildr.Model().Obj(ptr)
-		if obj != memory.NoLoc {
-		}
+		ptr := p.vmap[i9n.X]
+		p.buildr.Type = i9n.Type().Underlying()
 		res := p.buildr.GenLoc()
 		p.vmap[i9n] = res
-		ptdTy := i9n.X.Type().Underlying().(*types.Pointer).Elem()
-		switch ptdTy.Underlying().(type) {
-		case *types.Array:
+		switch i9n.X.Type().Underlying().(type) {
+		case *types.Pointer: // to array?
+			p.buildr.GenTransfer(res, ptr)
 		case *types.Slice:
+			p.buildr.GenTransfer(res, ptr)
 		default:
-			panic("barney!")
+			panic("unexpected type of ssa.IndexAddr.X")
 		}
 
 	case *ssa.Jump:
@@ -367,13 +347,26 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	case *ssa.MakeClosure:
 	case *ssa.MakeChan:
 	case *ssa.MakeSlice:
-		bld.Type = i9n.Type()
+		bld.Type = i9n.Type().Underlying().(*types.Slice).Elem()
 		bld.Class = memory.Heap
 		bld.SrcKind = results.SrcMakeSlice
 		obj := bld.GenLoc()
 		p.vmap[i9n] = obj
 	case *ssa.MakeMap:
+		ty := i9n.Type().Underlying().(*types.Map)
+		keyType := ty.Key()
+		valType := ty.Elem()
+		bld.Reset()
+		bld.Pos = i9n.Pos()
+		bld.Type = keyType
+		keyLoc := bld.GenLoc()
+		bld.Type = valType
+		valLoc := bld.GenLoc()
+		_ = keyLoc
+		_ = valLoc
+
 	case *ssa.MapUpdate:
+
 	case *ssa.Next: // either string iterator or map
 		if !i9n.IsString {
 			// not addressable
@@ -383,6 +376,11 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		// it is a map, type Tuple
 	case *ssa.Panic:
 	case *ssa.Phi:
+		v := p.vmap[i9n]
+		for _, x := range i9n.Edges {
+			ev := p.vmap[x]
+			bld.GenTransfer(v, ev)
+		}
 	case *ssa.Range:
 	case *ssa.RunDefers:
 		// no-op b/c we treat defers like calls.
@@ -401,10 +399,9 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 		for i, res := range i9n.Results {
 			resLoc := palFn.ResultLoc(i)
 			// need to deal with things
-			// which don't have pointers....
-			if vloc, ok := p.vmap[res]; ok {
-				bld.GenTransfer(resLoc, vloc)
-			}
+			// which don't have pointers associated
+			vloc := p.vmap[res]
+			bld.GenTransfer(resLoc, vloc)
 		}
 
 	case *ssa.UnOp:
@@ -412,8 +409,8 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 
 	case *ssa.Slice:
 	case *ssa.Store:
-		vloc := p.getLoc(bld, i9n.Val)
-		aloc := p.getLoc(bld, i9n.Addr)
+		vloc := p.vmap[i9n.Val]
+		aloc := p.vmap[i9n.Addr]
 		bld.GenStore(aloc, vloc)
 
 	case *ssa.TypeAssert:
@@ -428,29 +425,6 @@ func (p *T) PkgPath() string {
 }
 
 func (p *T) call(b *results.Builder, c ssa.CallCommon) {
-}
-
-func (p *T) getLoc(b *results.Builder, v ssa.Value) memory.Loc {
-	loc, ok := p.vmap[v]
-	if ok {
-		return loc
-	}
-
-	b.Reset()
-	switch v.(type) {
-	case *ssa.Global:
-		b.Class = memory.Global
-	default:
-		b.Class = memory.Local
-	}
-	b.Pos = v.Pos()
-	b.Type = v.Type().Underlying()
-	loc = b.GenLoc()
-	p.vmap[v] = loc
-	if traceLocVal {
-		fmt.Printf("i %s %s %p\n", v.Name(), plain.String(loc), v)
-	}
-	return loc
 }
 
 func (p *T) putResults() {

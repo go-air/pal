@@ -18,7 +18,7 @@ import (
 	"flag"
 	"reflect"
 
-	"github.com/go-air/pal/index"
+	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/results"
 	"github.com/go-air/pal/ssa2pal"
 	"golang.org/x/tools/go/analysis"
@@ -51,7 +51,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	if *bigV {
 		return Version()
 	}
-	pal, err := ssa2pal.New(pass, index.ConstVals())
+	pal, err := ssa2pal.New(pass, indexing.ConstVals())
 	if err != nil {
 		return nil, err
 	}

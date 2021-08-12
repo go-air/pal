@@ -20,7 +20,7 @@ import (
 	"io"
 	"math"
 
-	"github.com/go-air/pal/index"
+	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
@@ -28,17 +28,17 @@ import (
 // PkgRes represents results for a package.
 type PkgRes struct {
 	PkgPath  string
-	index    index.T
+	indexing indexing.T
 	Start    memory.Loc
 	MemModel *memory.Model // provides memory.Loc operations
 	SrcInfo  []SrcInfo     // indexed by memory.Loc
 }
 
-func NewPkgRes(pkgPath string, vs index.T) *PkgRes {
+func NewPkgRes(pkgPath string, vs indexing.T) *PkgRes {
 	mdl := memory.NewModel(vs)
 	return &PkgRes{
 		PkgPath:  pkgPath,
-		index:    vs,
+		indexing: vs,
 		Start:    memory.Loc(1),
 		MemModel: mdl,
 		SrcInfo:  make([]SrcInfo, mdl.Len())}

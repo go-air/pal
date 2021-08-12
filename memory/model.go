@@ -21,7 +21,7 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/go-air/pal/index"
+	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
 )
 
@@ -29,21 +29,21 @@ import (
 type Model struct {
 	locs        []loc
 	constraints []Constraint
-	index       index.T
+	indexing    indexing.T
 }
 
 // NewModel generates a new memory model for a package.
 //
 // index parameterises the resulting model on numeric
-// (int) index.
-func NewModel(index index.T) *Model {
+// (int) indexing.
+func NewModel(index indexing.T) *Model {
 	res := &Model{
 
 		// 0 -> NoLoc
 		// 1 -> Zero / nil/null
 		locs:        make([]loc, 2, 1024),
 		constraints: make([]Constraint, 0, 1024),
-		index:       index}
+		indexing:    index}
 	zz := Loc(1)
 	z := &res.locs[1]
 	z.class = Zero
@@ -88,7 +88,7 @@ func (mod *Model) Field(m Loc, i int) Loc {
 	n := m + 1 // first field
 	for j := 0; j < i; j++ {
 		sz := mod.locs[n].lsz
-		isz, ok := mod.index.AsInt(sz)
+		isz, ok := mod.indexing.AsInt(sz)
 		if !ok {
 			return NoLoc
 		}
@@ -100,7 +100,7 @@ func (mod *Model) Field(m Loc, i int) Loc {
 func (mod *Model) ArrayIndex(m Loc, i int) Loc {
 	n := m + 1
 	sz := mod.locs[n].lsz
-	isz, ok := mod.index.AsInt(sz)
+	isz, ok := mod.indexing.AsInt(sz)
 	if !ok {
 		return NoLoc
 
@@ -115,25 +115,25 @@ func (mod *Model) ArrayIndex(m Loc, i int) Loc {
 // The virtual size is the size according to the model,
 // which is 1 + the sum of the the vsizes of all locations
 // n such that mod.Parent(n) == m.
-func (mod *Model) VSize(m Loc) index.I {
+func (mod *Model) VSize(m Loc) indexing.I {
 	return mod.locs[m].lsz
 }
 
-func (mod *Model) Overlaps(a, b Loc) index.AbsTruth {
+func (mod *Model) Overlaps(a, b Loc) indexing.AbsTruth {
 	if mod.Root(a) != mod.Root(b) {
-		return index.False
+		return indexing.False
 	}
 	if a == b {
-		return index.True
+		return indexing.True
 	}
-	return index.Unknown
+	return indexing.Unknown
 }
 
-func (mod *Model) Equals(a, b Loc) index.AbsTruth {
+func (mod *Model) Equals(a, b Loc) indexing.AbsTruth {
 	if a != b {
-		return index.False
+		return indexing.False
 	}
-	return index.Unknown
+	return indexing.Unknown
 }
 
 func (mod *Model) Zero() Loc {
@@ -193,7 +193,7 @@ func (mod *Model) Check() error {
 		if loc.parent == Loc(i) {
 			continue
 		}
-		sz, ok := mod.index.AsInt(loc.lsz)
+		sz, ok := mod.indexing.AsInt(loc.lsz)
 		if !ok {
 			return fmt.Errorf("vsz not const")
 		}
@@ -203,7 +203,7 @@ func (mod *Model) Check() error {
 	for m, sz := range sizes {
 		sz++
 		loc := &mod.locs[m]
-		realsz, ok := mod.index.AsInt(loc.lsz)
+		realsz, ok := mod.indexing.AsInt(loc.lsz)
 		if !ok {
 			return fmt.Errorf("vsz not const")
 		}
@@ -289,6 +289,13 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		*sum++
 		mod.add(ty.Elem(), class, attrs, n, r, sum)
 
+	case *types.Tuple:
+		mod.locs = append(mod.locs, l)
+		*sum++
+		tn := ty.Len()
+		for i := 0; i < tn; i++ {
+			mod.add(ty.At(i).Type(), class, attrs, n, r, sum)
+		}
 	case *types.Named:
 		// no space reserved for named types, go to
 		// underlying
@@ -298,7 +305,7 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 		panic(fmt.Sprintf("%s: unexpected/unimplemented", ty))
 	}
 	// we added a slot at dst[n] for ty,  set it
-	mod.locs[n].lsz = mod.index.FromInt(*sum - lastSum)
+	mod.locs[n].lsz = mod.indexing.FromInt(*sum - lastSum)
 	return n
 }
 
@@ -345,7 +352,7 @@ func (mod *Model) AddTransfer(dst, src Loc) {
 	mod.constraints = append(mod.constraints, Transfer(dst, src))
 }
 
-func (mod *Model) AddTransferIndex(dst, src Loc, i index.I) {
+func (mod *Model) AddTransferIndex(dst, src Loc, i indexing.I) {
 	mod.constraints = append(mod.constraints, TransferIndex(dst, src, i))
 }
 
