@@ -19,11 +19,11 @@ import (
 	"go/types"
 	"testing"
 
-	"github.com/go-air/pal/index"
+	"github.com/go-air/pal/indexing"
 )
 
 func TestModel(t *testing.T) {
-	mdl := NewModel(index.ConstVals())
+	mdl := NewModel(indexing.ConstVals())
 	mdl.Global(types.NewPointer(types.Typ[types.Int]), IsParam|IsOpaque)
 	mdl.Global(types.NewSlice(types.Typ[types.Float32]), IsReturn)
 	gs := mdl.Global(types.NewStruct([]*types.Var{
