@@ -32,6 +32,10 @@ type Loc uint32
 
 const NoLoc = Loc(0)
 
+func (m Loc) String() string {
+	return fmt.Sprintf("%08x", m)
+}
+
 func (m Loc) PlainEncode(w io.Writer) error {
 	_, e := fmt.Fprintf(w, "%08x", m)
 	return e
@@ -53,11 +57,11 @@ type loc struct {
 	root   Loc
 	parent Loc
 
-	lsz  index.I // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
+	lsz index.I // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
 
-	obj  Loc     // locals and globals are passed by addr...  NoLoc if unknown
+	obj Loc // locals and globals are passed by addr...  NoLoc if unknown
 
-	mark int     // scratch space for internal algos
+	mark int // scratch space for internal algos
 }
 
 func (m *loc) PlainEncode(w io.Writer) error {
