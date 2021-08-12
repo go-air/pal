@@ -116,15 +116,6 @@ func (p *T) GenResult() (*results.T, error) {
 			}
 		}
 	}
-	for name, mbr := range p.ssa.Pkg.Members {
-		switch fn := mbr.(type) {
-		case *ssa.Function:
-			p.buildr.Reset()
-			if err = p.addFuncDecl(p.buildr, name, fn); err != nil {
-				return nil, err
-			}
-		}
-	}
 	// TBD: calc results from generation above
 
 	// place the results for current package in p.results.
