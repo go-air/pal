@@ -14,6 +14,10 @@
 
 package indexing
 
+import (
+	"github.com/go-air/pal/xtruth"
+)
+
 type I interface {
 }
 
@@ -24,6 +28,6 @@ type T interface {
 	FromInt(i int) I
 	Var(v I) bool
 	Plus(a, b I) I
-	Equal(a, b I) AbsTruth
-	Less(a, b I) AbsTruth
+	Equal(a, b I) xtruth.T
+	Less(a, b I) xtruth.T
 }
