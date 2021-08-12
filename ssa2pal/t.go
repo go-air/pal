@@ -41,11 +41,11 @@ type T struct {
 	// this is a state variable which
 	// represents the current package under
 	// analysis.
-	pkg     *ssa.Package
-	index   indexing.T
-	results *results.T
-	pkgres  *results.PkgRes
-	buildr  *results.Builder
+	pkg      *ssa.Package
+	indexing indexing.T
+	results  *results.T
+	pkgres   *results.PkgRes
+	buildr   *results.Builder
 	// map from ssa.Value to memory locs
 
 	vmap map[ssa.Value]memory.Loc
@@ -70,14 +70,14 @@ func New(pass *analysis.Pass, vs indexing.T) (*T, error) {
 	ssapkg.Pkg.Build()
 
 	pal := &T{
-		pass:    pass,
-		pkg:     ssapkg.Pkg,
-		ssa:     ssapkg,
-		results: palres,
-		pkgres:  pkgRes,
-		index:   vs,
-		buildr:  results.NewBuilder(pkgRes),
-		vmap:    make(map[ssa.Value]memory.Loc, 8192),
+		pass:     pass,
+		pkg:      ssapkg.Pkg,
+		ssa:      ssapkg,
+		results:  palres,
+		pkgres:   pkgRes,
+		indexing: vs,
+		buildr:   results.NewBuilder(pkgRes),
+		vmap:     make(map[ssa.Value]memory.Loc, 8192),
 
 		funcs: make(map[*ssa.Function]*Func)}
 	return pal, nil
@@ -85,7 +85,6 @@ func New(pass *analysis.Pass, vs indexing.T) (*T, error) {
 
 func (p *T) GenResult() (*results.T, error) {
 	var err error
-	// generate globals
 	mbrs := p.ssa.Pkg.Members
 	mbrKeys := make([]string, 0, len(mbrs))
 	// get and sort relevant member keys for determinism
@@ -107,6 +106,7 @@ func (p *T) GenResult() (*results.T, error) {
 		}
 	}
 
+	// add funcs
 	for name, mbr := range p.ssa.Pkg.Members {
 		switch fn := mbr.(type) {
 		case *ssa.Function:
@@ -406,6 +406,11 @@ func (p *T) genI9nConstraints(bld *results.Builder, fnName string, i9n ssa.Instr
 
 	case *ssa.UnOp:
 		// Load
+		switch i9n.Op {
+		case token.MUL:
+			bld.GenLoad(p.vmap[i9n], p.vmap[i9n.X])
+		default:
+		}
 
 	case *ssa.Slice:
 	case *ssa.Store:

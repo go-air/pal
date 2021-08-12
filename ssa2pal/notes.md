@@ -10,13 +10,12 @@ return the address of the i'th field of the struct
 pointed to by p.
 
 
-
 ## Index
 
 array, index
 
 - [x] const indices
-- [ ] non-const indices
+- [x] non-const indices
 
 ## IndexAddr(o point, x Expr), p a pointer to an (array or slice?).
 
