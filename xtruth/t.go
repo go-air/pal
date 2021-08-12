@@ -12,58 +12,58 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package indexing
+package xtruth
 
-type AbsTruth int
+type T int
 
 const (
-	False AbsTruth = iota
+	False T = iota
 	True
-	Unknown
+	X
 )
 
-func (t AbsTruth) String() string {
+func (t T) String() string {
 	switch t {
 	case False:
 		return "f"
 	case True:
 		return "t"
-	case Unknown:
+	case X:
 		return "x"
 	default:
-		panic("bad abstruth")
+		panic("bad xtruth")
 	}
 }
 
-func (t AbsTruth) Or(o AbsTruth) AbsTruth {
+func (t T) Or(o T) T {
 	if t == True || o == True {
 		return True
 	}
-	if t == Unknown || o == Unknown {
-		return Unknown
+	if t == X || o == X {
+		return X
 	}
 	return False
 }
 
-func (t AbsTruth) And(o AbsTruth) AbsTruth {
+func (t T) And(o T) T {
 	if t == False || o == False {
 		return False
 	}
-	if t == Unknown || o == Unknown {
-		return Unknown
+	if t == X || o == X {
+		return X
 	}
 	return True
 }
 
-func (t AbsTruth) Not() AbsTruth {
+func (t T) Not() T {
 	switch t {
 	case True:
 		return False
 	case False:
 		return True
-	case Unknown:
-		return Unknown
+	case X:
+		return X
 	default:
-		panic("bad BasTruth")
+		panic("bad xtruth")
 	}
 }

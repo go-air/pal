@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
+	"github.com/go-air/pal/xtruth"
 )
 
 // Type Model represents a memory model for a package.
@@ -119,21 +120,21 @@ func (mod *Model) VSize(m Loc) indexing.I {
 	return mod.locs[m].lsz
 }
 
-func (mod *Model) Overlaps(a, b Loc) indexing.AbsTruth {
+func (mod *Model) Overlaps(a, b Loc) xtruth.T {
 	if mod.Root(a) != mod.Root(b) {
-		return indexing.False
+		return xtruth.False
 	}
 	if a == b {
-		return indexing.True
+		return xtruth.True
 	}
-	return indexing.Unknown
+	return xtruth.X
 }
 
-func (mod *Model) Equals(a, b Loc) indexing.AbsTruth {
+func (mod *Model) Equals(a, b Loc) xtruth.T {
 	if a != b {
-		return indexing.False
+		return xtruth.False
 	}
-	return indexing.Unknown
+	return xtruth.X
 }
 
 func (mod *Model) Zero() Loc {
@@ -235,10 +236,10 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 
 		// let's do this later...
 		if ty.Variadic() {
-			panic("unimplemented")
+			//panic("unimplemented variadic")
 		}
 		if ty.Recv() != nil {
-			panic("unimplemented")
+			panic("unimplemented method")
 		}
 
 		parms := ty.Params()

@@ -15,10 +15,7 @@
 package indexing
 
 import (
-	"fmt"
-	"io"
-
-	"github.com/go-air/pal/internal/byteorder"
+	"github.com/go-air/pal/xtruth"
 )
 
 type consts struct{}
@@ -56,47 +53,18 @@ func (c consts) Plus(a, b I) I {
 	return I(aa + bb)
 }
 
-func (c consts) Less(a, b I) AbsTruth {
+func (c consts) Less(a, b I) xtruth.T {
 	aa, bb := a.(int), b.(int)
 	if aa < bb {
-		return True
+		return xtruth.True
 	}
-	return False
+	return xtruth.False
 }
 
-func (c consts) Equal(a, b I) AbsTruth {
+func (c consts) Equal(a, b I) xtruth.T {
 	aa, bb := a.(int), b.(int)
 	if aa == bb {
-		return True
+		return xtruth.True
 	}
-	return False
-}
-
-func (c consts) PalEncodeValue(w io.Writer, v I) error {
-	buf := make([]byte, 8)
-	bo := byteorder.ByteOrder()
-	bo.PutUint64(buf, uint64(v.(int)))
-	_, e := w.Write(buf)
-	return e
-}
-
-func (c consts) PalDecodeValue(r io.Reader) (I, error) {
-	buf := make([]byte, 8)
-	n, err := r.Read(buf)
-	if err != nil {
-		return nil, err
-	}
-	bo := byteorder.ByteOrder()
-	if n != 8 {
-		return nil, fmt.Errorf("PalDecodeValue: couldn't read 8")
-	}
-	return int(bo.Uint64(buf)), nil
-}
-
-func (c consts) PalDecode(r io.Reader) error {
-	return nil
-}
-
-func (c consts) PalEncode(w io.Writer) error {
-	return nil
+	return xtruth.False
 }
