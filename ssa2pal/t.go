@@ -163,7 +163,6 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 			p.PkgPath(),
 			name)
 	}
-	fmt.Printf("Func %s\n", name)
 	memFn := NewFunc(bld, fn.Signature, name)
 	p.vmap[fn] = memFn.Loc()
 	bld.Reset()
@@ -225,15 +224,15 @@ func (p *T) genValueLoc(bld *results.Builder, v ssa.Value) memory.Loc {
 	case *ssa.Alloc:
 		res = p.genAlloc(bld, v)
 	case *ssa.MakeSlice:
-		bld.Class = memory.Heap
 		eTy := v.Type().Underlying().(*types.Slice).Elem()
+		bld.Class = memory.Heap
 		bld.Type = eTy
 		_, res = bld.GenWithPointer()
 	case *ssa.MakeMap:
 		eTy := v.Type().Underlying().(*types.Map).Elem()
-		_, res = bld.GenWithPointer()
-		bld.Type = eTy
 		bld.Class = memory.Heap
+		bld.Type = eTy
+		_, res = bld.GenWithPointer()
 
 	case *ssa.Field:
 		xloc, ok := p.vmap[v.X]
@@ -349,7 +348,7 @@ func (p *T) genI9nConstraints(bld *results.Builder, fnName string, i9n ssa.Instr
 			bld.GenPointsTo(out, fobj)
 			mdl.SetObj(out, fobj)
 		} else {
-			mdl.AddTransferIndex(out, ptr, i9n.Field)
+			mdl.AddTransferIndex(out, ptr, p.indexing.FromInt(i9n.Field))
 		}
 
 	case *ssa.Go:
