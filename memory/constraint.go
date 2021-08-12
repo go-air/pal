@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/go-air/pal/index"
+	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
 )
 
@@ -67,7 +67,7 @@ type Constraint struct {
 	Kind  ConstraintKind
 	Dest  Loc
 	Src   Loc
-	Index index.I
+	Index indexing.I
 }
 
 func AddressOf(dst, src Loc) Constraint {
@@ -86,7 +86,7 @@ func Transfer(dst, src Loc) Constraint {
 	return TransferIndex(dst, src, 0)
 }
 
-func TransferIndex(dst, src Loc, i index.I) Constraint {
+func TransferIndex(dst, src Loc, i indexing.I) Constraint {
 	return Constraint{Kind: KTransfer, Dest: dst, Src: src, Index: i}
 }
 

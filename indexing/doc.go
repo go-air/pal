@@ -12,18 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package index
-
-type I interface {
-}
-
-type T interface {
-	Zero() I
-	One() I
-	AsInt(v I) (i int, ok bool)
-	FromInt(i int) I
-	Var(v I) bool
-	Plus(a, b I) I
-	Equal(a, b I) AbsTruth
-	Less(a, b I) AbsTruth
-}
+// Package index provides support for abstract integral index to pal.
+package indexing

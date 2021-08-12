@@ -48,7 +48,7 @@
 //      attrs ...
 //      root Loc
 //      parent Loc
-//      lsz  index.T
+//      lsz  indexing.T
 //  }
 //
 // Structured Data

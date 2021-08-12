@@ -25,7 +25,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/go-air/pal/index"
+	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/results"
@@ -42,7 +42,7 @@ type T struct {
 	// represents the current package under
 	// analysis.
 	pkg     *ssa.Package
-	index   index.T
+	index   indexing.T
 	results *results.T
 	pkgres  *results.PkgRes
 	buildr  *results.Builder
@@ -53,7 +53,7 @@ type T struct {
 	funcs map[*ssa.Function]*Func
 }
 
-func New(pass *analysis.Pass, vs index.T) (*T, error) {
+func New(pass *analysis.Pass, vs indexing.T) (*T, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
 	if pkgPath == "internal/cpu" {
@@ -110,7 +110,6 @@ func (p *T) GenResult() (*results.T, error) {
 		}
 	}
 
-	// add funcs
 	for name, mbr := range p.ssa.Pkg.Members {
 		switch fn := mbr.(type) {
 		case *ssa.Function:
@@ -244,12 +243,6 @@ func (p *T) genI9n(bld *results.Builder, fnName string, i9n ssa.Instruction) err
 	if traceGenI9n {
 		fmt.Printf("gen %s\n", i9n)
 	}
-	// defer func() {
-	// 	if e := recover(); e != nil {
-	// 		fmt.Printf("on i9n %s in %s\n", i9n, fnName)
-	// 		panic(e)
-	// 	}
-	// }()
 	bld.Pos = i9n.Pos()
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc:
