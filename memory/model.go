@@ -236,10 +236,10 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, p, r Loc, sum *in
 
 		// let's do this later...
 		if ty.Variadic() {
-			panic("unimplemented")
+			//panic("unimplemented variadic")
 		}
 		if ty.Recv() != nil {
-			panic("unimplemented")
+			panic("unimplemented method")
 		}
 
 		parms := ty.Params()

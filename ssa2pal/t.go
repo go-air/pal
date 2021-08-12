@@ -198,6 +198,7 @@ func (p *T) genConstraints(bld *results.Builder, name string, fn *ssa.Function) 
 }
 
 func (p *T) genBlockValues(bld *results.Builder, name string, blk *ssa.BasicBlock) {
+	rands := make([]*ssa.Value, 0, 13)
 	for _, i9n := range blk.Instrs {
 		switch v := i9n.(type) {
 		case *ssa.DebugRef, *ssa.Defer, *ssa.Go, *ssa.If, *ssa.Jump,
@@ -205,7 +206,20 @@ func (p *T) genBlockValues(bld *results.Builder, name string, blk *ssa.BasicBloc
 			*ssa.RunDefers, *ssa.Send, *ssa.Store:
 			// these are not values
 		default:
-			p.genValueLoc(bld, v.(ssa.Value))
+			vv := v.(ssa.Value)
+			_, ok := p.vmap[vv]
+			if !ok {
+				p.genValueLoc(bld, v.(ssa.Value))
+			}
+		}
+		rands = i9n.Operands(rands[:0])
+		for _, arg := range rands {
+			_, ok := p.vmap[*arg]
+			if !ok && *arg != nil {
+				// I believe that if *arg is nil, the
+				// arg is irrelevant.  This does happen.
+				p.genValueLoc(bld, *arg)
+			}
 		}
 	}
 }
@@ -266,6 +280,7 @@ func (p *T) genValueLoc(bld *results.Builder, v ssa.Value) memory.Loc {
 			// we have a variable or expression
 			// generate a new loc and transfer
 			// all indices to it.
+			// TBD: use indexing
 			ty := v.Type().Underlying().(*types.Array)
 			eltTy := ty.Elem()
 			bld.Type = eltTy
@@ -358,11 +373,9 @@ func (p *T) genI9nConstraints(bld *results.Builder, fnName string, i9n ssa.Instr
 	case *ssa.Index: // constraints done in gen locs
 	case *ssa.IndexAddr:
 		ptr := p.vmap[i9n.X]
-		p.buildr.Type = i9n.Type().Underlying()
-		res := p.buildr.GenLoc()
-		p.vmap[i9n] = res
+		res := p.vmap[i9n]
 		switch i9n.X.Type().Underlying().(type) {
-		case *types.Pointer: // to array?
+		case *types.Pointer: // to array
 			p.buildr.GenTransfer(res, ptr)
 		case *types.Slice:
 			p.buildr.GenTransfer(res, ptr)
@@ -406,17 +419,10 @@ func (p *T) genI9nConstraints(bld *results.Builder, fnName string, i9n ssa.Instr
 	case *ssa.Return:
 		var ssaFn *ssa.Function = i9n.Parent()
 		var palFn *Func
-
-		var ok bool
-		palFn, ok = p.funcs[ssaFn]
-		if !ok {
-			return fmt.Errorf("couldn't find func %s\n", ssaFn.Name())
-		}
+		palFn = p.funcs[ssaFn]
 		// copy results to palFn results...
 		for i, res := range i9n.Results {
 			resLoc := palFn.ResultLoc(i)
-			// need to deal with things
-			// which don't have pointers associated
 			vloc := p.vmap[res]
 			bld.GenTransfer(resLoc, vloc)
 		}
