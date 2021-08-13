@@ -26,7 +26,6 @@ type Func struct {
 	sig      *types.Signature
 	declName string
 	fnobj    memory.Loc
-	fnloc    memory.Loc
 	recv     memory.Loc
 	params   []memory.Loc
 	results  []memory.Loc
@@ -95,10 +94,6 @@ func (f *Func) Declared() bool {
 
 func (f *Func) Name() string {
 	return f.declName
-}
-
-func (f *Func) Loc() memory.Loc {
-	return f.fnloc
 }
 
 func (f *Func) Obj() memory.Loc {

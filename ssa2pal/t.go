@@ -107,7 +107,8 @@ func (p *T) GenResult() (*results.T, error) {
 	}
 
 	// add funcs
-	for name, mbr := range p.ssa.Pkg.Members {
+	for _, name := range mbrKeys {
+		mbr := mbrs[name]
 		switch fn := mbr.(type) {
 		case *ssa.Function:
 			p.buildr.Reset()
@@ -164,7 +165,7 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 			name)
 	}
 	memFn := NewFunc(bld, fn.Signature, name)
-	p.vmap[fn] = memFn.Loc()
+	p.vmap[fn] = memFn.Obj()
 	bld.Reset()
 
 	for i, param := range fn.Params {
