@@ -26,10 +26,10 @@ type Func struct {
 	sig      *types.Signature
 	declName string
 	fnobj    memory.Loc
-	fnloc    memory.Loc
 	recv     memory.Loc
 	params   []memory.Loc
 	results  []memory.Loc
+	varargs  *Slice
 }
 
 func tupleLen(tuple *types.Tuple) int {
@@ -67,6 +67,9 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 		bld.Class = memory.Local
 		fn.recv = bld.GenLoc()
 	}
+	if sig.Variadic() {
+		fn.varargs = &Slice{}
+	}
 	params := sig.Params()
 	N := tupleLen(params)
 	for i := 0; i < N; i++ {
@@ -95,10 +98,6 @@ func (f *Func) Declared() bool {
 
 func (f *Func) Name() string {
 	return f.declName
-}
-
-func (f *Func) Loc() memory.Loc {
-	return f.fnloc
 }
 
 func (f *Func) Obj() memory.Loc {
