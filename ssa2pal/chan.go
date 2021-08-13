@@ -14,8 +14,6 @@
 
 package ssa2pal
 
-import "github.com/go-air/pal/memory"
-
 type Chan struct {
-	Loc memory.Loc
+	object
 }

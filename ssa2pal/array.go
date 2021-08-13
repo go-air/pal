@@ -14,8 +14,6 @@
 
 package ssa2pal
 
-import "github.com/go-air/pal/memory"
-
 type Array struct {
-	Loc memory.Loc
+	object
 }

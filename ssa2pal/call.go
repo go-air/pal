@@ -21,6 +21,7 @@ import (
 )
 
 type Call struct {
+	object
 	Pos     token.Pos
 	Callees []*Func
 	Result  *ssa.Value
