@@ -23,6 +23,7 @@ import (
 )
 
 type Func struct {
+	object
 	sig      *types.Signature
 	declName string
 	fnobj    memory.Loc
@@ -49,8 +50,8 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 	// object representing the function
 	// it behaves as a self-loop pointer
 	// so that on .Transfer()s, the info is propagated.
-	fn.fnobj = bld.GenLoc()
-	bld.GenPointsTo(fn.fnobj, fn.fnobj)
+	fn.loc = bld.GenLoc()
+	bld.GenPointsTo(fn.loc, fn.loc)
 	fn.params = make([]memory.Loc, tupleLen(sig.Params()))
 	fn.results = make([]memory.Loc, tupleLen(sig.Results()))
 
@@ -100,8 +101,8 @@ func (f *Func) Name() string {
 	return f.declName
 }
 
-func (f *Func) Obj() memory.Loc {
-	return f.fnobj
+func (f *Func) Loc() memory.Loc {
+	return f.loc
 }
 
 func (f *Func) Sig() *types.Signature {

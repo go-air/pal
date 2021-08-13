@@ -14,7 +14,14 @@
 
 package ssa2pal
 
-type Struct struct {
-	object
-	Offsets []int
+import "github.com/go-air/pal/memory"
+
+type Object interface {
+	Loc() memory.Loc
 }
+
+type object struct {
+	loc memory.Loc
+}
+
+func (o *object) Loc() memory.Loc { return o.loc }

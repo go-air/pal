@@ -48,7 +48,8 @@ type T struct {
 	buildr   *results.Builder
 	// map from ssa.Value to memory locs
 
-	vmap map[ssa.Value]memory.Loc
+	vmap    map[ssa.Value]memory.Loc
+	objects []Object
 
 	funcs map[*ssa.Function]*Func
 }
@@ -165,7 +166,7 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 			name)
 	}
 	memFn := NewFunc(bld, fn.Signature, name)
-	p.vmap[fn] = memFn.Obj()
+	p.vmap[fn] = memFn.Loc()
 	bld.Reset()
 
 	for i, param := range fn.Params {
@@ -314,7 +315,23 @@ func (p *T) genAlloc(bld *results.Builder, a *ssa.Alloc) memory.Loc {
 	bld.Pos = a.Pos()
 	bld.SrcKind = results.SrcVar
 
-	_, ptr := bld.GenWithPointer()
+	dst, ptr := bld.GenWithPointer()
+	switch ty := bld.Type.(type) {
+	case *types.Struct:
+		str := &Struct{}
+		str.loc = dst
+		mdl := bld.Model()
+		N, _ := p.indexing.AsInt(mdl.VSize(dst))
+		for i := 1; i < N; i++ {
+			m := memory.Loc(dst + memory.Loc(uint32(i)))
+			if mdl.Parent(m) == dst {
+				str.Offsets = append(str.Offsets, int(m-dst))
+			}
+		}
+
+	case *types.Array:
+		_ = ty
+	}
 	return ptr
 }
 

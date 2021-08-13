@@ -17,13 +17,19 @@ package ssa2pal
 import (
 	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/results"
 	"golang.org/x/tools/go/ssa"
 )
 
 type Slice struct {
+	object
 	Len   ssa.Value
 	Cap   ssa.Value
 	Slots []Slot
+}
+
+func newSlice(bld *results.Builder, l, c ssa.Value) *Slice {
+	return nil
 }
 
 type Slot struct {
