@@ -29,6 +29,7 @@ type Func struct {
 	recv     memory.Loc
 	params   []memory.Loc
 	results  []memory.Loc
+	varargs  *Slice
 }
 
 func tupleLen(tuple *types.Tuple) int {
@@ -65,6 +66,9 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 	if recv != nil {
 		bld.Class = memory.Local
 		fn.recv = bld.GenLoc()
+	}
+	if sig.Variadic() {
+		fn.varargs = &Slice{}
 	}
 	params := sig.Params()
 	N := tupleLen(params)

@@ -14,5 +14,9 @@
 
 package ssa2pal
 
-type Index struct {
+import "github.com/go-air/pal/memory"
+
+type Struct struct {
+	Loc     memory.Loc
+	Offsets []int
 }
