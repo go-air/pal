@@ -26,6 +26,7 @@ type Func struct {
 	object
 	sig      *types.Signature
 	declName string
+	fnobj    memory.Loc
 	recv     memory.Loc
 	params   []memory.Loc
 	results  []memory.Loc
