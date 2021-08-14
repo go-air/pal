@@ -28,6 +28,7 @@ import (
 	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/objects"
 	"github.com/go-air/pal/results"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
@@ -49,9 +50,9 @@ type T struct {
 	// map from ssa.Value to memory locs
 
 	vmap    map[ssa.Value]memory.Loc
-	objects []Object
+	objects []objects.Object
 
-	funcs map[*ssa.Function]*Func
+	funcs map[*ssa.Function]*objects.Func
 }
 
 func New(pass *analysis.Pass, vs indexing.T) (*T, error) {
@@ -80,7 +81,7 @@ func New(pass *analysis.Pass, vs indexing.T) (*T, error) {
 		buildr:   results.NewBuilder(pkgRes),
 		vmap:     make(map[ssa.Value]memory.Loc, 8192),
 
-		funcs: make(map[*ssa.Function]*Func)}
+		funcs: make(map[*ssa.Function]*objects.Func)}
 	return pal, nil
 }
 
@@ -165,7 +166,7 @@ func (p *T) addFuncDecl(bld *results.Builder, name string, fn *ssa.Function) err
 			p.PkgPath(),
 			name)
 	}
-	memFn := NewFunc(bld, fn.Signature, name)
+	memFn := objects.NewFunc(bld, fn.Signature, name)
 	p.vmap[fn] = memFn.Loc()
 	bld.Reset()
 
@@ -315,23 +316,7 @@ func (p *T) genAlloc(bld *results.Builder, a *ssa.Alloc) memory.Loc {
 	bld.Pos = a.Pos()
 	bld.SrcKind = results.SrcVar
 
-	dst, ptr := bld.GenWithPointer()
-	switch ty := bld.Type.(type) {
-	case *types.Struct:
-		str := &Struct{}
-		str.loc = dst
-		mdl := bld.Model()
-		N, _ := p.indexing.AsInt(mdl.VSize(dst))
-		for i := 1; i < N; i++ {
-			m := memory.Loc(dst + memory.Loc(uint32(i)))
-			if mdl.Parent(m) == dst {
-				str.Offsets = append(str.Offsets, int(m-dst))
-			}
-		}
-
-	case *types.Array:
-		_ = ty
-	}
+	_, ptr := bld.GenWithPointer()
 	return ptr
 }
 
@@ -436,7 +421,7 @@ func (p *T) genI9nConstraints(bld *results.Builder, fnName string, i9n ssa.Instr
 	case *ssa.Send:
 	case *ssa.Return:
 		var ssaFn *ssa.Function = i9n.Parent()
-		var palFn *Func
+		var palFn *objects.Func
 		palFn = p.funcs[ssaFn]
 		// copy results to palFn results...
 		for i, res := range i9n.Results {
@@ -474,6 +459,18 @@ func (p *T) PkgPath() string {
 }
 
 func (p *T) call(b *results.Builder, c ssa.CallCommon) {
+	if c.IsInvoke() {
+		p.invoke(b, c)
+		return
+	}
+	callee := c.StaticCallee()
+	if callee == nil {
+		return
+	}
+
+}
+
+func (p *T) invoke(b *results.Builder, c ssa.CallCommon) {
 }
 
 func (p *T) putResults() {

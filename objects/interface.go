@@ -12,17 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ssa2pal
+package objects
 
-import (
-	"go/token"
+import "github.com/go-air/pal/memory"
 
-	"golang.org/x/tools/go/ssa"
-)
-
-type Call struct {
+type Interface struct {
 	object
-	Pos     token.Pos
-	Callees []*Func
-	Result  *ssa.Value
+	Concrete memory.Loc
 }

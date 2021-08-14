@@ -367,16 +367,12 @@ func (mod *Model) PointsToFor(dst []Loc, p Loc) []Loc {
 	return dst
 }
 
-// Export exports the model 'mod', removing
-// unnecessary local mem.Locs and compacting
-// the result by permuting the remaining
-// locations.  Export returns the permutation
-// if 'perm' is non-nil.
+// Export exports the model 'mod', removing unnecessary local mem.Locs and
+// compacting the result by permuting the remaining locations.  Export returns
+// the permutation if 'perm' is non-nil.
 //
-// Generally, after Export is called,
-// 'mod' contains no local variables.
-// One can retrieve points-to information
-// for local variables using PoinstToFor,
+// Generally, after Export is called, 'mod' contains no local variables.  One
+// can retrieve points-to information for local variables using PoinstToFor,
 // before calling Export.
 func (mod *Model) Export(perm []Loc) []Loc {
 	return perm

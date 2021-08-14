@@ -12,8 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package ssa2pal
+package objects
 
-type Chan struct {
+import "github.com/go-air/pal/memory"
+
+type Struct struct {
 	object
+	Fields []memory.Loc
 }
