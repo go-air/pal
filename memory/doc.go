@@ -79,8 +79,8 @@
 // PointsTo constraints 'p = &v' indicate that v is in the points to set of p.
 //
 // Load constraints 'd = *p' indicate that for any v in the points to set of p,
-// v is in the points to set of d, recursively descending structured data at
-// *p in tandem with d.
+// the points-to set of v is contained in in the points to set of d, recursively
+// descending structured data at *p in tandem with d.
 //
 // Store constraints '*p = v' indicate that for any d in the points to set of p
 // and any w in the points to set of v, w is in the points to set of d,
