@@ -77,11 +77,11 @@ func (t *T) newNode() (Type, *node) {
 func (t *T) grow() {
 	ncap := uint32(cap(t.nodes) * 2)
 	tnodes := make([]node, len(t.nodes), ncap)
-	thash := make([]uint32, ncap)
+	thash := make([]Type, ncap)
 	copy(tnodes, t.nodes)
 	for i := range t.nodes {
-		ty := uint32(i)
-		node := &t.nodes[i]
+		ty := Type(i)
+		node := &tnodes[i]
 		ci := node.hash % ncap
 		node.next = Type(thash[ci])
 		thash[ci] = ty

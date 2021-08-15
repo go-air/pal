@@ -66,6 +66,8 @@ func (t *T) FromGoType(gotype types.Type) Type {
 	case *types.Map:
 		elty := t.FromGoType(ty.Elem())
 		keyty := t.FromGoType(ty.Key())
+		_, _ = elty, keyty
+
 	case *types.Interface:
 	case *types.Signature:
 	case *types.Tuple:
