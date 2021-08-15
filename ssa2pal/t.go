@@ -139,7 +139,7 @@ func (p *T) genGlobal(buildr *results.Builder, name string, x *ssa.Global) {
 	switch ty := x.Type().Underlying().(type) {
 	case *types.Pointer:
 		buildr.Type = ty.Elem()
-		buildr.SrcKind = results.SrcVar
+		buildr.SrcKind = memory.SrcVar
 
 		loc, ptr := buildr.GenWithPointer()
 		p.vmap[x] = ptr
@@ -314,7 +314,7 @@ func (p *T) genAlloc(bld *results.Builder, a *ssa.Alloc) memory.Loc {
 	}
 	bld.Type = a.Type().Underlying().(*types.Pointer).Elem()
 	bld.Pos = a.Pos()
-	bld.SrcKind = results.SrcVar
+	bld.SrcKind = memory.SrcVar
 
 	_, ptr := bld.GenWithPointer()
 	return ptr
@@ -391,7 +391,7 @@ func (p *T) genI9nConstraints(bld *results.Builder, fnName string, i9n ssa.Instr
 	case *ssa.MakeInterface:
 		bld.Type = i9n.Type()
 		bld.Class = memory.Heap
-		bld.SrcKind = results.SrcMakeInterface
+		bld.SrcKind = memory.SrcMakeInterface
 		bld.GenLoc()
 	case *ssa.MakeClosure:
 	case *ssa.MakeChan:

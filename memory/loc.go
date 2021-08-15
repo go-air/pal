@@ -48,10 +48,11 @@ func (m *Loc) PlainDecode(r io.Reader) error {
 }
 
 type loc struct {
-	class  Class
-	attrs  Attrs
-	root   Loc
-	parent Loc
+	class   Class
+	attrs   Attrs
+	srcInfo SrcInfo
+	root    Loc
+	parent  Loc
 
 	lsz indexing.I // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
 
@@ -61,9 +62,9 @@ type loc struct {
 }
 
 func (m *loc) PlainEncode(w io.Writer) error {
-	return plain.EncodeJoin(w, " ", m.class, m.attrs, m.parent, m.obj)
+	return plain.EncodeJoin(w, " ", m.class, m.attrs, &m.srcInfo, m.parent, m.obj)
 }
 
 func (m *loc) PlainDecode(r io.Reader) error {
-	return plain.DecodeJoin(r, " ", &m.class, &m.attrs, &m.parent, &m.obj)
+	return plain.DecodeJoin(r, " ", &m.class, &m.attrs, &m.srcInfo, &m.parent, &m.obj)
 }

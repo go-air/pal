@@ -18,6 +18,7 @@ import (
 	"go/token"
 	"go/types"
 
+	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/memory"
 )
 
@@ -26,7 +27,7 @@ type Builder struct {
 	Class   memory.Class
 	Pos     token.Pos
 	Type    types.Type
-	SrcKind SrcKind
+	SrcKind memory.SrcKind
 
 	pkg *PkgRes
 	mdl *memory.Model
@@ -39,14 +40,13 @@ func NewBuilder(pkg *PkgRes) *Builder {
 func (b *Builder) Reset() {
 	b.Attrs = memory.Attrs(0)
 	b.Class = memory.Class(0)
-	b.SrcKind = SrcKind(0)
+	b.SrcKind = memory.SrcKind(0)
 	b.Pos = -1
 	b.Type = nil
 }
 
 func (b *Builder) GenLoc() memory.Loc {
-	res := b.mdl.GenRoot(b.Type, b.Class, b.Attrs)
-	b.pkg.set(res, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
+	res := b.mdl.GenRoot(b.Type, b.Class, b.Attrs, b.SrcKind, b.Pos)
 	return res
 }
 
@@ -59,9 +59,7 @@ func (b *Builder) ArrayIndex(m memory.Loc, i int) memory.Loc {
 }
 
 func (b *Builder) GenWithPointer() (obj, ptr memory.Loc) {
-	obj, ptr = b.mdl.GenWithPointer(b.Type, b.Class, b.Attrs)
-	b.pkg.set(obj, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
-	b.pkg.set(ptr, &SrcInfo{Kind: b.SrcKind, Pos: b.Pos})
+	obj, ptr = b.mdl.GenWithPointer(b.Type, b.Class, b.Attrs, b.SrcKind, b.Pos)
 	return
 }
 
@@ -81,9 +79,12 @@ func (b *Builder) GenTransfer(dst, src memory.Loc) {
 	b.mdl.AddTransfer(dst, src)
 }
 
+func (b *Builder) GenTransferIndex(dst, src memory.Loc, off indexing.I) {
+	b.mdl.AddTransferIndex(dst, src, off)
+}
+
 func (b *Builder) Model() *memory.Model {
 	return b.mdl
-
 }
 
 func (b *Builder) Check() error {

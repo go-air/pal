@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"math"
 
 	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
@@ -31,7 +30,6 @@ type PkgRes struct {
 	indexing indexing.T
 	Start    memory.Loc
 	MemModel *memory.Model // provides memory.Loc operations
-	SrcInfo  []SrcInfo     // indexed by memory.Loc
 }
 
 func NewPkgRes(pkgPath string, vs indexing.T) *PkgRes {
@@ -40,27 +38,7 @@ func NewPkgRes(pkgPath string, vs indexing.T) *PkgRes {
 		PkgPath:  pkgPath,
 		indexing: vs,
 		Start:    memory.Loc(1),
-		MemModel: mdl,
-		SrcInfo:  make([]SrcInfo, mdl.Len())}
-}
-
-func (pkg *PkgRes) set(m memory.Loc, info *SrcInfo) {
-	n := memory.Loc(uint32(cap(pkg.SrcInfo)))
-	if m < n {
-		pkg.SrcInfo[m] = *info
-		return
-	}
-	if m > math.MaxUint32/2 {
-		n = math.MaxUint32
-	} else {
-		for n <= m {
-			n *= 2
-		}
-	}
-	infos := make([]SrcInfo, n)
-	copy(infos, pkg.SrcInfo)
-	infos[m] = *info
-	pkg.SrcInfo = infos
+		MemModel: mdl}
 }
 
 func (pkg *PkgRes) PlainEncode(w io.Writer) error {
@@ -68,13 +46,9 @@ func (pkg *PkgRes) PlainEncode(w io.Writer) error {
 		return e
 	}
 	N := pkg.MemModel.Len()
-	if N > len(pkg.SrcInfo) {
-		return fmt.Errorf("corrupted pkg info, length mismatch %d %d\n", N, len(pkg.SrcInfo))
-	}
 	for i := 0; i < N; i++ {
-		si := &pkg.SrcInfo[i]
 		codr := pkg.MemModel.PlainCoderAt(i)
-		if _, e := fmt.Fprintf(w, "%s %s\n", plain.String(codr), plain.String(si)); e != nil {
+		if _, e := fmt.Fprintf(w, "%s\n", plain.String(codr)); e != nil {
 			return nil
 		}
 	}
@@ -97,20 +71,11 @@ func (pkg *PkgRes) PlainDecode(r io.Reader) error {
 	}
 	pkg.Start = memory.Loc(start)
 	pkg.MemModel.Cap(n)
-	pkg.SrcInfo = make([]SrcInfo, n)
 	spaceBuf := make([]byte, 1)
 	for i := 0; i < n; i++ {
 		loc := pkg.MemModel.PlainCoderAt(i)
-		si := &pkg.SrcInfo[i]
 		if err = loc.PlainDecode(br); err != nil {
 			return fmt.Errorf("3 %d-%w", i, err)
-		}
-		_, err = io.ReadFull(br, spaceBuf)
-		if err != nil || spaceBuf[0] != byte(' ') {
-			return fmt.Errorf("4 %d-'%s'-%w", i, string(spaceBuf), err)
-		}
-		if err = si.PlainDecode(br); err != nil {
-			return fmt.Errorf("5 %d-%w", i, err)
 		}
 		_, err = io.ReadFull(br, spaceBuf)
 		if err != nil || spaceBuf[0] != byte('\n') {

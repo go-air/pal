@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package results
+package memory
 
 import (
 	"fmt"
@@ -25,7 +25,6 @@ type SrcKind int
 const (
 	SrcVar SrcKind = iota
 	SrcFunc
-	SrcMakeArray
 	SrcMakeSlice
 	SrcMakeMap
 	SrcMakeChan
@@ -40,7 +39,6 @@ const (
 var k2s = map[SrcKind]string{
 	SrcVar:           "var",
 	SrcFunc:          "fun",
-	SrcMakeArray:     "arr",
 	SrcMakeSlice:     "sli",
 	SrcMakeChan:      "chn",
 	SrcMakeMap:       "map",
@@ -52,7 +50,6 @@ var k2s = map[SrcKind]string{
 var s2k = map[string]SrcKind{
 	"var": SrcVar,
 	"fun": SrcFunc,
-	"arr": SrcMakeArray,
 	"sli": SrcMakeSlice,
 	"chn": SrcMakeChan,
 	"map": SrcMakeMap,
