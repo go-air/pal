@@ -12,10 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package objects
 
-const doc = `pal -- pointer analysis library cli
-
-
-TODO: figure out what to put here
-`
+type Chan struct {
+	object
+}

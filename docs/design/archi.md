@@ -1,11 +1,21 @@
 # pal architecture
 
-The pal architecture is centered around the idea of  _persistant modular analysis_.
+The pal architecture is centered around the idea of  _persistant modular
+analysis_.
 
-This means that the analysis is bottom-up in the dependency graph, mirroring the Go build system and the go/tools analysis library.  However, the
-analysis is _persistent_, meaning the results are stored and may be used later to different ends.  
+This means that the analysis is bottom-up in the dependency graph, mirroring
+the Go build system and the go/tools analysis library.  However, the analysis
+is _persistent_, meaning the results are stored and may be used later to
+different ends.  
 
-In this bottom-up phase, pal constructs executable and queryable memory models for each exported symbol of each package. 
+In this bottom-up phase, pal constructs executable and queryable memory models
+for each exported symbol of each package. 
+
+## Applications
+
+### Command line
+
+### Module proxy
 
  
 ## Related Work
@@ -31,8 +41,8 @@ between memory locations.
 
 Gillian [5] is also language agnostic, however it is based on modelling full
 programs by symbolic execution in a given IR (GIL) whereas pal only
-symbolically executes the numeric _Values_ in pointer arithmetic, allowing the
-caller to model these values in many different ways.
+symbolically executes the numeric _index_ in pointer arithmetic, allowing the
+caller to model these index in many different ways.
 
 Golang's pointer analysis [8] is Anderson style with less flexibility,
 dependency on an ssa package specific to Go.

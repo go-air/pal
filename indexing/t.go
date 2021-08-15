@@ -12,10 +12,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package indexing
 
-const doc = `pal -- pointer analysis library cli
+import (
+	"github.com/go-air/pal/internal/plain"
+	"github.com/go-air/pal/xtruth"
+)
 
+type I interface {
+}
 
-TODO: figure out what to put here
-`
+type T interface {
+	// replace with go/constant.
+	Zero() I
+	One() I
+	// replace with go/constant?
+	ToInt(v I) (i int, ok bool)
+
+	FromInt(i int) I
+
+	IsVar(v I) bool
+	Var() I
+
+	Plus(a, b I) I
+	Times(a, b I) I
+
+	Div(a, b I) (I, xtruth.T)
+	Rem(a, b I) (I, xtruth.T)
+
+	Band(a, b I) I
+	Bnot(a I) I
+
+	Lshift(a, s I) (I, xtruth.T)
+	Rshift(a, s I) (I, xtruth.T)
+
+	Equal(a, b I) xtruth.T
+	Less(a, b I) xtruth.T
+
+	plain.Coder
+}

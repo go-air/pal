@@ -12,10 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package typeset
 
-const doc = `pal -- pointer analysis library cli
+type Kind uint32
 
-
-TODO: figure out what to put here
-`
+const (
+	_     Kind = iota
+	Basic      = iota
+	Pointer
+	Array
+	Struct
+	Slice
+	Map
+	Chan
+	Interface
+	Func
+	Tuple
+)

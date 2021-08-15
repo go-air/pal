@@ -12,10 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package typeset
 
-const doc = `pal -- pointer analysis library cli
+import "io"
 
+func (t *T) PlainEncode(w io.Writer) error {
+	return nil
+}
 
-TODO: figure out what to put here
-`
+func (t *T) PlainDecode(r io.Reader) error {
+	return nil
+}

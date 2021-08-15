@@ -12,10 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package objects
 
-const doc = `pal -- pointer analysis library cli
+import "io"
 
+type Array struct {
+	object
+}
 
-TODO: figure out what to put here
-`
+func (a *Array) PlainEncode(w io.Writer) error {
+	var err error
+	err = a.loc.PlainEncode(w)
+	return err
+}
+
+func (a *Array) PlainDecode(r io.Reader) error {
+	p := &a.loc
+	return p.PlainDecode(r)
+}

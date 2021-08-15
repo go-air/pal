@@ -12,10 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package memory
 
-const doc = `pal -- pointer analysis library cli
+import (
+	"testing"
 
+	"github.com/go-air/pal/internal/plain"
+)
 
-TODO: figure out what to put here
-`
+func TestClass(t *testing.T) {
+	org := Heap
+	class := org
+	p := &class
+	if err := plain.EncodeDecode(p); err != nil {
+		t.Fatal(err)
+	}
+	if *p != org {
+		t.Fatalf("%s != %s\n", plain.String(p), plain.String(org))
+	}
+}

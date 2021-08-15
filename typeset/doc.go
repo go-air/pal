@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
-
-const doc = `pal -- pointer analysis library cli
-
-
-TODO: figure out what to put here
-`
+// Package typeset provides a serialisable, canonical subset of
+// go/types for use with pal.
+package typeset

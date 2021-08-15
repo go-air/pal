@@ -14,5 +14,5 @@
 
 // Package plain provides interfaces and helpers for "plain" encoding.
 //
-// Plain encodings are intended for human readable data
+// Plain encodings are intended for human readable data.
 package plain

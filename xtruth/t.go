@@ -12,10 +12,58 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package xtruth
 
-const doc = `pal -- pointer analysis library cli
+type T int
 
+const (
+	False T = iota
+	True
+	X
+)
 
-TODO: figure out what to put here
-`
+func (t T) String() string {
+	switch t {
+	case False:
+		return "f"
+	case True:
+		return "t"
+	case X:
+		return "x"
+	default:
+		panic("bad xtruth")
+	}
+}
+
+func (t T) Or(o T) T {
+	if t == True || o == True {
+		return True
+	}
+	if t == X || o == X {
+		return X
+	}
+	return False
+}
+
+func (t T) And(o T) T {
+	if t == False || o == False {
+		return False
+	}
+	if t == X || o == X {
+		return X
+	}
+	return True
+}
+
+func (t T) Not() T {
+	switch t {
+	case True:
+		return False
+	case False:
+		return True
+	case X:
+		return X
+	default:
+		panic("bad xtruth")
+	}
+}

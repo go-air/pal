@@ -35,7 +35,7 @@ api to meet the most common needs well, and to meet most needs reasonably.
 ### For different Go IRs
 
 staticcheck [6] has an IR, golang.org/x/tools/go/ssa is a baseline, we are
-working on (air)[https://github.com/go-air/air].  We would like pal to be
+working on [air](https://github.com/go-air/air).  We would like pal to be
 retargetable to these different IRs.  Perhaps it can be used one day for the Go
 gc compiler IR, or other IRs.
 
@@ -61,7 +61,7 @@ DOI: 10.1561/2500000014 (https://yanniss.github.io/points-to-tutorial15.pdf)
 Compositional Analysis by means of bi-abduction
 Journal of the ACM Volume 58 Issue 6
 December 2011 
-Article No.: 26pp 1–66https://doi.org/10.1145/2049697.2049700
+Article No.: 26pp 1–66 https://doi.org/10.1145/2049697.2049700
 
 [3] Andersen, Lars Ole (1994). Program Analysis and Specialization for the C
 Programming Language (PDF) (PhD thesis).

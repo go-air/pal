@@ -12,10 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
-
-const doc = `pal -- pointer analysis library cli
-
-
-TODO: figure out what to put here
-`
+// Package byteorder defines pal's ByteOrder for binary serialisation.
+package byteorder

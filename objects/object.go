@@ -12,10 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package objects
 
-const doc = `pal -- pointer analysis library cli
+import (
+	"github.com/go-air/pal/internal/plain"
+	"github.com/go-air/pal/memory"
+)
 
+type Object interface {
+	plain.Coder
+	Loc() memory.Loc
+}
 
-TODO: figure out what to put here
-`
+type object struct {
+	loc memory.Loc
+}
+
+func (o *object) Loc() memory.Loc { return o.loc }

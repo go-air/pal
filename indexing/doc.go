@@ -12,10 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
-
-const doc = `pal -- pointer analysis library cli
-
-
-TODO: figure out what to put here
-`
+// Package index provides support for abstract integral index to pal.
+package indexing

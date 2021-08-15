@@ -16,14 +16,17 @@ package pal
 
 import (
 	"flag"
-	"fmt"
 	"reflect"
 
+	"github.com/go-air/pal/indexing"
+	"github.com/go-air/pal/results"
+	"github.com/go-air/pal/ssa2pal"
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/buildssa"
 )
 
 var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
+var bigV *bool = flagSet.Bool("V", false, "print version")
 
 type resultType int
 
@@ -32,16 +35,29 @@ func (r *resultType) AFact() {}
 // SSAAnalyzer produces an Analyzer which
 // works on golang.org/x/tools/go/ssa form.
 func SSAAnalyzer() *analysis.Analyzer {
+	// generate a unique results object
+	// for every analyzer.
+	palRes, err := results.New()
+	if err != nil {
+		panic(err.Error())
+	}
 	return &analysis.Analyzer{
 		Name:       "pal",
 		Flags:      *flagSet,
 		Doc:        doc, // see file paldoc.go
 		Run:        run,
 		Requires:   []*analysis.Analyzer{buildssa.Analyzer},
-		ResultType: reflect.TypeOf((*resultType)(nil)),
-		FactTypes:  []analysis.Fact{(*resultType)(nil)}}
+		ResultType: reflect.TypeOf(palRes),
+		FactTypes:  []analysis.Fact{palRes}}
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	return nil, fmt.Errorf("unimplemented")
+	if *bigV {
+		return Version()
+	}
+	pal, err := ssa2pal.New(pass, indexing.ConstVals())
+	if err != nil {
+		return nil, err
+	}
+	return pal.GenResult()
 }

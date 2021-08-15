@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package ssa2pal
 
-const doc = `pal -- pointer analysis library cli
+import "github.com/go-air/pal/memory"
 
-
-TODO: figure out what to put here
-`
+type Interface struct {
+	object
+	Concrete memory.Loc
+}

@@ -12,20 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package plain provides interfaces and a few supporting functions for
+// a 'plain' encoding.
+//
+// A 'plain' encoding should serialize data in a plain text way, without
+// being too 'pretty'.
 package plain
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 
 	"strings"
 )
 
-type T struct {
-	Encoding
-}
-
-func (t T) Plain() string {
+// String provides a String() function
+// for Encoders.
+func String(t Encoder) string {
 	var b bytes.Buffer
 	if err := t.PlainEncode(&b); err != nil {
 		panic(err)
@@ -33,19 +37,69 @@ func (t T) Plain() string {
 	return b.String()
 }
 
-func (t T) ParsePlain(s string) error {
+// Parse provides a Parse() function
+// for decoders.
+func Parse(t Decoder, s string) error {
 	return t.PlainDecode(strings.NewReader(s))
 }
 
-type PlainEncoder interface {
+// Encoder is the interface for a plain encoder.
+type Encoder interface {
 	PlainEncode(io.Writer) error
 }
 
-type PlainDecoder interface {
+// Decoder is the interface for a plain decoder.
+type Decoder interface {
 	PlainDecode(io.Reader) error
 }
 
-type Encoding interface {
-	PlainEncoder
-	PlainDecoder
+func EncodeJoin(w io.Writer, sep string, es ...Encoder) error {
+	sepBytes := []byte(sep)
+	var err error
+	for i, e := range es {
+		if i != 0 {
+			_, err = w.Write(sepBytes)
+			if err != nil {
+				return err
+			}
+		}
+		err = e.PlainEncode(w)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func DecodeJoin(r io.Reader, sep string, ds ...Decoder) error {
+	var err error
+	buf := make([]byte, len(sep))
+	for i, d := range ds {
+		if i != 0 {
+			_, err = io.ReadFull(r, buf)
+			if string(buf) != sep {
+				return fmt.Errorf("unexpected: '%s'", string(buf))
+			}
+		}
+		err = d.PlainDecode(r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type Coder interface {
+	Encoder
+	Decoder
+}
+
+func EncodeDecode(c Coder) error {
+	var buf = new(bytes.Buffer)
+	if err := c.PlainEncode(buf); err != nil {
+		return err
+	}
+	d := buf.Bytes()
+	buf = bytes.NewBuffer(d)
+	return c.PlainDecode(buf)
 }

@@ -12,10 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pal
+package objects
 
-const doc = `pal -- pointer analysis library cli
+import (
+	"github.com/go-air/pal/indexing"
+	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/results"
+)
 
+type Slice struct {
+	object
+	Len   indexing.I
+	Cap   indexing.I
+	Slots []Slot
+}
 
-TODO: figure out what to put here
-`
+func newSlice(bld *results.Builder, l, c indexing.I) *Slice {
+	return nil
+}
+
+type Slot struct {
+	I   indexing.I
+	Loc memory.Loc
+}
