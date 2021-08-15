@@ -15,6 +15,8 @@
 package indexing
 
 import (
+	"io"
+
 	"github.com/go-air/pal/xtruth"
 )
 
@@ -32,15 +34,19 @@ func (c consts) One() I {
 	return I(1)
 }
 
-func (c consts) Var(v I) bool {
+func (c consts) IsVar(v I) bool {
 	return false
+}
+
+func (c consts) Var() I {
+	panic("constant variable requested.")
 }
 
 func (c consts) FromInt(v int) I {
 	return v
 }
 
-func (c consts) AsInt(v I) (int, bool) {
+func (c consts) ToInt(v I) (int, bool) {
 	vv, ok := v.(int)
 	if !ok {
 		return 0, false
@@ -51,6 +57,53 @@ func (c consts) AsInt(v I) (int, bool) {
 func (c consts) Plus(a, b I) I {
 	aa, bb := a.(int), b.(int)
 	return I(aa + bb)
+}
+
+func (c consts) Times(a, b I) I {
+	aa, bb := a.(int), b.(int)
+	return I(aa * bb)
+}
+
+func (c consts) Div(a, b I) (I, xtruth.T) {
+	switch c.Equal(b, c.Zero()) {
+	case xtruth.True:
+		return c.Zero(), xtruth.False
+	case xtruth.False:
+		return I(a.(int) / b.(int)), xtruth.True
+	case xtruth.X:
+		panic("non-const op")
+	}
+	return c.Zero(), xtruth.X
+}
+
+func (c consts) Rem(a, b I) (I, xtruth.T) {
+	switch c.Equal(b, c.Zero()) {
+	case xtruth.True:
+		return c.Zero(), xtruth.False
+	case xtruth.False:
+		return I(a.(int) % b.(int)), xtruth.True
+	case xtruth.X:
+		panic("non-const op")
+	}
+	return c.Zero(), xtruth.X
+}
+
+func (c consts) Band(a, b I) I {
+	aa, bb := a.(int), b.(int)
+	return I(aa & bb)
+}
+
+func (c consts) Bnot(a I) I {
+	aa := a.(int)
+	return I(^aa)
+}
+
+func (c consts) Lshift(a, s I) (I, xtruth.T) {
+	panic("unimplemented")
+}
+
+func (c consts) Rshift(a, s I) (I, xtruth.T) {
+	panic("unimplemented")
 }
 
 func (c consts) Less(a, b I) xtruth.T {
@@ -67,4 +120,12 @@ func (c consts) Equal(a, b I) xtruth.T {
 		return xtruth.True
 	}
 	return xtruth.False
+}
+
+func (c consts) PlainEncode(w io.Writer) error {
+	return nil
+}
+
+func (c consts) PlainDecode(r io.Reader) error {
+	return nil
 }

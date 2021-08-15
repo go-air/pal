@@ -102,7 +102,7 @@ func (mod *Model) Field(m Loc, i int) Loc {
 	n := m + 1 // first field
 	for j := 0; j < i; j++ {
 		sz := mod.locs[n].lsz
-		isz, ok := mod.indexing.AsInt(sz)
+		isz, ok := mod.indexing.ToInt(sz)
 		if !ok {
 			return NoLoc
 		}
@@ -114,7 +114,7 @@ func (mod *Model) Field(m Loc, i int) Loc {
 func (mod *Model) ArrayIndex(m Loc, i int) Loc {
 	n := m + 1
 	sz := mod.locs[n].lsz
-	isz, ok := mod.indexing.AsInt(sz)
+	isz, ok := mod.indexing.ToInt(sz)
 	if !ok {
 		return NoLoc
 
@@ -189,7 +189,7 @@ func (mod *Model) Check() error {
 		if loc.parent == Loc(i) {
 			continue
 		}
-		sz, ok := mod.indexing.AsInt(loc.lsz)
+		sz, ok := mod.indexing.ToInt(loc.lsz)
 		if !ok {
 			return fmt.Errorf("vsz not const")
 		}
@@ -199,7 +199,7 @@ func (mod *Model) Check() error {
 	for m, sz := range sizes {
 		sz++
 		loc := &mod.locs[m]
-		realsz, ok := mod.indexing.AsInt(loc.lsz)
+		realsz, ok := mod.indexing.ToInt(loc.lsz)
 		if !ok {
 			return fmt.Errorf("vsz not const")
 		}

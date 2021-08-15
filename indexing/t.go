@@ -15,6 +15,7 @@
 package indexing
 
 import (
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/xtruth"
 )
 
@@ -22,12 +23,31 @@ type I interface {
 }
 
 type T interface {
+	// replace with go/constant.
 	Zero() I
 	One() I
-	AsInt(v I) (i int, ok bool)
+	// replace with go/constant?
+	ToInt(v I) (i int, ok bool)
+
 	FromInt(i int) I
-	Var(v I) bool
+
+	IsVar(v I) bool
+	Var() I
+
 	Plus(a, b I) I
+	Times(a, b I) I
+
+	Div(a, b I) (I, xtruth.T)
+	Rem(a, b I) (I, xtruth.T)
+
+	Band(a, b I) I
+	Bnot(a I) I
+
+	Lshift(a, s I) (I, xtruth.T)
+	Rshift(a, s I) (I, xtruth.T)
+
 	Equal(a, b I) xtruth.T
 	Less(a, b I) xtruth.T
+
+	plain.Coder
 }

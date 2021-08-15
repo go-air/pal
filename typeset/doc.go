@@ -12,14 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package objects
-
-import (
-	"go/token"
-)
-
-type Call struct {
-	object
-	Pos     token.Pos
-	Callees []*Func
-}
+// Package typeset provides a serialisable, canonical subset of
+// go/types for use with pal.
+package typeset
