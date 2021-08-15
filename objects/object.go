@@ -14,9 +14,13 @@
 
 package objects
 
-import "github.com/go-air/pal/memory"
+import (
+	"github.com/go-air/pal/internal/plain"
+	"github.com/go-air/pal/memory"
+)
 
 type Object interface {
+	plain.Coder
 	Loc() memory.Loc
 }
 

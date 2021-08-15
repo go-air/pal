@@ -14,6 +14,19 @@
 
 package objects
 
+import "io"
+
 type Array struct {
 	object
+}
+
+func (a *Array) PlainEncode(w io.Writer) error {
+	var err error
+	err = a.loc.PlainEncode(w)
+	return err
+}
+
+func (a *Array) PlainDecode(r io.Reader) error {
+	p := &a.loc
+	return p.PlainDecode(r)
 }

@@ -24,15 +24,15 @@ import (
 
 func TestModel(t *testing.T) {
 	mdl := NewModel(indexing.ConstVals())
-	mdl.Global(types.NewPointer(types.Typ[types.Int]), IsParam|IsOpaque)
-	mdl.Global(types.NewSlice(types.Typ[types.Float32]), IsReturn)
-	gs := mdl.Global(types.NewStruct([]*types.Var{
+	mdl.GenRoot(types.NewPointer(types.Typ[types.Int]), Global, IsParam|IsOpaque, SrcKind(0), token.NoPos)
+	mdl.GenRoot(types.NewSlice(types.Typ[types.Float32]), Global, IsReturn, SrcKind(0), token.NoPos)
+	gs := mdl.GenRoot(types.NewStruct([]*types.Var{
 		types.NewVar(token.NoPos, nil, "f1", types.NewStruct([]*types.Var{
 			types.NewVar(token.NoPos, nil, "f1i1", types.Typ[types.Int]),
 			types.NewVar(token.NoPos, nil, "f1i2", types.Typ[types.Int])},
 			[]string{"", ""})),
 		types.NewVar(token.NoPos, nil, "f2", types.Typ[types.Int])},
-		[]string{"", ""}), 0)
+		[]string{"", ""}), Global, 0, SrcKind(0), token.NoPos)
 
 	gf := mdl.Field(gs, 1)
 	if mdl.Parent(gf) != gs {
