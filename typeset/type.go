@@ -14,6 +14,8 @@
 
 package typeset
 
+import "fmt"
+
 type Type uint32
 
 const (
@@ -36,3 +38,7 @@ const (
 	Uintptr
 	_endType
 )
+
+func (t Type) String() string {
+	return fmt.Sprintf("t%d", t)
+}

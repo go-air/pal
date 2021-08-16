@@ -14,7 +14,10 @@
 
 package typeset
 
-import "sort"
+import (
+	"fmt"
+	"sort"
+)
 
 type T struct {
 	nodes []node
@@ -117,8 +120,10 @@ func (t *T) getChan(elt Type) Type {
 }
 
 func (t *T) getArray(elt Type, n int) Type {
+	fmt.Printf("getArray\n")
+	defer fmt.Printf("done getArray\n")
 	ty, node := t.newNode()
-	node.kind = Chan
+	node.kind = Array
 	node.elem = elt
 	node.lsize = t.nodes[elt].lsize*n + 1
 	node.hash = t.hashCode(ty)
@@ -185,26 +190,32 @@ func (t *T) getTuple(elts []named) Type {
 func (t *T) getOrMake(ty Type, node *node) Type {
 	ci := node.hash % uint32(cap(t.hash))
 	ni := t.hash[ci]
+	fmt.Printf("getOrMake ty %s kind %s ni %d hash %d ci %d\n", ty, node.kind, ni, node.hash, ci)
 	for ni != NoType {
+
 		if t.equal(ni, ty) {
+			fmt.Printf("dup\n")
 			t.nodes = t.nodes[:len(t.nodes)-1]
 			return ni
 		}
+		fmt.Printf("%s != %s\n", ni, ty)
 		ni = t.nodes[ni].next
 	}
 	node.next = t.hash[ty]
-	t.hash[ty] = ty
+	t.hash[ci] = ty
 	return ty
 }
 
 func (t *T) newNode() (Type, *node) {
 	n := len(t.nodes)
 	if n == cap(t.nodes) {
+		fmt.Printf("grow\n")
 		t.grow()
 	}
 	t.nodes = t.nodes[:n+1]
 	node := &t.nodes[n]
 	node.zero()
+	fmt.Printf("newNode %d\n", n)
 	return Type(n), node
 }
 
@@ -235,12 +246,15 @@ func (t *T) Len() int {
 func (t *T) equal(a, b Type) bool {
 	anode, bnode := &t.nodes[a], &t.nodes[b]
 	if anode.kind != bnode.kind {
+		fmt.Printf("kind")
 		return false
 	}
 	if anode.kind == Basic {
+		fmt.Printf("basic")
 		return a == b
 	}
 	if anode.lsize != bnode.lsize {
+		fmt.Printf("size")
 		return false
 	}
 	switch anode.kind {
@@ -281,19 +295,28 @@ func (t *T) namedsEqual(as, bs []named) bool {
 }
 
 func (t *T) hashCode(ty Type) uint32 {
-	result := uint32(ty)
+	result := uint32(17)
+	if ty < _endType {
+		return uint32(_endType)
+	}
 	node := &t.nodes[ty]
-	result *= uint32(node.kind) << 3
+	result ^= uint32(node.kind) << 3
 	if node.elem != NoType {
-		result *= uint32(node.elem) << 5
+		result ^= uint32(node.elem) << 5
 	}
 	if node.key != NoType {
-		result *= uint32(node.key) << 7
+		result ^= uint32(node.key) << 7
 	}
-	result *= uint32(node.lsize) << 11
-	result = result ^ hashNamed(node.fields)
-	result = result ^ hashNamed(node.params)
-	result = result ^ hashNamed(node.results)
+	result ^= uint32(node.lsize) << 1
+	if len(node.fields) > 0 {
+		result = result ^ hashNamed(node.fields)
+	}
+	if len(node.params) > 0 {
+		result = result ^ hashNamed(node.params)
+	}
+	if len(node.results) > 0 {
+		result = result ^ hashNamed(node.results)
+	}
 	return result
 }
 

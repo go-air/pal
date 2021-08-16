@@ -14,9 +14,34 @@
 
 package typeset
 
-import "testing"
+import (
+	"bytes"
+	"go/types"
+	"testing"
+)
 
 func TestTypeSet(t *testing.T) {
 	ts := New()
-	_ = ts
+	sli := types.NewSlice(types.Typ[types.Int])
+	arr := types.NewArray(types.Typ[types.Float32], 44)
+	ptr := types.NewPointer(arr)
+	_ = ts.FromGoType(sli)
+	_ = ts.FromGoType(arr)
+	_ = ts.FromGoType(ptr)
+	var buf = bytes.NewBuffer(nil)
+	if err := ts.PlainEncode(buf); err != nil {
+		t.Fatal(err)
+	}
+	str := string(buf.Bytes())
+	buf = bytes.NewBuffer(buf.Bytes())
+	if err := ts.PlainDecode(buf); err != nil {
+		t.Fatal(err)
+	}
+	buf = bytes.NewBuffer(nil)
+	if err := ts.PlainEncode(buf); err != nil {
+		t.Fatal(err)
+	}
+	if str != string(buf.Bytes()) {
+		t.Fatalf("\n%s\n!=\n%s\n", str, string(buf.Bytes()))
+	}
 }

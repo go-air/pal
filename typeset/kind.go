@@ -59,6 +59,9 @@ var string2kind = map[string]Kind{
 	"fun": Func,
 	"tup": Tuple}
 
+func (k Kind) String() string {
+	return kind2string[k]
+}
 func (k Kind) PlainEncode(w io.Writer) error {
 	_, err := w.Write([]byte(kind2string[k]))
 	return err

@@ -104,6 +104,7 @@ func (n *node) PlainDecode(r io.Reader) error {
 	if _, err = fmt.Fscanf(r, " %08x ", lsz); err != nil {
 		return err
 	}
+	fmt.Printf("in dec %p %s %08x\n", n, n.kind, n.lsize)
 	switch n.kind {
 	case Basic:
 		panic("basic types are hard coded")
