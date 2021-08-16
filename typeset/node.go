@@ -15,7 +15,6 @@
 package typeset
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 )
@@ -42,13 +41,16 @@ type named struct {
 }
 
 func (n named) PlainEncode(w io.Writer) error {
-	_, err := fmt.Fprintf(w, "%s:%08x", n.name, n.typ)
+	_, err := fmt.Fprintf(w, "%s %08x", n.name, n.typ)
 	return err
 }
 
 func (n *named) PlainDecode(r io.Reader) error {
-	_, err := fmt.Fscanf(r, "%s:%08x", &n.name, &n.typ)
-	return err
+	m, err := fmt.Fscanf(r, "%s %08x", &n.name, &n.typ)
+	if err != nil {
+		return fmt.Errorf("decode named n=%d: %w", m, err)
+	}
+	return nil
 }
 
 func (n *node) PlainEncode(w io.Writer) error {
@@ -83,7 +85,7 @@ func (n *node) PlainEncode(w io.Writer) error {
 		if err != nil {
 			return err
 		}
-		err = wrapJoinEncode(w, "(", ", ", ")", n.params)
+		err = wrapJoinEncode(w, "(", ", ", ") ", n.params)
 		if err != nil {
 			return err
 		}
@@ -118,14 +120,14 @@ func (n *node) PlainDecode(r io.Reader) error {
 	case Func:
 		err = n.decodeFunc(r)
 	}
-	return nil
+	return err
 }
 
 func (n *node) decodeFunc(r io.Reader) error {
 	buf := make([]byte, 2)
 	_, err := io.ReadFull(r, buf)
 	if err != nil {
-		return err
+		return fmt.Errorf("fn hdr: %w", err)
 	}
 	n.key = NoType
 	switch buf[0] {
@@ -133,7 +135,7 @@ func (n *node) decodeFunc(r io.Reader) error {
 	case 'm':
 		_, err = fmt.Fscanf(r, "%08x", &n.key)
 		if err != nil {
-			return err
+			return fmt.Errorf("key %w", err)
 		}
 	default:
 		return fmt.Errorf("unexpected '%s'", string(buf))
@@ -146,11 +148,14 @@ func (n *node) decodeFunc(r io.Reader) error {
 	default:
 		return fmt.Errorf("unexpected '%s'", string(buf))
 	}
-	err = wrapJoinDecode(r, "(", ", ", ")", &n.params)
+	err = wrapJoinDecode(r, "(", ", ", ") ", &n.params)
 	if err != nil {
-		return err
+		return fmt.Errorf("params %w", err)
 	}
 	err = wrapJoinDecode(r, "(", ", ", ")", &n.results)
+	if err != nil {
+		return fmt.Errorf("results %w", err)
+	}
 
 	return nil
 }
@@ -179,26 +184,61 @@ func wrapJoinEncode(w io.Writer, left, sep, right string, elts []named) error {
 	return err
 }
 
+type bb struct {
+	r   io.Reader
+	b   []byte // size 1
+	buf bool
+}
+
+func newbb(r io.Reader) *bb {
+	return &bb{r: r, b: make([]byte, 1), buf: false}
+}
+
+func (bb *bb) Read(d []byte) (int, error) {
+	n := 0
+	var nn int
+	var err error
+	if bb.buf && len(d) > 0 {
+		d[0] = bb.b[0]
+		bb.buf = false
+		d = d[1:]
+		n++
+		nn, err = bb.r.Read(d)
+	} else {
+		nn, err = bb.r.Read(d)
+	}
+	return nn + n, err
+}
+
+func (bb *bb) PeekByte() (byte, error) {
+	if bb.buf {
+		return 0, fmt.Errorf("already read %s", string(bb.b))
+	}
+
+	_, err := io.ReadFull(bb.r, bb.b)
+	if err != nil {
+		return 0, err
+	}
+	bb.buf = true
+	return bb.b[0], nil
+}
+
 func wrapJoinDecode(r io.Reader, left, sep, right string, elts *[]named) error {
-	br := bufio.NewReader(r)
-	_ = br
+	br := newbb(r)
 	err := expect(r, left)
 	if err != nil {
 		return err
 	}
 	for {
-		b, err := br.ReadByte()
+		b, err := br.PeekByte()
 		if err != nil {
-			return err
-		}
-		if err = br.UnreadByte(); err != nil {
-			return err
+			return fmt.Errorf("peek %w", err)
 		}
 		switch b {
 		case sep[0]:
-			err = expect(r, sep)
+			err = expect(br, sep)
 		case right[0]:
-			return expect(r, right)
+			return expect(br, right)
 		default:
 			n := len(*elts)
 			*elts = append(*elts, named{})
@@ -206,7 +246,7 @@ func wrapJoinDecode(r io.Reader, left, sep, right string, elts *[]named) error {
 			err = elt.PlainDecode(br)
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("sep or dec: %w\n", err)
 		}
 	}
 }

@@ -94,6 +94,35 @@ type Coder interface {
 	Decoder
 }
 
+func TestRoundTrip(c Coder, verbose bool) error {
+	var buf = new(bytes.Buffer)
+	if err := c.PlainEncode(buf); err != nil {
+		return fmt.Errorf("round trip, enc1: %w", err)
+	}
+	d := buf.Bytes()
+	s1 := string(d)
+	if verbose {
+		fmt.Printf("encoded\n```\n%s```\n", s1)
+	}
+	buf = bytes.NewBuffer(d)
+	if err := c.PlainDecode(buf); err != nil {
+		return fmt.Errorf("round trip, dec: %w", err)
+	}
+	buf = new(bytes.Buffer)
+	if err := c.PlainEncode(buf); err != nil {
+		return fmt.Errorf("round trip, enc2: %w", err)
+	}
+	d = buf.Bytes()
+	s2 := string(d)
+	if verbose {
+		fmt.Printf("encode2\n```\n%s```\n", s2)
+	}
+	if s1 != s2 {
+		return fmt.Errorf("\n%s\n!=\n%s\n", s1, s2)
+	}
+	return nil
+}
+
 func EncodeDecode(c Coder) error {
 	var buf = new(bytes.Buffer)
 	if err := c.PlainEncode(buf); err != nil {

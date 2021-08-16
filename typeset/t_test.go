@@ -16,9 +16,11 @@ package typeset
 
 import (
 	"bytes"
+	"go/token"
 	"go/types"
-	"os"
 	"testing"
+
+	"github.com/go-air/pal/internal/plain"
 )
 
 func TestTypeSetGrow(t *testing.T) {
@@ -28,7 +30,27 @@ func TestTypeSetGrow(t *testing.T) {
 	for i := 0; i < 2025; i++ {
 		palBase = ts.getPointer(palBase)
 	}
-	ts.PlainEncode(os.Stdout)
+	//ts.PlainEncode(os.Stdout)
+	if err := plain.TestRoundTrip(ts, false); err != nil {
+		t.Error(err)
+	}
+}
+
+func TestTypeSetFunc(t *testing.T) {
+	ts := New()
+	params := types.NewTuple(
+		types.NewVar(token.NoPos, nil, "p1", types.Typ[types.Int64]),
+		types.NewVar(token.NoPos, nil, "p2", types.Typ[types.Int64]),
+		types.NewVar(token.NoPos, nil, "p3", types.Typ[types.Float64]))
+	results := types.NewTuple(
+		types.NewVar(token.NoPos, nil, "r1", types.Typ[types.Int64]),
+		types.NewVar(token.NoPos, nil, "r2", types.Typ[types.Int64]))
+	sig := types.NewSignature(nil, params, results, false)
+	_ = ts.FromGoType(sig)
+	//ts.PlainEncode(os.Stdout)
+	if err := plain.TestRoundTrip(ts, false); err != nil {
+		t.Error(err)
+	}
 }
 
 func TestTypeSet(t *testing.T) {

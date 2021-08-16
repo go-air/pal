@@ -28,9 +28,12 @@ func (t *T) PlainEncode(w io.Writer) error {
 	for i := int(_endType); i < N; i++ {
 		node := &t.nodes[i]
 		if err = node.PlainEncode(w); err != nil {
-			return err
+			return fmt.Errorf("typeset encode node %d: %w", i, err)
 		}
 		_, err = fmt.Fprintf(w, "\n")
+		if err != nil {
+			return fmt.Errorf("typeset encode eol %d: %w", i, err)
+		}
 	}
 	return nil
 }
@@ -41,7 +44,7 @@ func (t *T) PlainDecode(r io.Reader) error {
 	var H int
 	_, err := fmt.Fscanf(r, "%d:%d\n", &N, &H)
 	if err != nil {
-		return err
+		return fmt.Errorf("typeset decode hdr: %w", err)
 	}
 	tt.hash = make([]Type, H)
 	copy(tt.hash[:_endType], t.hash[:_endType])
@@ -53,14 +56,14 @@ func (t *T) PlainDecode(r io.Reader) error {
 		node := &tt.nodes[ty]
 		node.zero()
 		if err = node.PlainDecode(r); err != nil {
-			return err
+			return fmt.Errorf("typeset decode node %d: %w", ty, err)
 		}
-		_, err = io.ReadFull(r, eol)
+		n, err := io.ReadFull(r, eol)
 		if err != nil {
-			return err
+			return fmt.Errorf("typeset decode eol %d: %d %w", ty, n, err)
 		}
 		if eol[0] != byte('\n') {
-			return fmt.Errorf("expected eol")
+			return fmt.Errorf("expected eol got '%s'", string(eol))
 		}
 		node.hash = tt.hashCode(ty)
 		hi := node.hash % uint32(H)
