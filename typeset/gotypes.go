@@ -140,7 +140,6 @@ func (t *T) FromGoType(gotype types.Type) Type {
 	default:
 		panic(fmt.Sprintf("pal type cannot represent go type %s", gotype))
 	}
-	return 0
 }
 
 func (t *T) ToGoType(ty Type) types.Type {

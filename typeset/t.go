@@ -14,6 +14,8 @@
 
 package typeset
 
+import "sort"
+
 type T struct {
 	nodes []node
 	hash  []Type
@@ -36,6 +38,55 @@ func New() *T {
 		res.hash[ci] = i
 	}
 	return res
+}
+
+func (t *T) Kind(ty Type) Kind {
+	return t.nodes[ty].kind
+}
+
+func (t *T) ArrayLen(ty Type) int {
+	node := &t.nodes[ty]
+	n := node.lsize - 1
+	eltSize := t.nodes[node.elem].lsize
+	if n%eltSize != 0 {
+		panic("bad array len")
+	}
+	return n / eltSize
+}
+
+func (t *T) NumFields(ty Type) int {
+	return len(t.nodes[ty].fields)
+}
+
+func (t *T) Field(ty Type, i int) (name string, fty Type) {
+	f := t.nodes[ty].fields[i]
+	return f.name, f.typ
+}
+
+func (t *T) Recv(ty Type) Type {
+	return t.nodes[ty].key
+}
+
+func (t *T) Variadic(ty Type) bool {
+	return t.nodes[ty].variadic
+}
+
+func (t *T) NumParams(ty Type) int {
+	return len(t.nodes[ty].params)
+}
+
+func (t *T) Param(ty Type, i int) (name string, pty Type) {
+	param := t.nodes[ty].params[i]
+	return param.name, param.typ
+}
+
+func (t *T) NumResults(ty Type) int {
+	return len(t.nodes[ty].results)
+}
+
+func (t *T) Result(ty Type, i int) (name string, rty Type) {
+	result := t.nodes[ty].results[i]
+	return result.name, result.typ
 }
 
 func (t *T) getSlice(elt Type) Type {
@@ -99,6 +150,9 @@ func (t *T) getMap(kty, ety Type) Type {
 func (t *T) getInterface(meths []named) Type {
 	ty, node := t.newNode()
 	node.kind = Interface
+	sort.Slice(meths, func(i, j int) bool {
+		return meths[i].name < meths[j].name
+	})
 	node.fields = meths
 	node.lsize = 1 // like a pointer
 	node.hash = t.hashCode(ty)
@@ -170,8 +224,12 @@ func (t *T) grow() {
 	t.hash = thash
 }
 
-func (t *T) Equals(a, b Type) bool {
+func (t *T) Equal(a, b Type) bool {
 	return a == b
+}
+
+func (t *T) Len() int {
+	return len(t.nodes)
 }
 
 func (t *T) equal(a, b Type) bool {
@@ -190,7 +248,7 @@ func (t *T) equal(a, b Type) bool {
 		return t.equal(anode.elem, bnode.elem)
 	case Array:
 		return t.equal(anode.elem, bnode.elem)
-	case Struct, Interface: // interface methods are sorted
+	case Struct, Interface, Tuple: // interface methods are sorted
 		return t.namedsEqual(anode.fields, bnode.fields)
 	case Map:
 		return t.equal(anode.elem, bnode.elem) && t.equal(anode.key, bnode.key)
