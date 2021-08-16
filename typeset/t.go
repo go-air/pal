@@ -24,7 +24,7 @@ type T struct {
 }
 
 const (
-	initCap = 128
+	initCap = 64
 )
 
 func New() *T {

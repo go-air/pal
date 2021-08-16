@@ -17,8 +17,19 @@ package typeset
 import (
 	"bytes"
 	"go/types"
+	"os"
 	"testing"
 )
+
+func TestTypeSetGrow(t *testing.T) {
+	ts := New()
+	var base types.Type = types.Typ[types.Int64]
+	var palBase Type = ts.FromGoType(base)
+	for i := 0; i < 2025; i++ {
+		palBase = ts.getPointer(palBase)
+	}
+	ts.PlainEncode(os.Stdout)
+}
 
 func TestTypeSet(t *testing.T) {
 	ts := New()

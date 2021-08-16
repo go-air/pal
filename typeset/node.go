@@ -116,7 +116,42 @@ func (n *node) PlainDecode(r io.Reader) error {
 	case Tuple:
 		err = wrapJoinDecode(r, "(", ", ", ")", &n.fields)
 	case Func:
+		err = n.decodeFunc(r)
 	}
+	return nil
+}
+
+func (n *node) decodeFunc(r io.Reader) error {
+	buf := make([]byte, 2)
+	_, err := io.ReadFull(r, buf)
+	if err != nil {
+		return err
+	}
+	n.key = NoType
+	switch buf[0] {
+	case 'f':
+	case 'm':
+		_, err = fmt.Fscanf(r, "%08x", &n.key)
+		if err != nil {
+			return err
+		}
+	default:
+		return fmt.Errorf("unexpected '%s'", string(buf))
+	}
+	switch buf[1] {
+	case '+':
+		n.variadic = true
+	case '-':
+		n.variadic = false
+	default:
+		return fmt.Errorf("unexpected '%s'", string(buf))
+	}
+	err = wrapJoinDecode(r, "(", ", ", ")", &n.params)
+	if err != nil {
+		return err
+	}
+	err = wrapJoinDecode(r, "(", ", ", ")", &n.results)
+
 	return nil
 }
 
