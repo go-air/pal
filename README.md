@@ -17,44 +17,7 @@ well enough to be used by others on our tests.
 
 ## roadmap
 
-- cli
-	- [x] analyzer framework stub
-	- [ ] service
-- [ ] memory model
-	- [x] constraints (load, store, transfer)
-	- [x] plain serialize
-- [ ] indexing
-	- [ ] integrate types
-	- [ ] dev.typeparams version
-- [ ] types -- represent locatable objects
-	- [ ] to go types
-	- [ ] from go types
-	- [ ] serialize
-- [ ] objects -- manage lifecycle of memory model w.r.t. Go things
-	- [ ] creation
-	- 
-- [ ] ssa2pal
-	- [x] loads
-	- [x] stores
-	- [x] map values to memory locations
-	- [ ] map values to objects
-	- [ ] indexing arithmetic operations
-	- [x] structs
-	- [x] arrays
-	- [ ] slices
-	- [x] returns
-	- [x] phi nodes
-	- [x] function objects
-	- [ ] function variadics
-	- [ ] builtins
-- [ ] docs
-	- [x] statement of purpose
-	- [ ] design
-		- [ ] cli
-		- [ ] service
-	- [ ] tutorial
-	- [ ] reference
-
+See #33
 
 
 
