@@ -19,7 +19,7 @@ import (
 	"go/types"
 )
 
-func (t *T) FromGoType(gotype types.Type) Type {
+func (t *TypeSet) FromGoType(gotype types.Type) Type {
 	// that line is a headache...
 	switch ty := gotype.(type) {
 	case *types.Basic:
@@ -142,6 +142,6 @@ func (t *T) FromGoType(gotype types.Type) Type {
 	}
 }
 
-func (t *T) ToGoType(ty Type) types.Type {
+func (t *TypeSet) ToGoType(ty Type) types.Type {
 	return nil
 }

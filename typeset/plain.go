@@ -19,7 +19,7 @@ import (
 	"io"
 )
 
-func (t *T) PlainEncode(w io.Writer) error {
+func (t *TypeSet) PlainEncode(w io.Writer) error {
 	N := len(t.nodes)
 	_, err := fmt.Fprintf(w, "%d:%d\n", N-int(_endType), cap(t.hash))
 	if err != nil {
@@ -38,7 +38,7 @@ func (t *T) PlainEncode(w io.Writer) error {
 	return nil
 }
 
-func (t *T) PlainDecode(r io.Reader) error {
+func (t *TypeSet) PlainDecode(r io.Reader) error {
 	tt := New()
 	var N int
 	var H int

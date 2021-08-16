@@ -14,22 +14,6 @@
 
 package objects
 
-import (
-	"github.com/go-air/pal/internal/plain"
-	"github.com/go-air/pal/memory"
-	"github.com/go-air/pal/typeset"
-)
-
-type Object interface {
-	plain.Coder
-	Loc() memory.Loc
-	Type() typeset.Type
+type Pointer struct {
+	object
 }
-
-type object struct {
-	loc memory.Loc
-	typ typeset.Type
-}
-
-func (o *object) Loc() memory.Loc    { return o.loc }
-func (o *object) Type() typeset.Type { return o.typ }

@@ -18,7 +18,7 @@ import (
 	"sort"
 )
 
-type T struct {
+type TypeSet struct {
 	nodes []node
 	hash  []Type
 }
@@ -27,8 +27,8 @@ const (
 	initCap = 64
 )
 
-func New() *T {
-	res := &T{}
+func New() *TypeSet {
+	res := &TypeSet{}
 	res.nodes = make([]node, _endType, initCap)
 	copy(res.nodes, basicNodes)
 	res.hash = make([]Type, initCap)
@@ -42,11 +42,11 @@ func New() *T {
 	return res
 }
 
-func (t *T) Kind(ty Type) Kind {
+func (t *TypeSet) Kind(ty Type) Kind {
 	return t.nodes[ty].kind
 }
 
-func (t *T) ArrayLen(ty Type) int {
+func (t *TypeSet) ArrayLen(ty Type) int {
 	node := &t.nodes[ty]
 	n := node.lsize - 1
 	eltSize := t.nodes[node.elem].lsize
@@ -56,42 +56,42 @@ func (t *T) ArrayLen(ty Type) int {
 	return n / eltSize
 }
 
-func (t *T) NumFields(ty Type) int {
+func (t *TypeSet) NumFields(ty Type) int {
 	return len(t.nodes[ty].fields)
 }
 
-func (t *T) Field(ty Type, i int) (name string, fty Type) {
+func (t *TypeSet) Field(ty Type, i int) (name string, fty Type) {
 	f := t.nodes[ty].fields[i]
 	return f.name, f.typ
 }
 
-func (t *T) Recv(ty Type) Type {
+func (t *TypeSet) Recv(ty Type) Type {
 	return t.nodes[ty].key
 }
 
-func (t *T) Variadic(ty Type) bool {
+func (t *TypeSet) Variadic(ty Type) bool {
 	return t.nodes[ty].variadic
 }
 
-func (t *T) NumParams(ty Type) int {
+func (t *TypeSet) NumParams(ty Type) int {
 	return len(t.nodes[ty].params)
 }
 
-func (t *T) Param(ty Type, i int) (name string, pty Type) {
+func (t *TypeSet) Param(ty Type, i int) (name string, pty Type) {
 	param := t.nodes[ty].params[i]
 	return param.name, param.typ
 }
 
-func (t *T) NumResults(ty Type) int {
+func (t *TypeSet) NumResults(ty Type) int {
 	return len(t.nodes[ty].results)
 }
 
-func (t *T) Result(ty Type, i int) (name string, rty Type) {
+func (t *TypeSet) Result(ty Type, i int) (name string, rty Type) {
 	result := t.nodes[ty].results[i]
 	return result.name, result.typ
 }
 
-func (t *T) getSlice(elt Type) Type {
+func (t *TypeSet) getSlice(elt Type) Type {
 	ty, node := t.newNode()
 	node.kind = Slice
 	node.elem = elt
@@ -100,7 +100,7 @@ func (t *T) getSlice(elt Type) Type {
 	return t.getOrMake(ty, node)
 }
 
-func (t *T) getPointer(elt Type) Type {
+func (t *TypeSet) getPointer(elt Type) Type {
 	ty, node := t.newNode()
 	node.kind = Pointer
 	node.elem = elt
@@ -109,7 +109,7 @@ func (t *T) getPointer(elt Type) Type {
 	return t.getOrMake(ty, node)
 }
 
-func (t *T) getChan(elt Type) Type {
+func (t *TypeSet) getChan(elt Type) Type {
 	ty, node := t.newNode()
 	node.kind = Chan
 	node.elem = elt
@@ -118,7 +118,7 @@ func (t *T) getChan(elt Type) Type {
 	return t.getOrMake(ty, node)
 }
 
-func (t *T) getArray(elt Type, n int) Type {
+func (t *TypeSet) getArray(elt Type, n int) Type {
 	ty, node := t.newNode()
 	node.kind = Array
 	node.elem = elt
@@ -127,7 +127,7 @@ func (t *T) getArray(elt Type, n int) Type {
 	return t.getOrMake(ty, node)
 }
 
-func (t *T) getStruct(fields []named) Type {
+func (t *TypeSet) getStruct(fields []named) Type {
 	ty, node := t.newNode()
 	node.kind = Struct
 	node.fields = fields
@@ -139,7 +139,7 @@ func (t *T) getStruct(fields []named) Type {
 	return t.getOrMake(ty, node)
 }
 
-func (t *T) getMap(kty, ety Type) Type {
+func (t *TypeSet) getMap(kty, ety Type) Type {
 	ty, node := t.newNode()
 	node.kind = Map
 	node.elem = ety
@@ -149,7 +149,7 @@ func (t *T) getMap(kty, ety Type) Type {
 	return t.getOrMake(ty, node)
 }
 
-func (t *T) getInterface(meths []named) Type {
+func (t *TypeSet) getInterface(meths []named) Type {
 	ty, node := t.newNode()
 	node.kind = Interface
 	sort.Slice(meths, func(i, j int) bool {
@@ -161,7 +161,7 @@ func (t *T) getInterface(meths []named) Type {
 	return t.getOrMake(ty, node)
 }
 
-func (t *T) getSignature(recv Type, params, results []named, variadic bool) Type {
+func (t *TypeSet) getSignature(recv Type, params, results []named, variadic bool) Type {
 	ty, node := t.newNode()
 	node.kind = Func
 	node.lsize = 1
@@ -172,7 +172,7 @@ func (t *T) getSignature(recv Type, params, results []named, variadic bool) Type
 	return t.getOrMake(ty, node)
 }
 
-func (t *T) getTuple(elts []named) Type {
+func (t *TypeSet) getTuple(elts []named) Type {
 	ty, node := t.newNode()
 	node.kind = Tuple
 	node.lsize = 1
@@ -184,7 +184,7 @@ func (t *T) getTuple(elts []named) Type {
 	return t.getOrMake(ty, node)
 }
 
-func (t *T) getOrMake(ty Type, node *node) Type {
+func (t *TypeSet) getOrMake(ty Type, node *node) Type {
 	ci := node.hash % uint32(cap(t.hash))
 	ni := t.hash[ci]
 	for ni != NoType {
@@ -200,7 +200,7 @@ func (t *T) getOrMake(ty Type, node *node) Type {
 	return ty
 }
 
-func (t *T) newNode() (Type, *node) {
+func (t *TypeSet) newNode() (Type, *node) {
 	n := len(t.nodes)
 	if n == cap(t.nodes) {
 		t.grow()
@@ -211,7 +211,7 @@ func (t *T) newNode() (Type, *node) {
 	return Type(n), node
 }
 
-func (t *T) grow() {
+func (t *TypeSet) grow() {
 	ncap := uint32(cap(t.nodes) * 2)
 	tnodes := make([]node, len(t.nodes), ncap)
 	thash := make([]Type, ncap)
@@ -227,15 +227,15 @@ func (t *T) grow() {
 	t.hash = thash
 }
 
-func (t *T) Equal(a, b Type) bool {
+func (t *TypeSet) Equal(a, b Type) bool {
 	return a == b
 }
 
-func (t *T) Len() int {
+func (t *TypeSet) Len() int {
 	return len(t.nodes)
 }
 
-func (t *T) equal(a, b Type) bool {
+func (t *TypeSet) equal(a, b Type) bool {
 	anode, bnode := &t.nodes[a], &t.nodes[b]
 	if anode.kind != bnode.kind {
 		return false
@@ -266,7 +266,7 @@ func (t *T) equal(a, b Type) bool {
 	return true
 }
 
-func (t *T) namedsEqual(as, bs []named) bool {
+func (t *TypeSet) namedsEqual(as, bs []named) bool {
 	if len(as) != len(bs) {
 		return false
 	}
@@ -283,7 +283,7 @@ func (t *T) namedsEqual(as, bs []named) bool {
 	return true
 }
 
-func (t *T) hashCode(ty Type) uint32 {
+func (t *TypeSet) hashCode(ty Type) uint32 {
 	result := uint32(17)
 	if ty < _endType {
 		return uint32(_endType)

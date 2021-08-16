@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
+	"github.com/go-air/pal/typeset"
 )
 
 // Loc represents a memory location.
@@ -53,6 +54,7 @@ type loc struct {
 	srcInfo SrcInfo
 	root    Loc
 	parent  Loc
+	typ     typeset.Type
 
 	lsz indexing.I // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
 
