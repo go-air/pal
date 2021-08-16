@@ -220,7 +220,7 @@ func (t *T) grow() {
 		node.next = Type(thash[ci])
 		thash[ci] = ty
 	}
-	t.nodes = t.nodes
+	t.nodes = tnodes
 	t.hash = thash
 }
 
