@@ -74,17 +74,66 @@ func (t *T) FromGoType(gotype types.Type) Type {
 		return t.getChan(elty)
 	case *types.Array:
 		elty := t.FromGoType(ty.Elem())
-		return t.getArray(elty, ty.Len())
+		// TBD: consider int v int64
+		return t.getArray(elty, int(ty.Len()))
 
 	case *types.Struct:
+		N := ty.NumFields()
+		fields := make([]named, N)
+
+		for i := 0; i < N; i++ {
+			goField := ty.Field(i)
+			fty := t.FromGoType(goField.Type())
+			fields[i] = named{name: goField.Name(), typ: fty}
+		}
+		return t.getStruct(fields)
+
 	case *types.Map:
-		elty := t.FromGoType(ty.Elem())
-		keyty := t.FromGoType(ty.Key())
-		_, _ = elty, keyty
+		ety := t.FromGoType(ty.Elem())
+		kty := t.FromGoType(ty.Key())
+		return t.getMap(kty, ety)
 
 	case *types.Interface:
+		ty = ty.Complete()
+		N := ty.NumMethods()
+		fields := make([]named, N)
+		for i := 0; i < N; i++ {
+			meth := ty.Method(i)
+			mty := t.FromGoType(meth.Type())
+			mname := meth.Name()
+			fields[i] = named{name: mname, typ: mty}
+		}
+		return t.getInterface(fields)
 	case *types.Signature:
+		goParams := ty.Params()
+		goResults := ty.Results()
+		params := make([]named, goParams.Len())
+		results := make([]named, goResults.Len())
+		for i := range params {
+			param := goParams.At(i)
+			params[i].name = param.Name()
+			params[i].typ = t.FromGoType(param.Type())
+		}
+		for i := range results {
+			result := goResults.At(i)
+			results[i].name = result.Name()
+			results[i].typ = t.FromGoType(result.Type())
+		}
+		recv := NoType
+		if ty.Recv() != nil {
+			recv = t.FromGoType(ty.Recv().Type())
+		}
+		return t.getSignature(recv, params, results, ty.Variadic())
+
 	case *types.Tuple:
+		N := ty.Len()
+		res := make([]named, N)
+		for i := 0; i < N; i++ {
+			at := ty.At(i)
+			res[i].name = at.Name()
+			res[i].typ = t.FromGoType(at.Type())
+		}
+		return t.getTuple(res)
 
 	case *types.Named:
 		return t.FromGoType(ty.Underlying())

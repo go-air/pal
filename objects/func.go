@@ -30,7 +30,7 @@ type Func struct {
 	recv     memory.Loc
 	params   []memory.Loc
 	results  []memory.Loc
-	varargs  *Slice
+	variadic bool
 }
 
 func tupleLen(tuple *types.Tuple) int {
@@ -68,9 +68,7 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 		bld.Class = memory.Local
 		fn.recv = bld.GenLoc()
 	}
-	if sig.Variadic() {
-		fn.varargs = &Slice{}
-	}
+	fn.variadic = sig.Variadic()
 	params := sig.Params()
 	N := tupleLen(params)
 	for i := 0; i < N; i++ {

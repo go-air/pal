@@ -42,25 +42,105 @@ func (t *T) getSlice(elt Type) Type {
 	ty, node := t.newNode()
 	node.kind = Slice
 	node.elem = elt
+	node.lsize = 1
 	node.hash = t.hashCode(ty)
-	ci := node.hash % uint32(cap(t.hash))
-	for {
-		_ = ci
-
-	}
-	return ty
+	return t.getOrMake(ty, node)
 }
 
 func (t *T) getPointer(elt Type) Type {
-	return NoType
+	ty, node := t.newNode()
+	node.kind = Pointer
+	node.elem = elt
+	node.lsize = 1
+	node.hash = t.hashCode(ty)
+	return t.getOrMake(ty, node)
 }
 
 func (t *T) getChan(elt Type) Type {
-	return NoType
+	ty, node := t.newNode()
+	node.kind = Chan
+	node.elem = elt
+	node.lsize = 1
+	node.hash = t.hashCode(ty)
+	return t.getOrMake(ty, node)
 }
 
-func (t *T) getArray(elt Type, n int64) Type {
-	return NoType
+func (t *T) getArray(elt Type, n int) Type {
+	ty, node := t.newNode()
+	node.kind = Chan
+	node.elem = elt
+	node.lsize = t.nodes[elt].lsize*n + 1
+	node.hash = t.hashCode(ty)
+	return t.getOrMake(ty, node)
+}
+
+func (t *T) getStruct(fields []named) Type {
+	ty, node := t.newNode()
+	node.kind = Struct
+	node.fields = fields
+	node.lsize = 1
+	for _, f := range fields {
+		node.lsize += t.nodes[f.typ].lsize
+	}
+	node.hash = t.hashCode(ty)
+	return t.getOrMake(ty, node)
+}
+
+func (t *T) getMap(kty, ety Type) Type {
+	ty, node := t.newNode()
+	node.kind = Map
+	node.elem = ety
+	node.key = kty
+	node.lsize = 1 // like a pointer
+	node.hash = t.hashCode(ty)
+	return t.getOrMake(ty, node)
+}
+
+func (t *T) getInterface(meths []named) Type {
+	ty, node := t.newNode()
+	node.kind = Interface
+	node.fields = meths
+	node.lsize = 1 // like a pointer
+	node.hash = t.hashCode(ty)
+	return t.getOrMake(ty, node)
+}
+
+func (t *T) getSignature(recv Type, params, results []named, variadic bool) Type {
+	ty, node := t.newNode()
+	node.kind = Func
+	node.lsize = 1
+	node.params = params
+	node.results = results
+	node.variadic = variadic
+	node.hash = t.hashCode(ty)
+	return t.getOrMake(ty, node)
+}
+
+func (t *T) getTuple(elts []named) Type {
+	ty, node := t.newNode()
+	node.kind = Tuple
+	node.lsize = 1
+	node.fields = elts
+	for _, field := range elts {
+		node.lsize += t.nodes[field.typ].lsize
+	}
+	node.hash = t.hashCode(ty)
+	return t.getOrMake(ty, node)
+}
+
+func (t *T) getOrMake(ty Type, node *node) Type {
+	ci := node.hash % uint32(cap(t.hash))
+	ni := t.hash[ci]
+	for ni != NoType {
+		if t.equal(ni, ty) {
+			t.nodes = t.nodes[:len(t.nodes)-1]
+			return ni
+		}
+		ni = t.nodes[ni].next
+	}
+	node.next = t.hash[ty]
+	t.hash[ty] = ty
+	return ty
 }
 
 func (t *T) newNode() (Type, *node) {
@@ -94,7 +174,7 @@ func (t *T) Equals(a, b Type) bool {
 	return a == b
 }
 
-func (t *T) equals(a, b Type) bool {
+func (t *T) equal(a, b Type) bool {
 	anode, bnode := &t.nodes[a], &t.nodes[b]
 	if anode.kind != bnode.kind {
 		return false
@@ -107,14 +187,17 @@ func (t *T) equals(a, b Type) bool {
 	}
 	switch anode.kind {
 	case Pointer, Slice, Chan:
-		return t.equals(anode.elem, bnode.elem)
+		return t.equal(anode.elem, bnode.elem)
 	case Array:
-		return t.equals(anode.elem, bnode.elem)
+		return t.equal(anode.elem, bnode.elem)
 	case Struct, Interface: // interface methods are sorted
 		return t.namedsEqual(anode.fields, bnode.fields)
 	case Map:
-		return t.equals(anode.elem, bnode.elem) && t.equals(anode.key, bnode.key)
+		return t.equal(anode.elem, bnode.elem) && t.equal(anode.key, bnode.key)
 	case Func:
+		if anode.variadic != bnode.variadic || anode.key != bnode.key {
+			return false
+		}
 		return t.namedsEqual(anode.params, bnode.params) && t.namedsEqual(anode.results, bnode.results)
 	default:
 		panic("bad kind")
@@ -132,7 +215,7 @@ func (t *T) namedsEqual(as, bs []named) bool {
 		if anamed.name != bnamed.name {
 			return false
 		}
-		if !t.equals(anamed.typ, bnamed.typ) {
+		if !t.equal(anamed.typ, bnamed.typ) {
 			return false
 		}
 	}
