@@ -18,6 +18,7 @@ import "io"
 
 type Array struct {
 	object
+	Len int
 }
 
 func (a *Array) PlainEncode(w io.Writer) error {

@@ -15,13 +15,14 @@
 package typeset
 
 type node struct {
-	kind    Kind
-	elem    Type    // pointer, array, slice
-	key     Type    // map only
-	lsize   int     // memory model logical size
-	fields  []named // struct only
-	params  []named // name == nil ok
-	results []named // name == nil ok
+	kind     Kind
+	elem     Type    // pointer, array, slice
+	key      Type    // map keys, method receivers
+	lsize    int     // memory model logical size
+	fields   []named // struct/interface only
+	params   []named // name == nil ok
+	results  []named // name == nil ok
+	variadic bool
 
 	// hashing
 	next Type
@@ -42,6 +43,7 @@ func (n *node) zero() {
 	n.fields = nil
 	n.params = nil
 	n.results = nil
+	n.variadic = false
 	n.hash = 0
 	n.next = NoType
 }

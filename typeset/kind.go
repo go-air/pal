@@ -14,6 +14,11 @@
 
 package typeset
 
+import (
+	"fmt"
+	"io"
+)
+
 type Kind uint32
 
 const (
@@ -29,3 +34,46 @@ const (
 	Func
 	Tuple
 )
+
+var kind2string = map[Kind]string{
+	Basic:     "bas",
+	Pointer:   "ptr",
+	Array:     "arr",
+	Struct:    "str",
+	Slice:     "sli",
+	Map:       "map",
+	Chan:      "chn",
+	Interface: "ifa",
+	Func:      "fun",
+	Tuple:     "tup"}
+
+var string2kind = map[string]Kind{
+	"bas": Basic,
+	"ptr": Pointer,
+	"arr": Array,
+	"str": Struct,
+	"sli": Slice,
+	"map": Map,
+	"chn": Chan,
+	"ifa": Interface,
+	"fun": Func,
+	"tup": Tuple}
+
+func (k Kind) PlainEncode(w io.Writer) error {
+	_, err := w.Write([]byte(kind2string[k]))
+	return err
+}
+
+func (k *Kind) PlainDecode(r io.Reader) error {
+	buf := make([]byte, 3)
+	_, err := io.ReadFull(r, buf)
+	if err != nil {
+		return err
+	}
+	kk, present := string2kind[string(buf)]
+	if !present {
+		return fmt.Errorf("unknown kind: %s", string(buf))
+	}
+	*k = kk
+	return nil
+}
