@@ -44,12 +44,13 @@ func (t *T) PlainDecode(r io.Reader) error {
 		return err
 	}
 	tt.hash = make([]Type, H)
+	copy(tt.hash[:_endType], t.hash[:_endType])
 	tt.nodes = make([]node, N+int(_endType), H)
+	copy(tt.nodes[:_endType], t.nodes[:_endType])
 	eol := []byte("\n")
 	for i := 0; i < N; i++ {
 		ty := Type(i) + _endType
-		fmt.Printf("decoding at %d\n", ty)
-		node := &t.nodes[ty]
+		node := &tt.nodes[ty]
 		node.zero()
 		if err = node.PlainDecode(r); err != nil {
 			return err

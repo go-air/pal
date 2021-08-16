@@ -15,7 +15,6 @@
 package typeset
 
 import (
-	"fmt"
 	"sort"
 )
 
@@ -120,8 +119,6 @@ func (t *T) getChan(elt Type) Type {
 }
 
 func (t *T) getArray(elt Type, n int) Type {
-	fmt.Printf("getArray\n")
-	defer fmt.Printf("done getArray\n")
 	ty, node := t.newNode()
 	node.kind = Array
 	node.elem = elt
@@ -190,15 +187,12 @@ func (t *T) getTuple(elts []named) Type {
 func (t *T) getOrMake(ty Type, node *node) Type {
 	ci := node.hash % uint32(cap(t.hash))
 	ni := t.hash[ci]
-	fmt.Printf("getOrMake ty %s kind %s ni %d hash %d ci %d\n", ty, node.kind, ni, node.hash, ci)
 	for ni != NoType {
 
 		if t.equal(ni, ty) {
-			fmt.Printf("dup\n")
 			t.nodes = t.nodes[:len(t.nodes)-1]
 			return ni
 		}
-		fmt.Printf("%s != %s\n", ni, ty)
 		ni = t.nodes[ni].next
 	}
 	node.next = t.hash[ty]
@@ -209,13 +203,11 @@ func (t *T) getOrMake(ty Type, node *node) Type {
 func (t *T) newNode() (Type, *node) {
 	n := len(t.nodes)
 	if n == cap(t.nodes) {
-		fmt.Printf("grow\n")
 		t.grow()
 	}
 	t.nodes = t.nodes[:n+1]
 	node := &t.nodes[n]
 	node.zero()
-	fmt.Printf("newNode %d\n", n)
 	return Type(n), node
 }
 
@@ -246,15 +238,12 @@ func (t *T) Len() int {
 func (t *T) equal(a, b Type) bool {
 	anode, bnode := &t.nodes[a], &t.nodes[b]
 	if anode.kind != bnode.kind {
-		fmt.Printf("kind")
 		return false
 	}
 	if anode.kind == Basic {
-		fmt.Printf("basic")
 		return a == b
 	}
 	if anode.lsize != bnode.lsize {
-		fmt.Printf("size")
 		return false
 	}
 	switch anode.kind {
