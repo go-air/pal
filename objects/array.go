@@ -14,11 +14,21 @@
 
 package objects
 
-import "io"
+import (
+	"io"
+
+	"github.com/go-air/pal/memory"
+)
 
 type Array struct {
 	object
-	Len int
+	elemSize int
+	n        int
+}
+
+func (a *Array) At(i int) memory.Loc {
+	z := a.loc + 1
+	return z + (memory.Loc(a.elemSize) * memory.Loc(i))
 }
 
 func (a *Array) PlainEncode(w io.Writer) error {

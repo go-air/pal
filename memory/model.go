@@ -152,6 +152,27 @@ func (mod *Model) Type(m Loc) typeset.Type {
 	return mod.locs[m].typ
 }
 
+func (mod *Model) Gen(gp *GenParams) Loc {
+	var sum int
+	p := Loc(uint32(len(mod.locs)))
+	return mod.p_add(gp, p, p, &sum)
+}
+
+func (mod *Model) WithPointer(gp *GenParams) (obj, ptr Loc) {
+	obj = mod.Gen(gp)
+	ptr = Loc(uint32(len(mod.locs)))
+	mod.locs = append(mod.locs, loc{
+		class:  gp.class,
+		attrs:  gp.attrs,
+		pos:    gp.pos,
+		typ:    gp.typ,
+		parent: ptr,
+		root:   ptr,
+		obj:    obj})
+	mod.AddPointsTo(ptr, obj)
+	return
+}
+
 // GenRoot generates a new root memory location.
 func (mod *Model) GenRoot(ty types.Type, class Class, attrs Attrs, pos token.Pos) Loc {
 	var sum int
@@ -213,16 +234,17 @@ func (mod *Model) Check() error {
 // add is responsible for setting the size, parent, class, attrs, typ, and root
 // of all added nodes.
 //
-func (mod *Model) p_add(ts *typeset.TypeSet, ty typeset.Type, class Class, attrs Attrs, pos token.Pos, p, r Loc, sum *int) Loc {
+func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 	n := Loc(uint32(len(mod.locs)))
 	l := loc{
 		parent: p,
 		root:   r,
-		class:  class,
-		attrs:  attrs,
-		typ:    ty}
+		class:  gp.class,
+		attrs:  gp.attrs,
+		pos:    gp.pos,
+		typ:    gp.typ}
 	lastSum := *sum
-	switch ts.Kind(ty) {
+	switch gp.ts.Kind(gp.typ) {
 	// these are added as pointers here indirect associattions (params,
 	// returns, ...) are done in github.com/go-air/objects.Builder
 	case typeset.Basic, typeset.Func, typeset.Pointer, typeset.Interface:
@@ -236,33 +258,35 @@ func (mod *Model) p_add(ts *typeset.TypeSet, ty typeset.Type, class Class, attrs
 		mod.locs = append(mod.locs, l)
 		*sum++
 
-		m := ts.ArrayLen(ty)
-		elem := ts.Elem(ty)
+		m := gp.ts.ArrayLen(gp.typ)
+		gp.typ = gp.ts.Elem(gp.typ)
 		for i := 0; i < m; i++ {
-			mod.p_add(ts, elem, class, attrs, pos, n, r, sum)
+			mod.p_add(gp, n, r, sum)
 		}
 	case typeset.Struct:
 		mod.locs = append(mod.locs, l)
 		*sum++
-		nf := ts.NumFields(ty)
+		nf := gp.ts.NumFields(gp.typ)
+		styp := gp.typ
 		for i := 0; i < nf; i++ {
-			_, fty := ts.Field(ty, i)
-			mod.p_add(ts, fty, class, attrs, pos, n, r, sum)
+			_, gp.typ = gp.ts.Field(styp, i)
+			mod.p_add(gp, n, r, sum)
 		}
 
 	case typeset.Tuple:
 		mod.locs = append(mod.locs, l)
 		*sum++
-		tn := ts.ArrayLen(ty)
+		tn := gp.ts.ArrayLen(gp.typ)
+		ttyp := gp.typ
 		for i := 0; i < tn; i++ {
-			_, fty := ts.Field(ty, i)
-			mod.p_add(ts, fty, class, attrs, pos, n, r, sum)
+			_, gp.typ = gp.ts.Field(ttyp, i)
+			mod.p_add(gp, n, r, sum)
 		}
 
 	default:
-		panic(fmt.Sprintf("%d: unexpected/unimplemented", ty))
+		panic(fmt.Sprintf("%d: unexpected/unimplemented", gp.typ))
 	}
-	// we added a slot at dst[n] for ty,  set it
+	// we added a slot at dst[n] for ty,  set its size
 	mod.locs[n].lsz = *sum - lastSum
 	return n
 }

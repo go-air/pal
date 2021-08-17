@@ -20,11 +20,12 @@ import (
 
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/results"
+	"github.com/go-air/pal/typeset"
 )
 
 type Func struct {
 	object
-	sig      *types.Signature
+	sig      typeset.Type
 	declName string
 	fnobj    memory.Loc
 	recv     memory.Loc
@@ -33,26 +34,16 @@ type Func struct {
 	variadic bool
 }
 
-func tupleLen(tuple *types.Tuple) int {
-	if tuple == nil {
-		return 0
-	}
-	return tuple.Len()
-}
-
 func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func {
-	fn := &Func{sig: sig, declName: declName}
+	fn := &Func{declName: declName}
 	bld.Reset()
 	bld.Class = memory.Global
 	bld.Pos = token.NoPos // XXX
 	bld.Type = sig
-	// object representing the function
-	// it behaves as a self-loop pointer
-	// so that on .Transfer()s, the info is propagated.
 	fn.loc = bld.GenLoc()
 	bld.GenPointsTo(fn.loc, fn.loc)
-	fn.params = make([]memory.Loc, tupleLen(sig.Params()))
-	fn.results = make([]memory.Loc, tupleLen(sig.Results()))
+	fn.params = make([]memory.Loc, sig.Params().Len())
+	fn.results = make([]memory.Loc, sig.Results().Len())
 
 	// handle parameters
 	opaque := memory.NoAttrs
@@ -68,7 +59,7 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 	}
 	fn.variadic = sig.Variadic()
 	params := sig.Params()
-	N := tupleLen(params)
+	N := params.Len()
 	for i := 0; i < N; i++ {
 		param := params.At(i)
 		bld.Pos = param.Pos()
@@ -77,7 +68,7 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 		fn.params[i] = bld.GenLoc()
 	}
 	rets := sig.Results()
-	N = tupleLen(rets)
+	N = rets.Len()
 	for i := 0; i < N; i++ {
 		ret := rets.At(i)
 		bld.Pos = ret.Pos()
@@ -99,10 +90,6 @@ func (f *Func) Name() string {
 
 func (f *Func) Loc() memory.Loc {
 	return f.loc
-}
-
-func (f *Func) Sig() *types.Signature {
-	return f.sig
 }
 
 func (f *Func) RecvLoc(i int) memory.Loc {

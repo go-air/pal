@@ -46,6 +46,10 @@ func (t *TypeSet) Kind(ty Type) Kind {
 	return t.nodes[ty].kind
 }
 
+func (t *TypeSet) Lsize(ty Type) int {
+	return t.nodes[ty].lsize
+}
+
 func (t *TypeSet) Elem(ty Type) Type {
 	return t.nodes[ty].elem
 }
