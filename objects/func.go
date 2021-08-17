@@ -44,7 +44,6 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 	fn := &Func{sig: sig, declName: declName}
 	bld.Reset()
 	bld.Class = memory.Global
-	bld.SrcKind = memory.SrcFunc
 	bld.Pos = token.NoPos // XXX
 	bld.Type = sig
 	// object representing the function
@@ -61,7 +60,6 @@ func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func 
 		opaque |= memory.IsOpaque
 	}
 	bld.Class = memory.Local // always
-	bld.SrcKind = memory.SrcVar
 
 	recv := sig.Recv()
 	if recv != nil {

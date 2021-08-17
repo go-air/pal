@@ -16,10 +16,10 @@ package memory
 
 import (
 	"fmt"
+	"go/token"
 	"io"
 	"strconv"
 
-	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/typeset"
 )
@@ -49,24 +49,39 @@ func (m *Loc) PlainDecode(r io.Reader) error {
 }
 
 type loc struct {
-	class   Class
-	attrs   Attrs
-	srcInfo SrcInfo
-	root    Loc
-	parent  Loc
-	typ     typeset.Type
+	class  Class
+	attrs  Attrs
+	pos    token.Pos
+	root   Loc
+	parent Loc
+	typ    typeset.Type
 
-	lsz indexing.I // == 1 + Sum({c.vsz | c.parent == loc and c != loc})
+	lsz int
 
-	obj Loc // locals and globals are passed by addr...  NoLoc if unknown
+	obj Loc // for locals and globals passed by addr...  NoLoc if unknown
 
 	mark int // scratch space for internal algos
 }
 
+type PlainPos token.Pos
+
+func (p PlainPos) PlainEncode(w io.Writer) error {
+	_, err := fmt.Fprintf(w, "@%08x", p)
+	return err
+}
+func (p *PlainPos) PlainDecode(r io.Reader) error {
+	_, err := fmt.Fscanf(r, "@%08x", p)
+	return err
+
+}
+
 func (m *loc) PlainEncode(w io.Writer) error {
-	return plain.EncodeJoin(w, " ", m.class, m.attrs, &m.srcInfo, m.parent, m.obj)
+	return plain.EncodeJoin(w, " ", m.class, m.attrs, PlainPos(m.pos), m.parent, m.obj)
 }
 
 func (m *loc) PlainDecode(r io.Reader) error {
-	return plain.DecodeJoin(r, " ", &m.class, &m.attrs, &m.srcInfo, &m.parent, &m.obj)
+	pp := PlainPos(m.pos)
+	err := plain.DecodeJoin(r, " ", &m.class, &m.attrs, &pp, &m.parent, &m.obj)
+	m.pos = token.Pos(pp)
+	return err
 }

@@ -66,10 +66,6 @@
 // for its region and a parent node, indicating to what structure it belongs.
 // The parent pointers are self-loops for roots.
 //
-// We call structured data Locs "spanning" because they occupy contiguous
-// space.
-//
-//
 // Constraints
 //
 // Each model has a set of associated constraints.  Constraints have a

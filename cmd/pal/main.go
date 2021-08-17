@@ -15,10 +15,14 @@
 package main
 
 import (
+	"log"
+	"os"
+
 	"github.com/go-air/pal"
 	"golang.org/x/tools/go/analysis/singlechecker"
 )
 
 func main() {
+	log.Printf("executing pal %#v\n", os.Args)
 	singlechecker.Main(pal.SSAAnalyzer())
 }

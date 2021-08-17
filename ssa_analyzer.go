@@ -26,7 +26,6 @@ import (
 )
 
 var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
-var bigV *bool = flagSet.Bool("V", false, "print version")
 
 type resultType int
 
@@ -52,9 +51,6 @@ func SSAAnalyzer() *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
-	if *bigV {
-		return Version()
-	}
 	pal, err := ssa2pal.New(pass, indexing.ConstVals())
 	if err != nil {
 		return nil, err

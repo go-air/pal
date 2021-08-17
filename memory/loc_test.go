@@ -34,7 +34,6 @@ func TestLoc(t *testing.T) {
 
 func TestLittleLoc(t *testing.T) {
 	org := loc{parent: Loc(10011), class: Heap, attrs: IsOpaque}
-	org.srcInfo = SrcInfo{Kind: SrcFunc, Pos: 33}
 	m := org
 	p := &m
 	if err := plain.EncodeDecode(p); err != nil {

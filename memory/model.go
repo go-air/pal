@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
+	"github.com/go-air/pal/typeset"
 	"github.com/go-air/pal/xtruth"
 )
 
@@ -82,16 +83,8 @@ func (mod *Model) SetObj(ptr, dst Loc) {
 	mod.locs[ptr].obj = dst
 }
 
-func (mod *Model) SrcInfo(m Loc) *SrcInfo {
-	return &mod.locs[m].srcInfo
-}
-
 func (mod *Model) Pos(m Loc) token.Pos {
-	return mod.locs[m].srcInfo.Pos
-}
-
-func (mod *Model) SrcKind(m Loc) SrcKind {
-	return mod.locs[m].srcInfo.Kind
+	return mod.locs[m].pos
 }
 
 // Access returns the T which results from
@@ -111,6 +104,7 @@ func (mod *Model) Field(m Loc, i int) Loc {
 	return n
 }
 
+// ArrayIndex returns the memory model location of `m` at index `i`.
 func (mod *Model) ArrayIndex(m Loc, i int) Loc {
 	n := m + 1
 	sz := mod.locs[n].lsz
@@ -123,13 +117,13 @@ func (mod *Model) ArrayIndex(m Loc, i int) Loc {
 	return n
 }
 
-// VSize returns the virtual size of memory associated
+// LSize returns the virtual size of memory associated
 // with m.
 //
 // The virtual size is the size according to the model,
 // which is 1 + the sum of the the vsizes of all locations
 // n such that mod.Parent(n) == m.
-func (mod *Model) VSize(m Loc) indexing.I {
+func (mod *Model) LSize(m Loc) int {
 	return mod.locs[m].lsz
 }
 
@@ -154,11 +148,15 @@ func (mod *Model) Zero() Loc {
 	return Loc(1)
 }
 
+func (mod *Model) Type(m Loc) typeset.Type {
+	return mod.locs[m].typ
+}
+
 // GenRoot generates a new root memory location.
-func (mod *Model) GenRoot(ty types.Type, class Class, attrs Attrs, sk SrcKind, pos token.Pos) Loc {
+func (mod *Model) GenRoot(ty types.Type, class Class, attrs Attrs, pos token.Pos) Loc {
 	var sum int
 	p := Loc(uint32(len(mod.locs)))
-	return mod.add(ty, class, attrs, sk, pos, p, p, &sum)
+	return mod.add(ty, class, attrs, pos, p, p, &sum)
 }
 
 // PlainCoderAt returns a plain.Coder for the information
@@ -212,72 +210,60 @@ func (mod *Model) Check() error {
 
 // p_add adds a root recursively according to ty.
 //
-// add is responsible for setting the size, parent, class, attrs, and root
+// add is responsible for setting the size, parent, class, attrs, typ, and root
 // of all added nodes.
 //
-func (mod *Model) p_add(ty types.Type, class Class, attrs Attrs, sk SrcKind, pos token.Pos, p, r Loc, sum *int) Loc {
+func (mod *Model) p_add(ts *typeset.TypeSet, ty typeset.Type, class Class, attrs Attrs, pos token.Pos, p, r Loc, sum *int) Loc {
 	n := Loc(uint32(len(mod.locs)))
 	l := loc{
 		parent: p,
 		root:   r,
 		class:  class,
-		attrs:  attrs}
+		attrs:  attrs,
+		typ:    ty}
 	lastSum := *sum
-	switch ty := ty.(type) {
-	case *types.Signature:
-		// a virtual place for the func
+	switch ts.Kind(ty) {
+	// these are added as pointers here indirect associattions (params,
+	// returns, ...) are done in github.com/go-air/objects.Builder
+	case typeset.Basic, typeset.Func, typeset.Pointer, typeset.Interface:
+		mod.locs = append(mod.locs, l)
+		*sum++
+	case typeset.Slice, typeset.Chan, typeset.Map:
 		mod.locs = append(mod.locs, l)
 		*sum++
 
-	case *types.Basic, *types.Pointer, *types.Interface:
+	case typeset.Array:
 		mod.locs = append(mod.locs, l)
 		*sum++
-	case *types.Array:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		m := int(ty.Len())
+
+		m := ts.ArrayLen(ty)
+		elem := ts.Elem(ty)
 		for i := 0; i < m; i++ {
-			mod.add(ty.Elem(), class, attrs, sk, pos, n, r, sum)
+			mod.p_add(ts, elem, class, attrs, pos, n, r, sum)
 		}
-	case *types.Map:
+	case typeset.Struct:
 		mod.locs = append(mod.locs, l)
 		*sum++
-		mod.add(ty.Key(), class, attrs, sk, pos, n, r, sum)
-		mod.add(ty.Elem(), class, attrs, sk, pos, n, r, sum)
-	case *types.Struct:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		nf := ty.NumFields()
+		nf := ts.NumFields(ty)
 		for i := 0; i < nf; i++ {
-			fty := ty.Field(i).Type()
-			mod.add(fty, class, attrs, sk, pos, n, r, sum)
+			_, fty := ts.Field(ty, i)
+			mod.p_add(ts, fty, class, attrs, pos, n, r, sum)
 		}
-	case *types.Slice:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		mod.add(ty.Elem(), class, attrs, sk, pos, n, r, sum)
-	case *types.Chan:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		mod.add(ty.Elem(), class, attrs, sk, pos, n, r, sum)
 
-	case *types.Tuple:
+	case typeset.Tuple:
 		mod.locs = append(mod.locs, l)
 		*sum++
-		tn := ty.Len()
+		tn := ts.ArrayLen(ty)
 		for i := 0; i < tn; i++ {
-			mod.add(ty.At(i).Type(), class, attrs, sk, pos, n, r, sum)
+			_, fty := ts.Field(ty, i)
+			mod.p_add(ts, fty, class, attrs, pos, n, r, sum)
 		}
-	case *types.Named:
-		// no space reserved for named types, go to
-		// underlying
-		return mod.add(ty.Underlying(), class, attrs, sk, pos, p, r, sum)
 
 	default:
-		panic(fmt.Sprintf("%s: unexpected/unimplemented", ty))
+		panic(fmt.Sprintf("%d: unexpected/unimplemented", ty))
 	}
 	// we added a slot at dst[n] for ty,  set it
-	mod.locs[n].lsz = mod.indexing.FromInt(*sum - lastSum)
+	mod.locs[n].lsz = *sum - lastSum
 	return n
 }
 
@@ -286,7 +272,7 @@ func (mod *Model) p_add(ty types.Type, class Class, attrs Attrs, sk SrcKind, pos
 // add is responsible for setting the size, parent, class, attrs, and root
 // of all added nodes.
 //
-func (mod *Model) add(ty types.Type, class Class, attrs Attrs, sk SrcKind, pos token.Pos, p, r Loc, sum *int) Loc {
+func (mod *Model) add(ty types.Type, class Class, attrs Attrs, pos token.Pos, p, r Loc, sum *int) Loc {
 	n := Loc(uint32(len(mod.locs)))
 	l := loc{
 		parent: p,
@@ -308,47 +294,47 @@ func (mod *Model) add(ty types.Type, class Class, attrs Attrs, sk SrcKind, pos t
 		*sum++
 		m := int(ty.Len())
 		for i := 0; i < m; i++ {
-			mod.add(ty.Elem(), class, attrs, sk, pos, n, r, sum)
+			mod.add(ty.Elem(), class, attrs, pos, n, r, sum)
 		}
 	case *types.Map:
 		mod.locs = append(mod.locs, l)
 		*sum++
-		mod.add(ty.Key(), class, attrs, sk, pos, n, r, sum)
-		mod.add(ty.Elem(), class, attrs, sk, pos, n, r, sum)
+		mod.add(ty.Key(), class, attrs, pos, n, r, sum)
+		mod.add(ty.Elem(), class, attrs, pos, n, r, sum)
 	case *types.Struct:
 		mod.locs = append(mod.locs, l)
 		*sum++
 		nf := ty.NumFields()
 		for i := 0; i < nf; i++ {
 			fty := ty.Field(i).Type()
-			mod.add(fty, class, attrs, sk, pos, n, r, sum)
+			mod.add(fty, class, attrs, pos, n, r, sum)
 		}
 	case *types.Slice:
 		mod.locs = append(mod.locs, l)
 		*sum++
-		mod.add(ty.Elem(), class, attrs, sk, pos, n, r, sum)
+		mod.add(ty.Elem(), class, attrs, pos, n, r, sum)
 	case *types.Chan:
 		mod.locs = append(mod.locs, l)
 		*sum++
-		mod.add(ty.Elem(), class, attrs, sk, pos, n, r, sum)
+		mod.add(ty.Elem(), class, attrs, pos, n, r, sum)
 
 	case *types.Tuple:
 		mod.locs = append(mod.locs, l)
 		*sum++
 		tn := ty.Len()
 		for i := 0; i < tn; i++ {
-			mod.add(ty.At(i).Type(), class, attrs, sk, pos, n, r, sum)
+			mod.add(ty.At(i).Type(), class, attrs, pos, n, r, sum)
 		}
 	case *types.Named:
 		// no space reserved for named types, go to
 		// underlying
-		return mod.add(ty.Underlying(), class, attrs, sk, pos, p, r, sum)
+		return mod.add(ty.Underlying(), class, attrs, pos, p, r, sum)
 
 	default:
 		panic(fmt.Sprintf("%s: unexpected/unimplemented", ty))
 	}
 	// we added a slot at dst[n] for ty,  set it
-	mod.locs[n].lsz = mod.indexing.FromInt(*sum - lastSum)
+	mod.locs[n].lsz = *sum - lastSum
 	return n
 }
 
@@ -371,11 +357,11 @@ func (mod *Model) AddPointsTo(a, b Loc) {
 	mod.constraints = append(mod.constraints, AddressOf(a, b))
 }
 
-func (mod *Model) GenWithPointer(ty types.Type, c Class, as Attrs, sk SrcKind, pos token.Pos) (obj, ptr Loc) {
-	obj = mod.GenRoot(ty, c, as, sk, pos)
+func (mod *Model) GenWithPointer(ty types.Type, c Class, as Attrs, pos token.Pos) (obj, ptr Loc) {
+	obj = mod.GenRoot(ty, c, as, pos)
 	ptr = Loc(len(mod.locs))
 
-	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, root: ptr, obj: obj})
+	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, pos: pos, root: ptr, obj: obj})
 	mod.AddPointsTo(ptr, obj)
 	return
 }

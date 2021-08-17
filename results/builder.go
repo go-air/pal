@@ -23,11 +23,10 @@ import (
 )
 
 type Builder struct {
-	Attrs   memory.Attrs
-	Class   memory.Class
-	Pos     token.Pos
-	Type    types.Type
-	SrcKind memory.SrcKind
+	Attrs memory.Attrs
+	Class memory.Class
+	Pos   token.Pos
+	Type  types.Type
 
 	pkg *PkgRes
 	mdl *memory.Model
@@ -40,13 +39,12 @@ func NewBuilder(pkg *PkgRes) *Builder {
 func (b *Builder) Reset() {
 	b.Attrs = memory.Attrs(0)
 	b.Class = memory.Class(0)
-	b.SrcKind = memory.SrcKind(0)
 	b.Pos = -1
 	b.Type = nil
 }
 
 func (b *Builder) GenLoc() memory.Loc {
-	res := b.mdl.GenRoot(b.Type, b.Class, b.Attrs, b.SrcKind, b.Pos)
+	res := b.mdl.GenRoot(b.Type, b.Class, b.Attrs, b.Pos)
 	return res
 }
 
@@ -59,7 +57,7 @@ func (b *Builder) ArrayIndex(m memory.Loc, i int) memory.Loc {
 }
 
 func (b *Builder) GenWithPointer() (obj, ptr memory.Loc) {
-	obj, ptr = b.mdl.GenWithPointer(b.Type, b.Class, b.Attrs, b.SrcKind, b.Pos)
+	obj, ptr = b.mdl.GenWithPointer(b.Type, b.Class, b.Attrs, b.Pos)
 	return
 }
 

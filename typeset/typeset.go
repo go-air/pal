@@ -46,6 +46,14 @@ func (t *TypeSet) Kind(ty Type) Kind {
 	return t.nodes[ty].kind
 }
 
+func (t *TypeSet) Elem(ty Type) Type {
+	return t.nodes[ty].elem
+}
+
+func (t *TypeSet) Key(ty Type) Type {
+	return t.nodes[ty].key
+}
+
 func (t *TypeSet) ArrayLen(ty Type) int {
 	node := &t.nodes[ty]
 	n := node.lsize - 1

@@ -32,11 +32,7 @@ type Builder struct {
 
 	start memory.Loc
 
-	class   memory.Class
-	attrs   memory.Attrs
-	pos     token.Pos
-	srcKind memory.SrcKind
-	typ     typeset.Type
+	memGen *memory.GenParams
 }
 
 func NewBuilder(pkgPath string, ind indexing.T, mem *memory.Model, ts *typeset.TypeSet) *Builder {
@@ -45,44 +41,47 @@ func NewBuilder(pkgPath string, ind indexing.T, mem *memory.Model, ts *typeset.T
 	b.indexing = ind
 	b.mmod = mem
 	b.ts = ts
+	b.memGen = memory.NewGenParams(ts)
 	return b
 }
 
-func (b *Builder) Reset() *Builder {
-	b.class = memory.Class(0)
-	b.attrs = memory.Attrs(0)
-	b.pos = token.NoPos
-	b.srcKind = memory.SrcKind(0)
-	b.typ = typeset.NoType
+func (b *Builder) Pos(pos token.Pos) *Builder {
+	b.memGen.Pos(pos)
 	return b
 }
 
 func (b *Builder) Class(c memory.Class) *Builder {
-	b.class = c
+	b.memGen.Class(c)
 	return b
 }
 
-func (b *Builder) Attrs(a memory.Attrs) *Builder {
-	b.attrs = a
+func (b *Builder) Attrs(as memory.Attrs) *Builder {
+	b.memGen.Attrs(as)
 	return b
 }
 
-func (b *Builder) Pos(p token.Pos) *Builder {
-	b.pos = p
+func (b *Builder) GoType(ty types.Type) *Builder {
+	b.memGen.Type(b.ts.FromGoType(ty))
 	return b
 }
 
-func (b *Builder) Kind(k memory.SrcKind) *Builder {
-	b.srcKind = k
-	return b
+func (b *Builder) Struct(gty *types.Struct) *Struct {
+	b.GoType(gty)
+	s := &Struct{}
+	return s
 }
 
-func (b *Builder) Type(t typeset.Type) *Builder {
-	b.typ = t
-	return b
+func (b *Builder) Array(gty *types.Array) *Array {
+	a := &Array{}
+	return a
 }
 
-func (b *Builder) GoType(t types.Type) *Builder {
-	b.typ = b.ts.FromGoType(t)
-	return b
+func (b *Builder) Slice(gty *types.Slice) *Slice {
+	s := &Slice{}
+	return s
+}
+
+func (b *Builder) Map(gty *types.Map) *Map {
+	m := &Map{}
+	return m
 }
