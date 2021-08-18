@@ -11,7 +11,10 @@ different ends.
 In this bottom-up phase, pal constructs executable and queryable memory models
 for each exported symbol of each package. 
 
-## Applications
+## Representation
+
+![pal representation](../images/pal.png)
+
 
 ### Command line
 
