@@ -14,6 +14,16 @@
 
 package objects
 
+import "io"
+
 type Pointer struct {
 	object
+}
+
+func (p *Pointer) PlainEncode(w io.Writer) error {
+	return nil
+}
+
+func (p *Pointer) PlainDecode(r io.Reader) error {
+	return nil
 }

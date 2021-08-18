@@ -38,10 +38,6 @@ func TestModel(t *testing.T) {
 	if mdl.Parent(gf) != gs {
 		t.Errorf("field parent")
 	}
-	if err := mdl.Check(); err != nil {
-		t.Errorf("check failed: %s", err)
-		return
-	}
 
 	//fmt.Printf(plain.String(mdl))
 }

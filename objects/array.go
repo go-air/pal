@@ -17,13 +17,18 @@ package objects
 import (
 	"io"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
 
 type Array struct {
 	object
-	elemSize int
-	n        int
+	elemSize int64
+	n        int64
+}
+
+func (a *Array) Len() int64 {
+	return a.n
 }
 
 func (a *Array) At(i int) memory.Loc {
@@ -33,11 +38,30 @@ func (a *Array) At(i int) memory.Loc {
 
 func (a *Array) PlainEncode(w io.Writer) error {
 	var err error
-	err = a.loc.PlainEncode(w)
-	return err
+	err = a.object.plainEncode(w)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte{byte(' ')})
+	if err != nil {
+		return err
+	}
+	err = plain.EncodeInt64(w, a.elemSize)
+	if err != nil {
+		return err
+	}
+	_, err = w.Write([]byte{byte(' ')})
+	if err != nil {
+		return err
+	}
+	return plain.EncodeInt64(w, a.n)
 }
 
 func (a *Array) PlainDecode(r io.Reader) error {
-	p := &a.loc
-	return p.PlainDecode(r)
+	o := &a.object
+	err := o.plainDecode(r)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -14,6 +14,11 @@
 
 package typeset
 
+import (
+	"fmt"
+	"io"
+)
+
 type Type uint32
 
 const (
@@ -36,3 +41,14 @@ const (
 	Uintptr
 	_endType
 )
+
+func (t Type) PlainEncode(w io.Writer) error {
+	_, err := fmt.Fprintf(w, "%08x", t)
+	return err
+
+}
+
+func (t *Type) PlainDecode(r io.Reader) error {
+	_, err := fmt.Fscanf(r, "%08x", t)
+	return err
+}

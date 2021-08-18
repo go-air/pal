@@ -15,53 +15,109 @@
 package indexing
 
 import (
+	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/go-air/pal/xtruth"
 )
 
 type consts struct{}
+type C struct{ p *int64 }
+
+func (c C) PlainEncode(w io.Writer) error {
+	if c.p == nil {
+		_, err := fmt.Fprintf(w, ".")
+		return err
+	}
+	_, err := w.Write(strconv.AppendInt(nil, *c.p, 16))
+	return err
+}
+
+func isHexLower(b byte) bool {
+	return (b >= byte('0') && b <= byte('9')) || (b >= byte('a') && b <= byte('f'))
+}
+
+func (c C) PlainDecode(r io.Reader) error {
+	var buf [16]byte
+	_, err := io.ReadFull(r, buf[:1])
+	if err != nil {
+		return err
+	}
+	if buf[0] == byte('.') {
+		c.p = nil
+		return nil
+	}
+	i := 1
+	for i < 16 {
+		_, err = io.ReadFull(r, buf[i:i+1])
+		if err != nil {
+			return err
+		}
+		if !isHexLower(buf[i]) {
+			break
+		}
+
+		i++
+	}
+	v, _ := strconv.ParseInt(string(buf[:i]), 16, 64)
+	*c.p = v
+	return nil
+}
 
 func ConstVals() T {
 	return consts{}
 }
 
+var zero int64 = 0
+var one int64 = 1
+
 func (c consts) Zero() I {
-	return I(0)
+	z := int64(0)
+	return I(C{&z})
 }
 
 func (c consts) One() I {
-	return I(1)
+	o := int64(1)
+	return I(C{&o})
 }
 
 func (c consts) IsVar(v I) bool {
-	return false
+	return v.(C).p == nil
 }
 
 func (c consts) Var() I {
-	panic("constant variable requested.")
+	return C{nil}
 }
 
-func (c consts) FromInt(v int) I {
-	return v
+func (c consts) FromInt64(v int64) I {
+	return C{&v}
 }
 
-func (c consts) ToInt(v I) (int, bool) {
-	vv, ok := v.(int)
-	if !ok {
+func (c consts) ToInt64(v I) (int64, bool) {
+	p := v.(C).p
+	if p == nil {
 		return 0, false
 	}
-	return vv, true
+	return *p, true
 }
 
 func (c consts) Plus(a, b I) I {
-	aa, bb := a.(int), b.(int)
-	return I(aa + bb)
+	pa, pb := a.(C).p, b.(C).p
+	if pa == nil || pb == nil {
+		return c.Var()
+	}
+	r := *pa + *pb
+	return c.FromInt64(r)
 }
 
 func (c consts) Times(a, b I) I {
-	aa, bb := a.(int), b.(int)
-	return I(aa * bb)
+	pa, pb := a.(C).p, b.(C).p
+	if pa == nil || pb == nil {
+		return c.Var()
+	}
+	r := *pa * *pb
+	return c.FromInt64(r)
 }
 
 func (c consts) Div(a, b I) (I, xtruth.T) {
@@ -69,9 +125,11 @@ func (c consts) Div(a, b I) (I, xtruth.T) {
 	case xtruth.True:
 		return c.Zero(), xtruth.False
 	case xtruth.False:
-		return I(a.(int) / b.(int)), xtruth.True
+		pa, pb := a.(C).p, b.(C).p
+		r := *pa / *pb
+		return c.FromInt64(r), xtruth.True
 	case xtruth.X:
-		panic("non-const op")
+		return c.Var(), xtruth.X
 	}
 	return c.Zero(), xtruth.X
 }
@@ -81,21 +139,31 @@ func (c consts) Rem(a, b I) (I, xtruth.T) {
 	case xtruth.True:
 		return c.Zero(), xtruth.False
 	case xtruth.False:
-		return I(a.(int) % b.(int)), xtruth.True
+		pa, pb := a.(C).p, b.(C).p
+		r := *pa % *pb
+		return c.FromInt64(r), xtruth.True
 	case xtruth.X:
-		panic("non-const op")
+		return c.Var(), xtruth.X
 	}
 	return c.Zero(), xtruth.X
 }
 
 func (c consts) Band(a, b I) I {
-	aa, bb := a.(int), b.(int)
-	return I(aa & bb)
+	pa, pb := a.(C).p, b.(C).p
+	if pa == nil || pb == nil {
+		return c.Var()
+	}
+	z := *pa & *pb
+	return c.FromInt64(z)
 }
 
 func (c consts) Bnot(a I) I {
-	aa := a.(int)
-	return I(^aa)
+	pa := a.(C).p
+	if pa == nil {
+		return c.Var()
+	}
+	z := ^(*pa)
+	return c.FromInt64(z)
 }
 
 func (c consts) Lshift(a, s I) (I, xtruth.T) {
@@ -107,16 +175,22 @@ func (c consts) Rshift(a, s I) (I, xtruth.T) {
 }
 
 func (c consts) Less(a, b I) xtruth.T {
-	aa, bb := a.(int), b.(int)
-	if aa < bb {
+	pa, pb := a.(C).p, b.(C).p
+	if pa == nil || pb == nil {
+		return xtruth.X
+	}
+	if *pa < *pb {
 		return xtruth.True
 	}
 	return xtruth.False
 }
 
 func (c consts) Equal(a, b I) xtruth.T {
-	aa, bb := a.(int), b.(int)
-	if aa == bb {
+	pa, pb := a.(C).p, b.(C).p
+	if pa == nil || pb == nil {
+		return xtruth.X
+	}
+	if *pa == *pb {
 		return xtruth.True
 	}
 	return xtruth.False

@@ -14,9 +14,29 @@
 
 package objects
 
-import "github.com/go-air/pal/memory"
+import (
+	"io"
+
+	"github.com/go-air/pal/memory"
+)
 
 type Struct struct {
 	object
-	Fields []memory.Loc
+	fields []memory.Loc
+}
+
+func (s *Struct) NumFields(i int) int {
+	return len(s.fields)
+}
+
+func (s *Struct) Field(i int) memory.Loc {
+	return s.fields[i]
+}
+
+func (s *Struct) PlainEncode(w io.Writer) error {
+	return nil
+}
+
+func (s *Struct) PlainDecode(r io.Reader) error {
+	return nil
 }

@@ -14,6 +14,17 @@
 
 package objects
 
+import "io"
+
 type Chan struct {
 	object
 }
+
+func (c *Chan) PlainEncode(w io.Writer) error {
+	return nil
+}
+
+func (c *Chan) PlainDecode(r io.Reader) error {
+	return nil
+}
+

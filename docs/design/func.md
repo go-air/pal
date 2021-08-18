@@ -1,6 +1,8 @@
 # pal functional architecture
 
 
+
+
 ## Memory Models
 
 Memory is modelled as a set of nodes (as in nodes in a graph), called _locs_.

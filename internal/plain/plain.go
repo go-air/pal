@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 
 	"strings"
 )
@@ -86,6 +87,39 @@ func DecodeJoin(r io.Reader, sep string, ds ...Decoder) error {
 			return err
 		}
 	}
+	return nil
+}
+
+func isHexLower(b byte) bool {
+	return (b >= byte('0') && b <= byte('9')) || (b >= byte('a') && b <= byte('f'))
+}
+
+func EncodeInt64(w io.Writer, v int64) error {
+	var buf [16]byte
+	_, err := w.Write(strconv.AppendInt(buf[:0], v, 16))
+	return err
+}
+
+func DecodeInt64(r io.Reader, p *int64) error {
+	var buf [16]byte
+	i := 0
+	var err error
+	for i < 16 {
+		_, err = io.ReadFull(r, buf[i:i+1])
+		if err != nil {
+			return err
+		}
+		if !isHexLower(buf[i]) {
+			break
+		}
+
+		i++
+	}
+	if i == 0 {
+		return fmt.Errorf("no plain i64 input")
+	}
+	v, _ := strconv.ParseInt(string(buf[:i]), 16, 64)
+	*p = v
 	return nil
 }
 

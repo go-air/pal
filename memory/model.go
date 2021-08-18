@@ -95,11 +95,7 @@ func (mod *Model) Field(m Loc, i int) Loc {
 	n := m + 1 // first field
 	for j := 0; j < i; j++ {
 		sz := mod.locs[n].lsz
-		isz, ok := mod.indexing.ToInt(sz)
-		if !ok {
-			return NoLoc
-		}
-		n += Loc(isz)
+		n += Loc(sz)
 	}
 	return n
 }
@@ -108,22 +104,17 @@ func (mod *Model) Field(m Loc, i int) Loc {
 func (mod *Model) ArrayIndex(m Loc, i int) Loc {
 	n := m + 1
 	sz := mod.locs[n].lsz
-	isz, ok := mod.indexing.ToInt(sz)
-	if !ok {
-		return NoLoc
-
-	}
-	n += Loc(i * isz)
+	n += Loc(i * sz)
 	return n
 }
 
-// LSize returns the virtual size of memory associated
+// Lsize returns the virtual size of memory associated
 // with m.
 //
 // The virtual size is the size according to the model,
 // which is 1 + the sum of the the vsizes of all locations
 // n such that mod.Parent(n) == m.
-func (mod *Model) LSize(m Loc) int {
+func (mod *Model) Lsize(m Loc) int {
 	return mod.locs[m].lsz
 }
 
@@ -197,38 +188,6 @@ func (mod *Model) Cap(c int) {
 	mod.locs = mod.locs[:c]
 }
 
-// validates that
-//
-// n.vsz = 1 + Sum(c.vsz, c a child of n)
-func (mod *Model) Check() error {
-	N := len(mod.locs)
-	sizes := make(map[Loc]int)
-	for i := 2; i < N; i++ {
-		loc := &mod.locs[i]
-		if loc.parent == Loc(i) {
-			continue
-		}
-		sz, ok := mod.indexing.ToInt(loc.lsz)
-		if !ok {
-			return fmt.Errorf("vsz not const")
-		}
-		ttl, _ := sizes[loc.parent]
-		sizes[loc.parent] = sz + ttl
-	}
-	for m, sz := range sizes {
-		sz++
-		loc := &mod.locs[m]
-		realsz, ok := mod.indexing.ToInt(loc.lsz)
-		if !ok {
-			return fmt.Errorf("vsz not const")
-		}
-		if sz != realsz {
-			return fmt.Errorf("loc %s sum %d size %d\n", plain.String(m), sz, realsz)
-		}
-	}
-	return nil
-}
-
 // p_add adds a root recursively according to ty.
 //
 // add is responsible for setting the size, parent, class, attrs, typ, and root
@@ -244,6 +203,7 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		pos:    gp.pos,
 		typ:    gp.typ}
 	lastSum := *sum
+	added := true
 	switch gp.ts.Kind(gp.typ) {
 	// these are added as pointers here indirect associattions (params,
 	// returns, ...) are done in github.com/go-air/objects.Builder
@@ -269,26 +229,28 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		nf := gp.ts.NumFields(gp.typ)
 		styp := gp.typ
 		for i := 0; i < nf; i++ {
-			_, gp.typ = gp.ts.Field(styp, i)
+			_, gp.typ, _ = gp.ts.Field(styp, i)
 			mod.p_add(gp, n, r, sum)
 		}
 
 	case typeset.Tuple:
-		mod.locs = append(mod.locs, l)
-		*sum++
 		tn := gp.ts.ArrayLen(gp.typ)
 		ttyp := gp.typ
 		for i := 0; i < tn; i++ {
-			_, gp.typ = gp.ts.Field(ttyp, i)
+			_, gp.typ, _ = gp.ts.Field(ttyp, i)
 			mod.p_add(gp, n, r, sum)
 		}
+		added = false
 
 	default:
 		panic(fmt.Sprintf("%d: unexpected/unimplemented", gp.typ))
 	}
-	// we added a slot at dst[n] for ty,  set its size
-	mod.locs[n].lsz = *sum - lastSum
-	return n
+	if added {
+		// we added a slot at dst[n] for ty,  set its size
+		mod.locs[n].lsz = *sum - lastSum
+		return n
+	}
+	return NoLoc
 }
 
 // add adds a root recursively according to ty.
@@ -402,7 +364,7 @@ func (mod *Model) AddStore(dst, src Loc) {
 
 // dst = src
 func (mod *Model) AddTransfer(dst, src Loc) {
-	mod.constraints = append(mod.constraints, Transfer(dst, src))
+	mod.AddTransferIndex(dst, src, mod.indexing.Zero())
 }
 
 func (mod *Model) AddTransferIndex(dst, src Loc, i indexing.I) {

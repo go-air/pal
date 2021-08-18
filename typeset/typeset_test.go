@@ -30,6 +30,7 @@ func TestTypeSetGrow(t *testing.T) {
 	for i := 0; i < 2025; i++ {
 		palBase = ts.getPointer(palBase)
 	}
+
 	//ts.PlainEncode(os.Stdout)
 	if err := plain.TestRoundTrip(ts, false); err != nil {
 		t.Error(err)

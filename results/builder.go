@@ -84,7 +84,3 @@ func (b *Builder) GenTransferIndex(dst, src memory.Loc, off indexing.I) {
 func (b *Builder) Model() *memory.Model {
 	return b.mdl
 }
-
-func (b *Builder) Check() error {
-	return b.mdl.Check()
-}

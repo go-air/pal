@@ -28,6 +28,8 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 			return Bool
 		case types.Int:
 			return Int64
+		case types.Uint:
+			return Uint64
 
 		case types.Int8:
 			return Int8
@@ -60,7 +62,7 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 		case types.Uintptr:
 			return Uintptr
 		default:
-			panic("untyped const has no pal type")
+			panic(fmt.Sprintf("%s has no pal type", ty))
 		}
 
 	case *types.Slice:
@@ -81,10 +83,12 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 		N := ty.NumFields()
 		fields := make([]named, N)
 
+		off := 1
 		for i := 0; i < N; i++ {
 			goField := ty.Field(i)
 			fty := t.FromGoType(goField.Type())
-			fields[i] = named{name: goField.Name(), typ: fty}
+			fields[i] = named{name: goField.Name(), typ: fty, loff: off}
+			off += t.Lsize(fty)
 		}
 		return t.getStruct(fields)
 
@@ -128,10 +132,13 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 	case *types.Tuple:
 		N := ty.Len()
 		res := make([]named, N)
+		off := 0
 		for i := 0; i < N; i++ {
 			at := ty.At(i)
 			res[i].name = at.Name()
 			res[i].typ = t.FromGoType(at.Type())
+			res[i].loff = off
+			off += t.Lsize(res[i].typ)
 		}
 		return t.getTuple(res)
 

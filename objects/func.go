@@ -15,11 +15,9 @@
 package objects
 
 import (
-	"go/token"
-	"go/types"
+	"io"
 
 	"github.com/go-air/pal/memory"
-	"github.com/go-air/pal/results"
 	"github.com/go-air/pal/typeset"
 )
 
@@ -32,52 +30,6 @@ type Func struct {
 	params   []memory.Loc
 	results  []memory.Loc
 	variadic bool
-}
-
-func NewFunc(bld *results.Builder, sig *types.Signature, declName string) *Func {
-	fn := &Func{declName: declName}
-	bld.Reset()
-	bld.Class = memory.Global
-	bld.Pos = token.NoPos // XXX
-	bld.Type = sig
-	fn.loc = bld.GenLoc()
-	bld.GenPointsTo(fn.loc, fn.loc)
-	fn.params = make([]memory.Loc, sig.Params().Len())
-	fn.results = make([]memory.Loc, sig.Results().Len())
-
-	// handle parameters
-	opaque := memory.NoAttrs
-	if token.IsExported(declName) {
-		opaque |= memory.IsOpaque
-	}
-	bld.Class = memory.Local // always
-
-	recv := sig.Recv()
-	if recv != nil {
-		bld.Class = memory.Local
-		fn.recv = bld.GenLoc()
-	}
-	fn.variadic = sig.Variadic()
-	params := sig.Params()
-	N := params.Len()
-	for i := 0; i < N; i++ {
-		param := params.At(i)
-		bld.Pos = param.Pos()
-		bld.Type = param.Type()
-		bld.Attrs = memory.IsParam | opaque
-		fn.params[i] = bld.GenLoc()
-	}
-	rets := sig.Results()
-	N = rets.Len()
-	for i := 0; i < N; i++ {
-		ret := rets.At(i)
-		bld.Pos = ret.Pos()
-		bld.Type = ret.Type()
-		bld.Attrs = memory.IsReturn | opaque
-		fn.results[i] = bld.GenLoc()
-	}
-	// TBD: FreeVars
-	return fn
 }
 
 func (f *Func) Declared() bool {
@@ -111,4 +63,12 @@ func (f *Func) ResultLoc(i int) memory.Loc {
 
 func (f *Func) NResults() int {
 	return len(f.results)
+}
+
+func (f *Func) PlainEncode(w io.Writer) error {
+	return nil
+}
+
+func (f *Func) PlainDecode(r io.Reader) error {
+	return nil
 }

@@ -14,9 +14,21 @@
 
 package objects
 
-import "github.com/go-air/pal/memory"
+import (
+	"io"
+
+	"github.com/go-air/pal/memory"
+)
 
 type Interface struct {
 	object
 	Concrete memory.Loc
+}
+
+func (i *Interface) PlainEncode(w io.Writer) error {
+	return nil
+}
+
+func (i *Interface) PlainDecode(r io.Reader) error {
+	return nil
 }

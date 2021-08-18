@@ -46,6 +46,11 @@ func (t *TypeSet) Kind(ty Type) Kind {
 	return t.nodes[ty].kind
 }
 
+func (t *TypeSet) IsObject(ty Type) bool {
+	k := t.Kind(ty)
+	return k != Basic && k != Tuple
+}
+
 func (t *TypeSet) Lsize(ty Type) int {
 	return t.nodes[ty].lsize
 }
@@ -62,6 +67,7 @@ func (t *TypeSet) ArrayLen(ty Type) int {
 	node := &t.nodes[ty]
 	n := node.lsize - 1
 	eltSize := t.nodes[node.elem].lsize
+	// nb lsize is never 0.
 	if n%eltSize != 0 {
 		panic("bad array len")
 	}
@@ -72,9 +78,9 @@ func (t *TypeSet) NumFields(ty Type) int {
 	return len(t.nodes[ty].fields)
 }
 
-func (t *TypeSet) Field(ty Type, i int) (name string, fty Type) {
+func (t *TypeSet) Field(ty Type, i int) (name string, fty Type, loff int) {
 	f := t.nodes[ty].fields[i]
-	return f.name, f.typ
+	return f.name, f.typ, f.loff
 }
 
 func (t *TypeSet) Recv(ty Type) Type {
@@ -286,6 +292,9 @@ func (t *TypeSet) namedsEqual(as, bs []named) bool {
 		anamed := as[i]
 		bnamed := bs[i]
 		if anamed.name != bnamed.name {
+			return false
+		}
+		if anamed.loff != bnamed.loff {
 			return false
 		}
 		if !t.equal(anamed.typ, bnamed.typ) {

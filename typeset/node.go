@@ -25,8 +25,8 @@ type node struct {
 	elem     Type    // pointer, array, slice
 	key      Type    // map keys, method receivers
 	fields   []named // struct/interface only
-	params   []named // name == nil ok
-	results  []named // name == nil ok
+	params   []named // name == "" ok
+	results  []named // name == "" ok
 	variadic bool
 
 	// hashing
@@ -38,6 +38,7 @@ type node struct {
 type named struct {
 	name string
 	typ  Type
+	loff int // 0 when for params or methods
 }
 
 func (n named) PlainEncode(w io.Writer) error {

@@ -28,19 +28,48 @@ type Builder struct {
 	indexing indexing.T
 	mmod     *memory.Model
 	ts       *typeset.TypeSet
-	objects  []Object
+	omap     map[memory.Loc]Object
 	start    memory.Loc
 	memGen   *memory.GenParams
 }
 
-func NewBuilder(pkgPath string, ind indexing.T, mem *memory.Model, ts *typeset.TypeSet) *Builder {
+func NewBuilder(pkgPath string, ind indexing.T) *Builder {
 	b := &Builder{}
 	b.pkgPath = pkgPath
 	b.indexing = ind
-	b.mmod = mem
-	b.ts = ts
-	b.memGen = memory.NewGenParams(ts)
+	b.mmod = memory.NewModel(ind)
+	b.ts = typeset.New()
+	b.memGen = memory.NewGenParams(b.ts)
+	b.omap = make(map[memory.Loc]Object)
 	return b
+}
+
+func (b *Builder) Memory() *memory.Model {
+	return b.mmod
+}
+
+func (b *Builder) TypeSet() *typeset.TypeSet {
+	return b.ts
+}
+
+func (b *Builder) AddPointsTo(ptr, obj memory.Loc) {
+	b.mmod.AddPointsTo(ptr, obj)
+}
+
+func (b *Builder) AddLoad(dst, src memory.Loc) {
+	b.mmod.AddLoad(dst, src)
+}
+
+func (b *Builder) AddStore(dst, src memory.Loc) {
+	b.mmod.AddStore(dst, src)
+}
+
+func (b *Builder) AddTransfer(dst, src memory.Loc) {
+	b.mmod.AddTransfer(dst, src)
+}
+
+func (b *Builder) AddTransferIndex(dst, src memory.Loc, i indexing.I) {
+	b.mmod.AddTransferIndex(dst, src, i)
 }
 
 func (b *Builder) Pos(pos token.Pos) *Builder {
@@ -70,29 +99,31 @@ func (b *Builder) Type(ty typeset.Type) *Builder {
 func (b *Builder) Struct(gty *types.Struct) *Struct {
 	b.GoType(gty)
 	s := &Struct{}
-	s.loc = b.mmod.Gen(b.memGen)
+	s.loc = b.Gen()
 	s.typ = b.mmod.Type(s.loc)
-	n := memory.Loc(b.mmod.LSize(s.loc))
-	s.Fields = make([]memory.Loc, 0, gty.NumFields())
+	n := memory.Loc(b.mmod.Lsize(s.loc))
+	s.fields = make([]memory.Loc, 0, gty.NumFields())
 	for i := memory.Loc(1); i < n; i++ {
 		pfloc := b.mmod.Parent(s.loc + i)
 		if pfloc == s.loc {
-			s.Fields = append(s.Fields, s.loc+i)
+			s.fields = append(s.fields, s.loc+i)
 		}
 	}
-	if len(s.Fields) != gty.NumFields() {
+	if len(s.fields) != gty.NumFields() {
 		panic("internal error")
 	}
+	b.omap[s.loc] = s
 	return s
 }
 
 func (b *Builder) Array(gty *types.Array) *Array {
 	b.GoType(gty)
 	a := &Array{}
-	a.loc = b.mmod.Gen(b.memGen)
+	a.loc = b.Gen()
 	a.typ = b.mmod.Type(a.loc)
-	a.n = int(gty.Len()) // XXX int v int64
-	a.elemSize = b.ts.Lsize(b.ts.Elem(a.typ))
+	a.n = gty.Len()
+	a.elemSize = int64(b.ts.Lsize(b.ts.Elem(a.typ)))
+	b.omap[a.loc] = a
 	return a
 }
 
@@ -100,28 +131,96 @@ func (b *Builder) Slice(gty *types.Slice, length, capacity indexing.I) *Slice {
 	ty := b.ts.FromGoType(gty)
 	b.Type(ty)
 	s := &Slice{}
+	s.loc = b.Gen()
 	s.Len = length
 	s.Cap = capacity
+	// add one uni-slot by default.
+	b.AddSlot(s, b.indexing.Var())
+	b.omap[s.loc] = s
 	return s
 }
 
 func (b *Builder) AddSlot(slice *Slice, i indexing.I) {
 	elem := b.ts.Elem(slice.typ)
-	b.memGen.Type(elem)
-	slice.Slots = append(slice.Slots, Slot{
-		Loc: b.mmod.Gen(b.memGen),
+	slice.slots = append(slice.slots, Slot{
+		Loc: b.Type(elem).Gen(),
 		I:   i})
 }
 
 func (b *Builder) Map(gty *types.Map) *Map {
 	ty := b.ts.FromGoType(gty)
 	kty, ety := b.ts.Key(ty), b.ts.Elem(ty)
-	mloc := b.mmod.Gen(b.memGen.Type(typeset.UnsafePointer))
-	kloc := b.mmod.Gen(b.memGen.Type(kty))
-	eloc := b.mmod.Gen(b.memGen.Type(ety))
+	mloc := b.mmod.Gen(b.memGen.Type(ty))
+	kloc := b.Type(kty).Gen()
+	eloc := b.Type(ety).Gen()
+	b.mmod.AddPointsTo(mloc, eloc)
 
-	m := &Map{Key: kloc, Elem: eloc}
+	m := &Map{key: kloc, elem: eloc}
 	m.loc = mloc
 	m.typ = ty
+	b.omap[m.loc] = m
 	return m
+}
+
+func (b *Builder) Object(m memory.Loc) Object {
+	return b.omap[m]
+}
+
+func (b *Builder) Gen() memory.Loc {
+	return b.mmod.Gen(b.memGen)
+}
+
+func (b *Builder) WithPointer() (obj, ptr memory.Loc) {
+	obj, ptr = b.mmod.WithPointer(b.memGen)
+	return
+}
+
+func (b *Builder) Pointer(gtype *types.Pointer) *Pointer {
+	ptr := &Pointer{}
+	ptr.typ = b.ts.FromGoType(gtype)
+	ptr.loc = b.Type(ptr.typ).Gen()
+	b.omap[ptr.loc] = ptr
+	return ptr
+}
+
+// Func makes a function object.  It is for top level functions
+// which may or may not be declared.  `declName` must be empty
+// iff the associated function is not declared.
+func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attrs) *Func {
+	fn := &Func{declName: declName}
+	fn.typ = b.ts.FromGoType(sig)
+	fn.loc = b.Type(fn.typ).Gen()
+
+	fn.params = make([]memory.Loc, sig.Params().Len())
+	fn.variadic = sig.Variadic()
+	fn.results = make([]memory.Loc, sig.Results().Len())
+
+	b.Class(memory.Local) // for all params and returns
+
+	recv := sig.Recv()
+
+	if recv != nil {
+		b.memGen.Type(b.ts.FromGoType(recv.Type()))
+		fn.recv = b.mmod.Gen(b.memGen)
+	}
+	params := sig.Params()
+	N := params.Len()
+	for i := 0; i < N; i++ {
+		param := params.At(i)
+		pty := b.ts.FromGoType(param.Type())
+		fn.params[i] =
+			b.Pos(param.Pos()).Type(pty).Attrs(memory.IsParam | opaque).Gen()
+	}
+	rets := sig.Results()
+	N = rets.Len()
+	for i := 0; i < N; i++ {
+		ret := rets.At(i)
+		rty := b.ts.FromGoType(ret.Type())
+		fn.results[i] =
+			b.Pos(ret.Pos()).Type(rty).Attrs(memory.IsReturn | opaque).Gen()
+	}
+	// TBD: FreeVars
+	b.omap[fn.loc] = fn
+	return fn
+
 }

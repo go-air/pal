@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # pal website
 
 Hello
@@ -9,4 +8,3 @@ pal is a library for doing pointer analysis.
 
 
 
->>>>>>> proto

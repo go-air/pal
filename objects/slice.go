@@ -15,6 +15,8 @@
 package objects
 
 import (
+	"io"
+
 	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/memory"
 )
@@ -23,10 +25,34 @@ type Slice struct {
 	object
 	Len   indexing.I
 	Cap   indexing.I
-	Slots []Slot
+	slots []Slot
+}
+
+func (slice *Slice) NumSlots() int {
+	return len(slice.slots)
+}
+
+func (slice *Slice) Slot(i int) Slot {
+	return slice.slots[i]
 }
 
 type Slot struct {
 	I   indexing.I
 	Loc memory.Loc
+}
+
+func (slot *Slot) PlainEncode(w io.Writer) error {
+	return nil
+}
+
+func (slot *Slot) PlainDecode(r io.Reader) error {
+	return nil
+}
+
+func (slice *Slice) PlainEncode(w io.Writer) error {
+	return nil
+}
+
+func (slice *Slice) PlainDecode(r io.Reader) error {
+	return nil
 }

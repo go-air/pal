@@ -20,6 +20,7 @@ import (
 )
 
 type I interface {
+	plain.Coder
 }
 
 type T interface {
@@ -27,9 +28,9 @@ type T interface {
 	Zero() I
 	One() I
 	// replace with go/constant?
-	ToInt(v I) (i int, ok bool)
+	ToInt64(v I) (i int64, ok bool)
 
-	FromInt(i int) I
+	FromInt64(i int64) I
 
 	IsVar(v I) bool
 	Var() I

@@ -14,10 +14,30 @@
 
 package objects
 
-import "github.com/go-air/pal/memory"
+import (
+	"io"
+
+	"github.com/go-air/pal/memory"
+)
 
 type Map struct {
 	object
-	Key  memory.Loc
-	Elem memory.Loc
+	key  memory.Loc
+	elem memory.Loc
+}
+
+func (m *Map) Key() memory.Loc {
+	return m.key
+}
+
+func (m *Map) Elem() memory.Loc {
+	return m.elem
+}
+
+func (m *Map) PlainEncode(w io.Writer) error {
+	return nil
+}
+
+func (m *Map) PlainDecode(r io.Reader) error {
+	return nil
 }

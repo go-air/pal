@@ -82,10 +82,6 @@ func Store(dst, src Loc) Constraint {
 	return Constraint{Kind: KStore, Dest: dst, Src: src}
 }
 
-func Transfer(dst, src Loc) Constraint {
-	return TransferIndex(dst, src, 0)
-}
-
 func TransferIndex(dst, src Loc, i indexing.I) Constraint {
 	return Constraint{Kind: KTransfer, Dest: dst, Src: src, Index: i}
 }
