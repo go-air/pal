@@ -94,7 +94,7 @@ func isHexLower(b byte) bool {
 	return (b >= byte('0') && b <= byte('9')) || (b >= byte('a') && b <= byte('f'))
 }
 
-const eoi = '|'
+const Eoi = '|'
 
 func EncodeInt64(w io.Writer, v int64) error {
 	var buf [17]byte
@@ -105,7 +105,7 @@ func EncodeInt64(w io.Writer, v int64) error {
 	}
 	n := len(x)
 	x = x[:n+1]
-	x[n] = eoi
+	x[n] = Eoi
 	return err
 }
 
@@ -118,7 +118,7 @@ func DecodeInt64(r io.Reader, p *int64) error {
 		if err != nil {
 			return err
 		}
-		if buf[i] == eoi {
+		if buf[i] == Eoi {
 			break
 		}
 		if !isHexLower(buf[i]) {

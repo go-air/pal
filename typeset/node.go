@@ -268,20 +268,20 @@ func (n *node) zero() {
 }
 
 var basicNodes = []node{
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // NoType
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Bool
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint8
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint16
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint32
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint64
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int8
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int16
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int32
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int64
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Float32
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Float64
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Complex64
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Complex128
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // String
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // UnsafePointer
-	node{kind: Basic, elem: NoType, key: NoType, lsize: 1}} // Uintptr
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // NoType
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Bool
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint8
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint16
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint32
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint64
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int8
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int16
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int32
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int64
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Float32
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Float64
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Complex64
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Complex128
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // String
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // UnsafePointer
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1}} // Uintptr

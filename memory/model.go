@@ -241,6 +241,10 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 			mod.p_add(gp, n, r, sum)
 		}
 		added = false
+	case typeset.Named:
+		gp.typ = gp.ts.Underlying(gp.typ)
+		mod.p_add(gp, n, r, sum)
+		added = false
 
 	default:
 		panic(fmt.Sprintf("%d: unexpected/unimplemented", gp.typ))

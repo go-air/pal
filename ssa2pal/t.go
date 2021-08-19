@@ -244,9 +244,9 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			p.buildr.Pos(v.Pos()).GoType(v.Type()).Class(memory.Local).Attrs(memory.NoAttrs)
 		}
 		x := p.buildr.Object(xloc).(*objects.Array)
-		switch v := v.Index.(type) {
+		switch idx := v.Index.(type) {
 		case *ssa.Const:
-			i64, ok := constant.Int64Val(v.Value)
+			i64, ok := constant.Int64Val(idx.Value)
 			if !ok {
 				panic("type checked const index not precise as int64")
 			}
@@ -260,17 +260,20 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			//  3. add AddTransferIndex(qa, pa, p.indexing.Var())
 			//  4. create res, type of element of array
 			//  5. create res = load(qa)
+			// TBD:
 
 			ty := v.Type().Underlying().(*types.Array)
 			eltTy := ty.Elem()
 			ptrTy := types.NewPointer(ty.Elem())
 			pelt := p.buildr.GoType(ptrTy).Gen()
 			qelt := p.buildr.Gen()
+			// it may crash if oob
+			p.buildr.AddPointsTo(qelt, p.buildr.Memory().Zero())
 			res = p.buildr.GoType(eltTy).Gen()
 			p.buildr.AddTransferIndex(qelt, pelt, p.indexing.Var())
 			p.buildr.AddLoad(res, qelt)
 		}
-	//case *ssa.Extract:
+	case *ssa.Extract:
 
 	case *ssa.Const:
 		return memory.NoLoc

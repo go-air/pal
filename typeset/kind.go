@@ -33,6 +33,7 @@ const (
 	Interface
 	Func
 	Tuple
+	Named
 )
 
 var kind2string = map[Kind]string{
@@ -45,7 +46,8 @@ var kind2string = map[Kind]string{
 	Chan:      "chn",
 	Interface: "ifa",
 	Func:      "fun",
-	Tuple:     "tup"}
+	Tuple:     "tup",
+	Named:     "nam"}
 
 var string2kind = map[string]Kind{
 	"bas": Basic,
@@ -57,6 +59,7 @@ var string2kind = map[string]Kind{
 	"chn": Chan,
 	"ifa": Interface,
 	"fun": Func,
+	"nam": Named,
 	"tup": Tuple}
 
 func (k Kind) String() string {

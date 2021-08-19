@@ -21,6 +21,7 @@ import (
 type TypeSet struct {
 	nodes []node
 	hash  []Type
+	named map[string]Type
 }
 
 const (
@@ -32,6 +33,7 @@ func New() *TypeSet {
 	res.nodes = make([]node, _endType, initCap)
 	copy(res.nodes, basicNodes)
 	res.hash = make([]Type, initCap)
+	res.named = make(map[string]Type)
 	for i := Type(1); i < _endType; i++ {
 		node := &res.nodes[i]
 		node.hash = res.hashCode(i)
@@ -85,6 +87,14 @@ func (t *TypeSet) Field(ty Type, i int) (name string, fty Type, loff int) {
 
 func (t *TypeSet) Recv(ty Type) Type {
 	return t.nodes[ty].key
+}
+
+func (t *TypeSet) Name(ty Type) string {
+	return t.nodes[ty].fields[0].name
+}
+
+func (t *TypeSet) Underlying(ty Type) Type {
+	return t.nodes[ty].elem
 }
 
 func (t *TypeSet) Variadic(ty Type) bool {
@@ -202,6 +212,19 @@ func (t *TypeSet) getTuple(elts []named) Type {
 	return t.getOrMake(ty, node)
 }
 
+func (t *TypeSet) getNamed(name string) (Type, bool) {
+	ty := t.named[name]
+	if ty == Type(0) {
+		ty, node := t.newNode()
+		node.kind = Named
+		node.elem = Type(0)
+		t.named[name] = ty
+		node.fields = append(node.fields, named{name: name})
+		return ty, true
+	}
+	return ty, false
+}
+
 func (t *TypeSet) getOrMake(ty Type, node *node) Type {
 	ci := node.hash % uint32(cap(t.hash))
 	ni := t.hash[ci]
@@ -277,11 +300,13 @@ func (t *TypeSet) equal(a, b Type) bool {
 		if anode.variadic != bnode.variadic || anode.key != bnode.key {
 			return false
 		}
-		return t.namedsEqual(anode.params, bnode.params) && t.namedsEqual(anode.results, bnode.results)
+		return t.namedsEqual(anode.params, bnode.params) &&
+			t.namedsEqual(anode.results, bnode.results)
+	case Named:
+		return anode.fields[0].name == bnode.fields[0].name
 	default:
 		panic("bad kind")
 	}
-	return true
 }
 
 func (t *TypeSet) namedsEqual(as, bs []named) bool {
