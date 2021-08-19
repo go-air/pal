@@ -24,10 +24,6 @@ type T struct {
 	perm []int
 }
 
-const (
-	myModuleName = "github.com/go-air/pal"
-)
-
 // New generates a new results.T object for managing pointer analysis
 // results.
 func New() (*T, error) {

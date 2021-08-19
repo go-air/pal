@@ -20,6 +20,10 @@ import (
 )
 
 func (t *TypeSet) FromGoType(gotype types.Type) Type {
+	return t.fromGoType(gotype, false)
+}
+
+func (t *TypeSet) fromGoType(gotype types.Type, ignoreRecv bool) Type {
 	// that line is a headache...
 	switch ty := gotype.(type) {
 	case *types.Basic:
@@ -62,7 +66,14 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 		case types.Uintptr:
 			return Uintptr
 		default:
-			panic(fmt.Sprintf("%s has no pal type", ty))
+			// XXX
+			// this can be untyped experimentally
+			// but then it is constant, and so
+			// not address taken, and so irrelevant
+			// to pointer analysis.  Just give it
+			// a type and continue.
+			return Bool
+			//panic(fmt.Sprintf("%s has no pal type", ty))
 		}
 
 	case *types.Slice:
@@ -86,15 +97,15 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 		off := 1
 		for i := 0; i < N; i++ {
 			goField := ty.Field(i)
-			fty := t.FromGoType(goField.Type())
+			fty := t.fromGoType(goField.Type(), false)
 			fields[i] = named{name: goField.Name(), typ: fty, loff: off}
 			off += t.Lsize(fty)
 		}
 		return t.getStruct(fields)
 
 	case *types.Map:
-		ety := t.FromGoType(ty.Elem())
-		kty := t.FromGoType(ty.Key())
+		ety := t.fromGoType(ty.Elem(), false)
+		kty := t.fromGoType(ty.Key(), false)
 		return t.getMap(kty, ety)
 
 	case *types.Interface:
@@ -103,7 +114,7 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 		fields := make([]named, N)
 		for i := 0; i < N; i++ {
 			meth := ty.Method(i)
-			mty := t.FromGoType(meth.Type())
+			mty := t.fromGoType(meth.Type(), true)
 			mname := meth.Name()
 			fields[i] = named{name: mname, typ: mty}
 		}
@@ -116,16 +127,16 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 		for i := range params {
 			param := goParams.At(i)
 			params[i].name = param.Name()
-			params[i].typ = t.FromGoType(param.Type())
+			params[i].typ = t.fromGoType(param.Type(), false)
 		}
 		for i := range results {
 			result := goResults.At(i)
 			results[i].name = result.Name()
-			results[i].typ = t.FromGoType(result.Type())
+			results[i].typ = t.fromGoType(result.Type(), false)
 		}
 		recv := NoType
-		if ty.Recv() != nil {
-			recv = t.FromGoType(ty.Recv().Type())
+		if !ignoreRecv && ty.Recv() != nil {
+			recv = t.fromGoType(ty.Recv().Type(), false)
 		}
 		return t.getSignature(recv, params, results, ty.Variadic())
 
@@ -136,14 +147,14 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 		for i := 0; i < N; i++ {
 			at := ty.At(i)
 			res[i].name = at.Name()
-			res[i].typ = t.FromGoType(at.Type())
+			res[i].typ = t.fromGoType(at.Type(), false)
 			res[i].loff = off
 			off += t.Lsize(res[i].typ)
 		}
 		return t.getTuple(res)
 
 	case *types.Named:
-		return t.FromGoType(ty.Underlying())
+		return t.fromGoType(ty.Underlying(), false)
 	default:
 		panic(fmt.Sprintf("pal type cannot represent go type %s", gotype))
 	}

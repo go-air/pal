@@ -440,7 +440,7 @@ func (p *T) invoke(c ssa.CallCommon) {
 func (p *T) putResults() {
 	if debugLogModel {
 		fmt.Printf("built pal model for %s\n", p.pkgres.PkgPath)
-		p.pkgres.PlainEncode(os.Stdout)
+		p.buildr.Memory().PlainEncode(os.Stdout)
 	}
 	p.results.Put(p.pass.Pkg.Path(), p.pkgres)
 }

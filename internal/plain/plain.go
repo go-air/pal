@@ -94,25 +94,36 @@ func isHexLower(b byte) bool {
 	return (b >= byte('0') && b <= byte('9')) || (b >= byte('a') && b <= byte('f'))
 }
 
+const eoi = '|'
+
 func EncodeInt64(w io.Writer, v int64) error {
-	var buf [16]byte
-	_, err := w.Write(strconv.AppendInt(buf[:0], v, 16))
+	var buf [17]byte
+	x := strconv.AppendInt(buf[:0], v, 16)
+	_, err := w.Write(x)
+	if err != nil {
+		return err
+	}
+	n := len(x)
+	x = x[:n+1]
+	x[n] = eoi
 	return err
 }
 
 func DecodeInt64(r io.Reader, p *int64) error {
-	var buf [16]byte
+	var buf [17]byte
 	i := 0
 	var err error
-	for i < 16 {
+	for i < 17 {
 		_, err = io.ReadFull(r, buf[i:i+1])
 		if err != nil {
 			return err
 		}
-		if !isHexLower(buf[i]) {
+		if buf[i] == eoi {
 			break
 		}
-
+		if !isHexLower(buf[i]) {
+			return fmt.Errorf("not plain int fmt")
+		}
 		i++
 	}
 	if i == 0 {
@@ -121,6 +132,16 @@ func DecodeInt64(r io.Reader, p *int64) error {
 	v, _ := strconv.ParseInt(string(buf[:i]), 16, 64)
 	*p = v
 	return nil
+}
+
+func EncodeUint32(w io.Writer, v uint32) error {
+	_, err := fmt.Fprintf(w, "%08x", v)
+	return err
+}
+
+func DecodeUint32(r io.Reader, p *uint32) error {
+	_, err := fmt.Fscanf(r, "%08x", p)
+	return err
 }
 
 type Coder interface {
@@ -157,12 +178,19 @@ func TestRoundTrip(c Coder, verbose bool) error {
 	return nil
 }
 
-func EncodeDecode(c Coder) error {
-	var buf = new(bytes.Buffer)
-	if err := c.PlainEncode(buf); err != nil {
+func Expect(r io.Reader, s string) error {
+	buf := []byte(s)
+	_, err := io.ReadFull(r, buf)
+	if err != nil {
 		return err
 	}
-	d := buf.Bytes()
-	buf = bytes.NewBuffer(d)
-	return c.PlainDecode(buf)
+	if string(buf) != s {
+		return fmt.Errorf("expected '%s' got '%s'", s, buf)
+	}
+	return nil
+}
+
+func Put(w io.Writer, s string) error {
+	_, err := w.Write([]byte(s))
+	return err
 }

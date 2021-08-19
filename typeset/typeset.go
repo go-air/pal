@@ -193,7 +193,7 @@ func (t *TypeSet) getSignature(recv Type, params, results []named, variadic bool
 func (t *TypeSet) getTuple(elts []named) Type {
 	ty, node := t.newNode()
 	node.kind = Tuple
-	node.lsize = 1
+	node.lsize = 0
 	node.fields = elts
 	for _, field := range elts {
 		node.lsize += t.nodes[field.typ].lsize

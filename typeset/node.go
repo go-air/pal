@@ -17,6 +17,8 @@ package typeset
 import (
 	"fmt"
 	"io"
+
+	"github.com/go-air/pal/internal/plain"
 )
 
 type node struct {
@@ -226,7 +228,7 @@ func (bb *bb) PeekByte() (byte, error) {
 
 func wrapJoinDecode(r io.Reader, left, sep, right string, elts *[]named) error {
 	br := newbb(r)
-	err := expect(r, left)
+	err := plain.Expect(r, left)
 	if err != nil {
 		return err
 	}
@@ -237,9 +239,9 @@ func wrapJoinDecode(r io.Reader, left, sep, right string, elts *[]named) error {
 		}
 		switch b {
 		case sep[0]:
-			err = expect(br, sep)
+			err = plain.Expect(br, sep)
 		case right[0]:
-			return expect(br, right)
+			return plain.Expect(br, right)
 		default:
 			n := len(*elts)
 			*elts = append(*elts, named{})
@@ -250,18 +252,6 @@ func wrapJoinDecode(r io.Reader, left, sep, right string, elts *[]named) error {
 			return fmt.Errorf("sep or dec: %w\n", err)
 		}
 	}
-}
-
-func expect(r io.Reader, what string) error {
-	buf := []byte(what)
-	_, err := io.ReadFull(r, buf)
-	if err != nil {
-		return err
-	}
-	if string(buf) != what {
-		return fmt.Errorf("unexpected '%s' want '%s'", string(buf), what)
-	}
-	return nil
 }
 
 func (n *node) zero() {

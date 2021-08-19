@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"go/token"
 	"io"
-	"strconv"
 
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/typeset"
@@ -34,18 +33,17 @@ type Loc uint32
 const NoLoc = Loc(0)
 
 func (m Loc) PlainEncode(w io.Writer) error {
-	_, e := fmt.Fprintf(w, "%08x", m)
-	return e
+	return plain.EncodeUint32(w, uint32(m))
 }
 
 func (m *Loc) PlainDecode(r io.Reader) error {
-	var buf = make([]byte, 8)
-	if _, err := io.ReadFull(r, buf); err != nil {
-		return fmt.Errorf("decode loc: %w", err)
+	n := uint32(0)
+	err := plain.DecodeUint32(r, &n)
+	if err != nil {
+		return err
 	}
-	n, e := strconv.ParseUint(string(buf), 16, 32)
-	*m = Loc(uint32(n))
-	return e
+	*m = Loc(n)
+	return nil
 }
 
 type loc struct {
@@ -63,24 +61,24 @@ type loc struct {
 	mark int // scratch space for internal algos
 }
 
-type PlainPos token.Pos
+type plainPos token.Pos
 
-func (p PlainPos) PlainEncode(w io.Writer) error {
+func (p plainPos) PlainEncode(w io.Writer) error {
 	_, err := fmt.Fprintf(w, "@%08x", p)
 	return err
 }
-func (p *PlainPos) PlainDecode(r io.Reader) error {
+func (p *plainPos) PlainDecode(r io.Reader) error {
 	_, err := fmt.Fscanf(r, "@%08x", p)
 	return err
 
 }
 
 func (m *loc) PlainEncode(w io.Writer) error {
-	return plain.EncodeJoin(w, " ", m.class, m.attrs, PlainPos(m.pos), m.parent, m.obj)
+	return plain.EncodeJoin(w, " ", m.class, m.attrs, plainPos(m.pos), m.parent, m.obj)
 }
 
 func (m *loc) PlainDecode(r io.Reader) error {
-	pp := PlainPos(m.pos)
+	pp := plainPos(m.pos)
 	err := plain.DecodeJoin(r, " ", &m.class, &m.attrs, &pp, &m.parent, &m.obj)
 	m.pos = token.Pos(pp)
 	return err

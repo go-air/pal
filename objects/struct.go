@@ -17,6 +17,7 @@ package objects
 import (
 	"io"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
 
@@ -34,9 +35,41 @@ func (s *Struct) Field(i int) memory.Loc {
 }
 
 func (s *Struct) PlainEncode(w io.Writer) error {
+	var err error
+	err = s.object.plainEncode(w)
+	if err != nil {
+		return err
+	}
+	for i := range s.fields {
+		err = plain.Put(w, " ")
+		if err != nil {
+			return err
+		}
+		f := &s.fields[i]
+		err = f.PlainEncode(w)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (s *Struct) PlainDecode(r io.Reader) error {
+	obj := &s.object
+	err := obj.plainDecode(r)
+	if err != nil {
+		return err
+	}
+	for i := range s.fields {
+		err = plain.Expect(r, " ")
+		if err != nil {
+			return err
+		}
+		f := &s.fields[i]
+		err = f.PlainDecode(r)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
