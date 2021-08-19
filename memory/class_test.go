@@ -24,7 +24,7 @@ func TestClass(t *testing.T) {
 	org := Heap
 	class := org
 	p := &class
-	if err := plain.EncodeDecode(p); err != nil {
+	if err := plain.TestRoundTrip(p, false); err != nil {
 		t.Fatal(err)
 	}
 	if *p != org {

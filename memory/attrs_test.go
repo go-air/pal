@@ -24,7 +24,7 @@ func TestAttrs(t *testing.T) {
 	org := IsOpaque | IsReturn
 	attrs := org
 	p := &attrs
-	if err := plain.EncodeDecode(p); err != nil {
+	if err := plain.TestRoundTrip(p, false); err != nil {
 		t.Fatal(err)
 	}
 	if *p != org {

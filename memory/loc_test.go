@@ -24,7 +24,7 @@ func TestLoc(t *testing.T) {
 	org := Loc(10011)
 	m := org
 	p := &m
-	if err := plain.EncodeDecode(p); err != nil {
+	if err := plain.TestRoundTrip(p, false); err != nil {
 		t.Fatal(err)
 	}
 	if *p != org {
@@ -36,7 +36,7 @@ func TestLittleLoc(t *testing.T) {
 	org := loc{parent: Loc(10011), class: Heap, attrs: IsOpaque}
 	m := org
 	p := &m
-	if err := plain.EncodeDecode(p); err != nil {
+	if err := plain.TestRoundTrip(p, false); err != nil {
 		t.Fatal(err)
 	}
 	if p.parent != org.parent || p.class != org.class || p.attrs != org.attrs {
