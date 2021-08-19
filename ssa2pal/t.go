@@ -260,14 +260,15 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			//  3. add AddTransferIndex(qa, pa, p.indexing.Var())
 			//  4. create res, type of element of array
 			//  5. create res = load(qa)
+
 			ty := v.Type().Underlying().(*types.Array)
-			eltTy := ty.Elem().Underlying()
+			eltTy := ty.Elem()
+			ptrTy := types.NewPointer(ty.Elem())
+			pelt := p.buildr.GoType(ptrTy).Gen()
+			qelt := p.buildr.Gen()
 			res = p.buildr.GoType(eltTy).Gen()
-			N := int(ty.Len())
-			for i := 0; i < N; i++ {
-				eltLoc := x.At(i)
-				p.buildr.AddTransfer(res, eltLoc)
-			}
+			p.buildr.AddTransferIndex(qelt, pelt, p.indexing.Var())
+			p.buildr.AddLoad(res, qelt)
 		}
 	//case *ssa.Extract:
 
