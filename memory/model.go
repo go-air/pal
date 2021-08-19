@@ -234,7 +234,7 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		}
 
 	case typeset.Tuple:
-		tn := gp.ts.ArrayLen(gp.typ)
+		tn := gp.ts.NumFields(gp.typ)
 		ttyp := gp.typ
 		for i := 0; i < tn; i++ {
 			_, gp.typ, _ = gp.ts.Field(ttyp, i)
