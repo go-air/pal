@@ -253,12 +253,15 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			i := int(i64) // should be ok also b/c it is type checked.
 			res = x.At(i)
 		default:
-			// we have a variable or expression
-			// generate a new loc and transfer
-			// all indices to it.
-			// TBD: use indexing
+			// we have a variable or expression index.
+			// we
+			//  1. take address of the array, call it pa, in a new loc
+			//  2. create qa, same type as pa
+			//  3. add AddTransferIndex(qa, pa, p.indexing.Var())
+			//  4. create res, type of element of array
+			//  5. create res = load(qa)
 			ty := v.Type().Underlying().(*types.Array)
-			eltTy := ty.Elem()
+			eltTy := ty.Elem().Underlying()
 			res = p.buildr.GoType(eltTy).Gen()
 			N := int(ty.Len())
 			for i := 0; i < N; i++ {
@@ -266,6 +269,10 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 				p.buildr.AddTransfer(res, eltLoc)
 			}
 		}
+	//case *ssa.Extract:
+
+	case *ssa.Const:
+		return memory.NoLoc
 
 	default:
 		res = p.buildr.Gen()
@@ -306,7 +313,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 	}
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc: // done in gen locs
-	case *ssa.BinOp:
+	case *ssa.BinOp: // tbd: indexing
 	case *ssa.Call:
 		p.call(i9n.Call)
 	case *ssa.ChangeInterface:
@@ -347,18 +354,18 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		res := p.vmap[i9n]
 		switch i9n.X.Type().Underlying().(type) {
 		case *types.Pointer: // to array
-			p.buildr.AddTransfer(res, ptr)
+			p.buildr.AddTransferIndex(res, ptr, p.indexing.Var())
 		case *types.Slice:
-			p.buildr.AddTransfer(res, ptr)
+			p.buildr.AddTransferIndex(res, ptr, p.indexing.Var())
 		default:
 			panic("unexpected type of ssa.IndexAddr.X")
 		}
 
-	case *ssa.Jump:
+	case *ssa.Jump: // no-op
 	case *ssa.Lookup:
-	case *ssa.MakeInterface:
-	case *ssa.MakeClosure:
-	case *ssa.MakeChan:
+	case *ssa.MakeInterface: // constraints done in genLoc
+	case *ssa.MakeClosure: // constraints done in genLoc
+	case *ssa.MakeChan: // constraints done in genLoc
 	case *ssa.MakeSlice: // constraints done in genLoc
 	case *ssa.MakeMap: // constraints done in genLoc
 
@@ -401,7 +408,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 			p.buildr.AddLoad(p.vmap[i9n], p.vmap[i9n.X])
 		case token.ARROW: // <- TBD:
 
-		default:
+		default: // indexing
 		}
 
 	case *ssa.Slice:
