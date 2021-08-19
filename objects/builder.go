@@ -23,6 +23,9 @@ import (
 	"github.com/go-air/pal/typeset"
 )
 
+// Builder is a type which supports coordinating
+// higher level Go objects (funcs, slices, maps, ...)
+// with the lower level memory model and typeset.
 type Builder struct {
 	pkgPath  string
 	indexing indexing.T
@@ -30,16 +33,19 @@ type Builder struct {
 	ts       *typeset.TypeSet
 	omap     map[memory.Loc]Object
 	start    memory.Loc
-	memGen   *memory.GenParams
+	mgp      *memory.GenParams
 }
 
+// NewBuilder creates a new builder from a package Path
+// and an indexing.T which manages representing indexing
+// expressiosn.
 func NewBuilder(pkgPath string, ind indexing.T) *Builder {
 	b := &Builder{}
 	b.pkgPath = pkgPath
 	b.indexing = ind
 	b.mmod = memory.NewModel(ind)
 	b.ts = typeset.New()
-	b.memGen = memory.NewGenParams(b.ts)
+	b.mgp = memory.NewGenParams(b.ts)
 	b.omap = make(map[memory.Loc]Object)
 	return b
 }
@@ -52,8 +58,8 @@ func (b *Builder) TypeSet() *typeset.TypeSet {
 	return b.ts
 }
 
-func (b *Builder) AddPointsTo(ptr, obj memory.Loc) {
-	b.mmod.AddPointsTo(ptr, obj)
+func (b *Builder) AddAddressOf(ptr, obj memory.Loc) {
+	b.mmod.AddAddressOf(ptr, obj)
 }
 
 func (b *Builder) AddLoad(dst, src memory.Loc) {
@@ -73,17 +79,17 @@ func (b *Builder) AddTransferIndex(dst, src memory.Loc, i indexing.I) {
 }
 
 func (b *Builder) Pos(pos token.Pos) *Builder {
-	b.memGen.Pos(pos)
+	b.mgp.Pos(pos)
 	return b
 }
 
 func (b *Builder) Class(c memory.Class) *Builder {
-	b.memGen.Class(c)
+	b.mgp.Class(c)
 	return b
 }
 
 func (b *Builder) Attrs(as memory.Attrs) *Builder {
-	b.memGen.Attrs(as)
+	b.mgp.Attrs(as)
 	return b
 }
 
@@ -92,7 +98,7 @@ func (b *Builder) GoType(ty types.Type) *Builder {
 }
 
 func (b *Builder) Type(ty typeset.Type) *Builder {
-	b.memGen.Type(ty)
+	b.mgp.Type(ty)
 	return b
 }
 
@@ -150,10 +156,10 @@ func (b *Builder) AddSlot(slice *Slice, i indexing.I) {
 func (b *Builder) Map(gty *types.Map) *Map {
 	ty := b.ts.FromGoType(gty)
 	kty, ety := b.ts.Key(ty), b.ts.Elem(ty)
-	mloc := b.mmod.Gen(b.memGen.Type(ty))
+	mloc := b.mmod.Gen(b.mgp.Type(ty))
 	kloc := b.Type(kty).Gen()
 	eloc := b.Type(ety).Gen()
-	b.mmod.AddPointsTo(mloc, eloc)
+	b.mmod.AddAddressOf(mloc, eloc)
 
 	m := &Map{key: kloc, elem: eloc}
 	m.loc = mloc
@@ -167,11 +173,11 @@ func (b *Builder) Object(m memory.Loc) Object {
 }
 
 func (b *Builder) Gen() memory.Loc {
-	return b.mmod.Gen(b.memGen)
+	return b.mmod.Gen(b.mgp)
 }
 
 func (b *Builder) WithPointer() (obj, ptr memory.Loc) {
-	obj, ptr = b.mmod.WithPointer(b.memGen)
+	obj, ptr = b.mmod.WithPointer(b.mgp)
 	return
 }
 
@@ -200,8 +206,8 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 	recv := sig.Recv()
 
 	if recv != nil {
-		b.memGen.Type(b.ts.FromGoType(recv.Type()))
-		fn.recv = b.mmod.Gen(b.memGen)
+		b.mgp.Type(b.ts.FromGoType(recv.Type()))
+		fn.recv = b.mmod.Gen(b.mgp)
 	}
 	params := sig.Params()
 	N := params.Len()

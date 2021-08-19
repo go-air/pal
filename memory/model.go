@@ -160,7 +160,7 @@ func (mod *Model) WithPointer(gp *GenParams) (obj, ptr Loc) {
 		parent: ptr,
 		root:   ptr,
 		obj:    obj})
-	mod.AddPointsTo(ptr, obj)
+	mod.AddAddressOf(ptr, obj)
 	return
 }
 
@@ -343,7 +343,7 @@ func (mod *Model) SetAttrs(m Loc, a Attrs) {
 }
 
 // a = &b
-func (mod *Model) AddPointsTo(a, b Loc) {
+func (mod *Model) AddAddressOf(a, b Loc) {
 	mod.constraints = append(mod.constraints, AddressOf(a, b))
 }
 
@@ -352,7 +352,7 @@ func (mod *Model) GenWithPointer(ty types.Type, c Class, as Attrs, pos token.Pos
 	ptr = Loc(len(mod.locs))
 
 	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, pos: pos, root: ptr, obj: obj})
-	mod.AddPointsTo(ptr, obj)
+	mod.AddAddressOf(ptr, obj)
 	return
 }
 

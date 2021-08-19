@@ -62,7 +62,7 @@ func (b *Builder) GenWithPointer() (obj, ptr memory.Loc) {
 }
 
 func (b *Builder) GenPointsTo(dst, p memory.Loc) {
-	b.mdl.AddPointsTo(dst, p)
+	b.mdl.AddAddressOf(dst, p)
 }
 
 func (b *Builder) GenStore(dst, src memory.Loc) {

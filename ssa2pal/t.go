@@ -268,7 +268,7 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			pelt := p.buildr.GoType(ptrTy).Gen()
 			qelt := p.buildr.Gen()
 			// it may crash if oob
-			p.buildr.AddPointsTo(qelt, p.buildr.Memory().Zero())
+			p.buildr.AddAddressOf(qelt, p.buildr.Memory().Zero())
 			res = p.buildr.GoType(eltTy).Gen()
 			p.buildr.AddTransferIndex(qelt, pelt, p.indexing.Var())
 			p.buildr.AddLoad(res, qelt)
@@ -342,7 +342,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		fobj := memory.NoLoc
 		if obj != memory.NoLoc {
 			fobj = mdl.Field(obj, i9n.Field)
-			p.buildr.AddPointsTo(out, fobj)
+			p.buildr.AddAddressOf(out, fobj)
 			mdl.SetObj(out, fobj)
 		} else {
 			mdl.AddTransferIndex(out, ptr, p.indexing.FromInt64(int64(i9n.Field)))
