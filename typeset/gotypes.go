@@ -141,7 +141,7 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 	case *types.Tuple:
 		N := ty.Len()
 		res := make([]named, N)
-		off := 0
+		off := 1
 		for i := 0; i < N; i++ {
 			at := ty.At(i)
 			res[i].name = at.Name()

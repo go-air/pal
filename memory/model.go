@@ -234,13 +234,14 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		}
 
 	case typeset.Tuple:
+		mod.locs = append(mod.locs, l)
+		*sum++
 		tn := gp.ts.NumFields(gp.typ)
 		ttyp := gp.typ
 		for i := 0; i < tn; i++ {
 			_, gp.typ, _ = gp.ts.Field(ttyp, i)
 			mod.p_add(gp, n, r, sum)
 		}
-		added = false
 	case typeset.Named:
 		gp.typ = gp.ts.Underlying(gp.typ)
 		mod.p_add(gp, n, r, sum)

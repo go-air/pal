@@ -15,6 +15,7 @@
 package objects
 
 import (
+	"fmt"
 	"go/token"
 	"go/types"
 
@@ -111,14 +112,16 @@ func (b *Builder) Struct(gty *types.Struct) *Struct {
 	s.fields = make([]memory.Loc, 0, gty.NumFields())
 	for i := memory.Loc(1); i < n; i++ {
 		pfloc := b.mmod.Parent(s.loc + i)
-		if pfloc == s.loc {
-			s.fields = append(s.fields, s.loc+i)
+		if pfloc != s.loc {
+			continue
 		}
+		s.fields = append(s.fields, s.loc+i)
 	}
 	if len(s.fields) != gty.NumFields() {
 		panic("internal error")
 	}
 	b.omap[s.loc] = s
+	b.walkObj(s.loc)
 	return s
 }
 
@@ -130,6 +133,7 @@ func (b *Builder) Array(gty *types.Array) *Array {
 	a.n = gty.Len()
 	a.elemSize = int64(b.ts.Lsize(b.ts.Elem(a.typ)))
 	b.omap[a.loc] = a
+	b.walkObj(a.loc)
 	return a
 }
 
@@ -228,5 +232,86 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 	// TBD: FreeVars
 	b.omap[fn.loc] = fn
 	return fn
+}
 
+// second pass to associate objects with all object like memory locations...
+// the input is likely to just create roots at variables, but we need objects
+// everywhere...
+func (b *Builder) walkObj(m memory.Loc) {
+	ty := b.mmod.Type(m)
+	ki := b.ts.Kind(ty)
+	switch ki {
+	case typeset.Basic:
+		switch ty {
+		case typeset.Pointer:
+			if b.omap[m] == nil {
+				fmt.Printf("walk ptr\n")
+				ptr := &Pointer{}
+				ptr.loc = m
+				ptr.typ = ty
+				b.omap[m] = ptr
+			}
+		}
+	case typeset.Array:
+		var arr *Array
+		obj := b.omap[m]
+		if obj == nil {
+			fmt.Printf("walk arr\n")
+			arr = &Array{}
+			arr.loc = m
+			arr.typ = ty
+			arr.n = int64(b.ts.ArrayLen(ty))
+			arr.elemSize = int64(b.ts.Lsize(b.ts.Elem(ty)))
+			b.omap[m] = arr
+		} else {
+			arr = obj.(*Array)
+		}
+		n := b.ts.ArrayLen(ty)
+		for i := 0; i < n; i++ {
+			elt := arr.At(i)
+			b.walkObj(elt)
+		}
+
+	case typeset.Struct:
+		var strukt *Struct
+		obj := b.omap[m]
+		if obj == nil {
+			fmt.Printf("walk str\n")
+			strukt = &Struct{}
+			strukt.loc = m
+			strukt.typ = ty
+			n := b.ts.NumFields(ty)
+			strukt.fields = make([]memory.Loc, 0, n)
+			for i := 0; i < n; i++ {
+				_, _, foff := b.ts.Field(ty, i)
+				strukt.fields[i] = m + memory.Loc(foff)
+				b.walkObj(m + memory.Loc(foff))
+			}
+			b.omap[m] = strukt
+		} else {
+			strukt = obj.(*Struct)
+		}
+
+	case typeset.Chan:
+	case typeset.Map:
+		var ma *Map
+		obj := b.omap[m]
+		if obj == nil {
+			fmt.Printf("walk map\n")
+			ma := &Map{}
+			ma.loc = m
+			ma.typ = ty
+			b.omap[m] = ma
+		} else {
+			ma = obj.(*Map)
+		}
+		b.walkObj(ma.key)
+		b.walkObj(ma.elem)
+	case typeset.Slice:
+	case typeset.Interface:
+	case typeset.Func:
+	case typeset.Named:
+	case typeset.Tuple:
+
+	}
 }

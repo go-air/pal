@@ -215,6 +215,7 @@ func (p *T) genBlockValues(name string, blk *ssa.BasicBlock) {
 // genValueLoc may need to work recursively on struct and
 // array typed structured data.
 func (p *T) genValueLoc(v ssa.Value) memory.Loc {
+	fmt.Printf("genValueLoc(%s)\n", v)
 	p.buildr.Pos(v.Pos()).GoType(v.Type()).Class(memory.Local).Attrs(memory.NoAttrs)
 	var res memory.Loc
 	switch v := v.(type) {
@@ -274,6 +275,16 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			p.buildr.AddLoad(res, qelt)
 		}
 	case *ssa.Extract:
+		tloc := p.vmap[v.Tuple]
+		if tloc == memory.NoLoc {
+			tloc = p.genValueLoc(v.Tuple)
+			// reset bld cfg for genLoc below
+			p.buildr.Pos(v.Pos()).GoType(v.Type()).Class(memory.Local).Attrs(memory.NoAttrs)
+		}
+		t := p.buildr.Object(tloc).(*objects.Tuple)
+		res = t.Field(v.Index)
+
+		//v.Tuple, v.Index
 
 	case *ssa.Const:
 		return memory.NoLoc
@@ -451,6 +462,7 @@ func (p *T) invoke(c ssa.CallCommon) {
 func (p *T) putResults() {
 	if debugLogModel {
 		fmt.Printf("built pal model for %s\n", p.pkgres.PkgPath)
+		p.buildr.TypeSet().PlainEncode(os.Stdout)
 		p.buildr.Memory().PlainEncode(os.Stdout)
 	}
 	p.results.Put(p.pass.Pkg.Path(), p.pkgres)

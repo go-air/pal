@@ -38,12 +38,13 @@
 // The second set of methods relates to creating locations, objects
 // and constraints.  These are
 //
-//  1. Gen() generate a memory location.
-//  2. Add{Load,Store,Transfer,PointsTo}(dst, src)
+//  1. Builder.Gen() generate a memory location.
+//  2. Builder.Add{Load,Store,Transfer,PointsTo}(dst, src)
+//  3. Builder.{Struct,Array,Slice,Map,Func,Interface,Chan}
 //
 // The last set of methods gives access to the build results
 //
 //  1. Builder.Memory() *memory.Model
 //  2. Builder.TypeSet() *typeset.TypeSet
-//
+//  3. Builder.Object(m memory.Loc) Object (one of Struct,Array,Slice,Map,...)
 package objects
