@@ -30,7 +30,7 @@ func (t *Tuple) NumFields(i int) int {
 	return len(t.fields)
 }
 
-func (t *Tuple) Field(i int) memory.Loc {
+func (t *Tuple) At(i int) memory.Loc {
 	return t.fields[i]
 }
 

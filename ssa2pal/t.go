@@ -221,24 +221,30 @@ func (p *T) genBlockValues(name string, blk *ssa.BasicBlock) {
 // genValueLoc may need to work recursively on struct and
 // array typed structured data.
 func (p *T) genValueLoc(v ssa.Value) memory.Loc {
-	defer func() {
-		if e := recover(); e != nil {
-			fmt.Printf("oops %s (%#v)\n", v, v)
-			os.Stdout.Sync()
-			panic(e)
-		}
-	}()
-	p.buildr.Pos(v.Pos()).GoType(v.Type()).Class(memory.Local).Attrs(memory.NoAttrs)
+	if traceGenValueLoc {
+		fmt.Printf("genValue for %s (%#v)\n", v, v)
+	}
+	switch v := v.(type) {
+	case *ssa.Range, *ssa.Const:
+		fmt.Printf("no loc for range or const at %p: %s\n", v, v)
+		return memory.NoLoc
+	default:
+		p.buildr.Pos(v.Pos()).GoType(v.Type()).Class(memory.Local).Attrs(memory.NoAttrs)
+	}
 	var res memory.Loc
 	switch v := v.(type) {
 	case *ssa.Alloc:
-		res = p.buildr.Gen()
+		if v.Heap {
+			p.buildr.Class(memory.Global)
+		}
+		p.buildr.GoType(v.Type().Underlying().(*types.Pointer).Elem())
+		_, res = p.buildr.WithPointer()
 	case *ssa.MakeSlice:
-		res = p.buildr.Slice(v.Type().(*types.Slice),
+		res = p.buildr.Slice(v.Type().Underlying().(*types.Slice),
 			p.indexing.Var(),
 			p.indexing.Var()).Loc()
 	case *ssa.MakeMap:
-		res = p.buildr.Map(v.Type().(*types.Map)).Loc()
+		res = p.buildr.Map(v.Type().Underlying().(*types.Map)).Loc()
 
 	case *ssa.Field:
 		xloc, ok := p.vmap[v.X]
@@ -275,7 +281,11 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			//  5. create res = load(qa)
 			// TBD:
 
-			ty := v.Type().Underlying().(*types.Array)
+			ty, ok := v.X.Type().Underlying().(*types.Array)
+			if !ok {
+				panic(fmt.Sprintf("v type %s %#v\n", v.Type(), v.Type()))
+			}
+
 			eltTy := ty.Elem()
 			ptrTy := types.NewPointer(ty.Elem())
 			pelt := p.buildr.GoType(ptrTy).Gen()
@@ -291,13 +301,37 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 		if tloc == memory.NoLoc {
 			tloc = p.genValueLoc(v.Tuple)
 			// reset bld cfg for genLoc below
-			p.buildr.Pos(v.Pos()).GoType(v.Type()).Class(memory.Local).Attrs(memory.NoAttrs)
+			p.buildr.GoType(v.Type())
 		}
-		t := p.buildr.Object(tloc).(*objects.Tuple)
-		res = t.Field(v.Index)
+		tuple := p.buildr.Object(tloc).(*objects.Tuple)
+		res = tuple.At(v.Index)
 
-	case *ssa.Const:
-		return memory.NoLoc
+	case *ssa.Next:
+		if v.IsString {
+			tupty := types.NewTuple(
+				types.NewVar(v.Pos(), nil, "#2", types.Typ[types.Bool]),
+				types.NewVar(v.Pos(), nil, "#0", types.Typ[types.Int]),
+				types.NewVar(v.Pos(), nil, "#1", types.Typ[types.Rune]))
+			res = p.buildr.Tuple(tupty).Loc()
+			p.vmap[v] = res
+			return res
+		}
+		iter := v.Iter.(*ssa.Range)
+		rxloc := p.vmap[iter.X]
+		if rxloc == memory.NoLoc {
+			rxloc = p.genValueLoc(iter.X)
+			p.buildr.Pos(v.Pos()).Class(memory.Local).Attrs(memory.NoAttrs)
+		}
+		mgoty := iter.X.Type().Underlying().(*types.Map)
+		m := p.buildr.Object(rxloc).(*objects.Map)
+		tupty := types.NewTuple(
+			types.NewVar(v.Pos(), nil, "#0", types.Typ[types.Bool]),
+			types.NewVar(v.Pos(), nil, "#1", mgoty.Key()),
+			types.NewVar(v.Pos(), nil, "#2", mgoty.Elem()))
+		tuple := p.buildr.Tuple(tupty)
+		res = tuple.Loc()
+		p.buildr.AddTransfer(tuple.At(1), m.Key())
+		p.buildr.AddTransfer(tuple.At(2), m.Elem())
 
 	default:
 		switch ty := v.Type().Underlying().(type) {
@@ -313,7 +347,17 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			res = p.buildr.Map(ty).Loc()
 		case *types.Signature:
 			res = p.buildr.Func(ty, "", memory.NoAttrs).Loc()
+		case *types.Pointer:
+			res = p.buildr.Pointer(ty).Loc()
+		case *types.Basic:
+			res = p.buildr.Gen()
+		case *types.Chan:
+			res = p.buildr.Gen()
+		case *types.Interface:
+			res = p.buildr.Gen()
+
 		default:
+			fmt.Printf("genValueLoc: default switch ty: %s\n", ty)
 			res = p.buildr.Gen()
 		}
 

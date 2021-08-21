@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"fmt"
 	"go/token"
-	"go/types"
 	"io"
 	"strconv"
 
@@ -164,13 +163,6 @@ func (mod *Model) WithPointer(gp *GenParams) (obj, ptr Loc) {
 	return
 }
 
-// GenRoot generates a new root memory location.
-func (mod *Model) GenRoot(ty types.Type, class Class, attrs Attrs, pos token.Pos) Loc {
-	var sum int
-	p := Loc(uint32(len(mod.locs)))
-	return mod.add(ty, class, attrs, pos, p, p, &sum)
-}
-
 // PlainCoderAt returns a plain.Coder for the information
 // associated with memory at index i.
 func (mod *Model) PlainCoderAt(i int) plain.Coder {
@@ -259,77 +251,6 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 	return NoLoc
 }
 
-// add adds a root recursively according to ty.
-//
-// add is responsible for setting the size, parent, class, attrs, and root
-// of all added nodes.
-//
-func (mod *Model) add(ty types.Type, class Class, attrs Attrs, pos token.Pos, p, r Loc, sum *int) Loc {
-	n := Loc(uint32(len(mod.locs)))
-	l := loc{
-		parent: p,
-		root:   r,
-		class:  class,
-		attrs:  attrs}
-	lastSum := *sum
-	switch ty := ty.(type) {
-	case *types.Signature:
-		// a virtual place for the func
-		mod.locs = append(mod.locs, l)
-		*sum++
-
-	case *types.Basic, *types.Pointer, *types.Interface:
-		mod.locs = append(mod.locs, l)
-		*sum++
-	case *types.Array:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		m := int(ty.Len())
-		for i := 0; i < m; i++ {
-			mod.add(ty.Elem(), class, attrs, pos, n, r, sum)
-		}
-	case *types.Map:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		mod.add(ty.Key(), class, attrs, pos, n, r, sum)
-		mod.add(ty.Elem(), class, attrs, pos, n, r, sum)
-	case *types.Struct:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		nf := ty.NumFields()
-		for i := 0; i < nf; i++ {
-			fty := ty.Field(i).Type()
-			mod.add(fty, class, attrs, pos, n, r, sum)
-		}
-	case *types.Slice:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		mod.add(ty.Elem(), class, attrs, pos, n, r, sum)
-	case *types.Chan:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		mod.add(ty.Elem(), class, attrs, pos, n, r, sum)
-
-	case *types.Tuple:
-		mod.locs = append(mod.locs, l)
-		*sum++
-		tn := ty.Len()
-		for i := 0; i < tn; i++ {
-			mod.add(ty.At(i).Type(), class, attrs, pos, n, r, sum)
-		}
-	case *types.Named:
-		// no space reserved for named types, go to
-		// underlying
-		return mod.add(ty.Underlying(), class, attrs, pos, p, r, sum)
-
-	default:
-		panic(fmt.Sprintf("%s: unexpected/unimplemented", ty))
-	}
-	// we added a slot at dst[n] for ty,  set it
-	mod.locs[n].lsz = *sum - lastSum
-	return n
-}
-
 func (mod *Model) Attrs(m Loc) Attrs {
 	return mod.locs[m].attrs
 }
@@ -347,15 +268,6 @@ func (mod *Model) SetAttrs(m Loc, a Attrs) {
 // a = &b
 func (mod *Model) AddAddressOf(a, b Loc) {
 	mod.constraints = append(mod.constraints, AddressOf(a, b))
-}
-
-func (mod *Model) GenWithPointer(ty types.Type, c Class, as Attrs, pos token.Pos) (obj, ptr Loc) {
-	obj = mod.GenRoot(ty, c, as, pos)
-	ptr = Loc(len(mod.locs))
-
-	mod.locs = append(mod.locs, loc{class: c, attrs: as, parent: ptr, pos: pos, root: ptr, obj: obj})
-	mod.AddAddressOf(ptr, obj)
-	return
 }
 
 // dst = *src
