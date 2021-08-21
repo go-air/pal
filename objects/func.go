@@ -53,7 +53,7 @@ func (f *Func) ParamLoc(i int) memory.Loc {
 	return f.params[i]
 }
 
-func (f *Func) NParams() int {
+func (f *Func) NumParams() int {
 	return len(f.params)
 }
 
@@ -61,7 +61,7 @@ func (f *Func) ResultLoc(i int) memory.Loc {
 	return f.results[i]
 }
 
-func (f *Func) NResults() int {
+func (f *Func) NumResults() int {
 	return len(f.results)
 }
 
