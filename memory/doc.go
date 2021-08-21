@@ -22,12 +22,13 @@
 // to b.
 //
 // Separate memory models are intended to be associated with every package
-// under analysis (and we need depended upon packages transitively as well).
+// under analysis.
 //
 // The above description is a simplification of what is implemented here.
-// First, nodes represent structured data.  Second, the edges are coded as a
-// set of constraints rather than explicitly. Third, the node sizes are
-// parameterised on a index type which may be used to model sizes and indices.
+// First, nodes represent structured data (arrays and structs).  Second, the
+// edges are coded as a set of constraints rather than explicitly. Third, the
+// node sizes are parameterised on a index type which may be used to model
+// sizes and indices.
 //
 // Finally, some nodes are marked "Opaque" indicating that they represent
 // unknown pointers.  Correspondingly, there is a (work in progress) mechanism
@@ -43,13 +44,12 @@
 //
 // Internally, Locs have this structure:
 //
-//  type loc struct {
-//      class ...
-//      attrs ...
-//      root Loc
-//      parent Loc
-//      lsz  indexing.T
-//  }
+//  type loc struct { class ...  attrs ...  root Loc; parent Loc; lsz  int; typ typeset.Type }
+//
+// The values of this internal structure are only accessible from the Model type.
+// Memory location classes indicate whether the memory is global, local (stack), or heap
+// allocated.  Memory location attributes indicate whether a location corresponds
+// to a parameter, a return, and whether it is opaque.
 //
 // Structured Data
 //
@@ -75,8 +75,8 @@
 // PointsTo constraints 'p = &v' indicate that v is in the points to set of p.
 //
 // Load constraints 'd = *p' indicate that for any v in the points to set of p,
-// the points-to set of v is contained in in the points to set of d, recursively
-// descending structured data at *p in tandem with d.
+// the points-to set of v is contained in in the points to set of d,
+// recursively descending structured data at *p in tandem with d.
 //
 // Store constraints '*p = v' indicate that for any d in the points to set of p
 // and any w in the points to set of v, w is in the points to set of d,
@@ -85,7 +85,7 @@
 // Transfer constraints 'dst = src + i' indicate the points to set of src at
 // index i is contained in the points to set of dst.  i may either be a
 // constant or an expression from the program under analysis.  i must be the
-// constant 0 for any pointer to non-structured data. i must be a constant if
+// constant 0 for any pointer to a basic type. i must be a constant if
 // src is a pointer to a struct.  i may be an int64 expression if src is a
 // pointer to an array or slice.
 //
