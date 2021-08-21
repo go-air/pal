@@ -244,7 +244,7 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		}
 	case typeset.Named:
 		gp.typ = gp.ts.Underlying(gp.typ)
-		mod.p_add(gp, n, r, sum)
+		mod.p_add(gp, p, r, sum)
 		added = false
 
 	default:
