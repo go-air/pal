@@ -219,8 +219,9 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		*sum++
 
 		m := gp.ts.ArrayLen(gp.typ)
-		gp.typ = gp.ts.Elem(gp.typ)
+		elemTy := gp.ts.Elem(gp.typ)
 		for i := 0; i < m; i++ {
+			gp.typ = elemTy
 			mod.p_add(gp, n, r, sum)
 		}
 	case typeset.Struct:
