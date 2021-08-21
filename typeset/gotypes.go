@@ -161,7 +161,7 @@ func (t *TypeSet) FromGoType(gotype types.Type) Type {
 		}
 		return res
 	default:
-		panic(fmt.Sprintf("pal type cannot represent go type %s", gotype))
+		panic(fmt.Sprintf("pal type cannot represent go type %s (%#v)", gotype, gotype))
 	}
 }
 

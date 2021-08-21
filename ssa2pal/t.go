@@ -185,27 +185,33 @@ func (p *T) genConstraints(name string, fn *ssa.Function) {
 
 func (p *T) genBlockValues(name string, blk *ssa.BasicBlock) {
 	rands := make([]*ssa.Value, 0, 13)
+	var ssaVal ssa.Value
+	var ok bool
 	for _, i9n := range blk.Instrs {
+		ssaVal = nil
 		switch v := i9n.(type) {
 		case *ssa.DebugRef, *ssa.Defer, *ssa.Go, *ssa.If, *ssa.Jump,
 			*ssa.MapUpdate, *ssa.Panic, *ssa.Return,
 			*ssa.RunDefers, *ssa.Send, *ssa.Store:
 			// these are not values
 		default:
-			vv := v.(ssa.Value)
-			_, ok := p.vmap[vv]
-			if !ok {
-				p.genValueLoc(v.(ssa.Value))
-			}
+			ssaVal = v.(ssa.Value)
 		}
 		rands = i9n.Operands(rands[:0])
 		for _, arg := range rands {
 			_, ok := p.vmap[*arg]
 			if !ok && *arg != nil {
 				// I believe that if *arg is nil, the
-				// arg is irrelevant.  This does happen.
+				// arg is irrelevant (eg Slice with 1 or 2 args).
 				p.genValueLoc(*arg)
 			}
+		}
+		if ssaVal == nil {
+			continue
+		}
+		_, ok = p.vmap[ssaVal]
+		if !ok {
+			p.genValueLoc(ssaVal)
 		}
 	}
 }
@@ -215,7 +221,13 @@ func (p *T) genBlockValues(name string, blk *ssa.BasicBlock) {
 // genValueLoc may need to work recursively on struct and
 // array typed structured data.
 func (p *T) genValueLoc(v ssa.Value) memory.Loc {
-	fmt.Printf("genValueLoc(%s)\n", v)
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Printf("oops %s (%#v)\n", v, v)
+			os.Stdout.Sync()
+			panic(e)
+		}
+	}()
 	p.buildr.Pos(v.Pos()).GoType(v.Type()).Class(memory.Local).Attrs(memory.NoAttrs)
 	var res memory.Loc
 	switch v := v.(type) {
@@ -284,15 +296,30 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 		t := p.buildr.Object(tloc).(*objects.Tuple)
 		res = t.Field(v.Index)
 
-		//v.Tuple, v.Index
-
 	case *ssa.Const:
 		return memory.NoLoc
 
 	default:
-		res = p.buildr.Gen()
+		switch ty := v.Type().Underlying().(type) {
+		case *types.Tuple:
+			res = p.buildr.Tuple(ty).Loc()
+		case *types.Struct:
+			res = p.buildr.Struct(ty).Loc()
+		case *types.Array:
+			res = p.buildr.Array(ty).Loc()
+		case *types.Slice:
+			res = p.buildr.Slice(ty, nil, nil).Loc()
+		case *types.Map:
+			res = p.buildr.Map(ty).Loc()
+		case *types.Signature:
+			res = p.buildr.Func(ty, "", memory.NoAttrs).Loc()
+		default:
+			res = p.buildr.Gen()
+		}
+
 	}
 	p.vmap[v] = res
+	//fmt.Printf("genValueLoc(%s): %d\n", v, res)
 	return res
 }
 
