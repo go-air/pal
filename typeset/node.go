@@ -67,7 +67,8 @@ func (n *node) PlainEncode(w io.Writer) error {
 	}
 	switch n.kind {
 	case Basic:
-		panic("basic types are hard coded")
+		_, err = fmt.Fprintf(w, "%08x", n.elem)
+
 	case Pointer, Slice, Chan, Array:
 		_, err = fmt.Fprintf(w, "%08x", n.elem)
 	case Map:
@@ -111,7 +112,7 @@ func (n *node) PlainDecode(r io.Reader) error {
 	}
 	switch n.kind {
 	case Basic:
-		panic("basic types are hard coded")
+		_, err = fmt.Fscanf(r, "%08x", &n.elem)
 	case Pointer, Slice, Chan, Array:
 		_, err = fmt.Fscanf(r, "%08x", &n.elem)
 	case Map:
@@ -268,20 +269,20 @@ func (n *node) zero() {
 }
 
 var basicNodes = []node{
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // NoType
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Bool
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint8
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint16
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint32
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Uint64
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int8
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int16
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int32
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Int64
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Float32
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Float64
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Complex64
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // Complex128
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // String
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}, // UnsafePointer
-	{kind: Basic, elem: NoType, key: NoType, lsize: 1}} // Uintptr
+	{kind: Basic, elem: NoType, key: NoType, lsize: 1},   // NoType
+	{kind: Basic, elem: Type(1), key: NoType, lsize: 1},  // Bool
+	{kind: Basic, elem: Type(2), key: NoType, lsize: 1},  // Uint8
+	{kind: Basic, elem: Type(3), key: NoType, lsize: 1},  // Uint16
+	{kind: Basic, elem: Type(4), key: NoType, lsize: 1},  // Uint32
+	{kind: Basic, elem: Type(5), key: NoType, lsize: 1},  // Uint64
+	{kind: Basic, elem: Type(6), key: NoType, lsize: 1},  // Int8
+	{kind: Basic, elem: Type(7), key: NoType, lsize: 1},  // Int16
+	{kind: Basic, elem: Type(8), key: NoType, lsize: 1},  // Int32
+	{kind: Basic, elem: Type(9), key: NoType, lsize: 1},  // Int64
+	{kind: Basic, elem: Type(10), key: NoType, lsize: 1}, // Float32
+	{kind: Basic, elem: Type(11), key: NoType, lsize: 1}, // Float64
+	{kind: Basic, elem: Type(12), key: NoType, lsize: 1}, // Complex64
+	{kind: Basic, elem: Type(13), key: NoType, lsize: 1}, // Complex128
+	{kind: Basic, elem: Type(14), key: NoType, lsize: 1}, // String
+	{kind: Basic, elem: Type(15), key: NoType, lsize: 1}, // UnsafePointer
+	{kind: Basic, elem: Type(16), key: NoType, lsize: 1}} // Uintptr

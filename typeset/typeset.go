@@ -16,6 +16,8 @@ package typeset
 
 import (
 	"sort"
+
+	"github.com/go-air/pal/internal/plain"
 )
 
 type TypeSet struct {
@@ -50,7 +52,11 @@ func (t *TypeSet) Kind(ty Type) Kind {
 
 func (t *TypeSet) IsObject(ty Type) bool {
 	k := t.Kind(ty)
-	return k != Basic && k != Tuple
+	return k != Basic
+}
+
+func (t *TypeSet) String(ty Type) string {
+	return plain.String(&t.nodes[ty])
 }
 
 func (t *TypeSet) Lsize(ty Type) int {
