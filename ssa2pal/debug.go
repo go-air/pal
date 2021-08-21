@@ -15,7 +15,10 @@
 package ssa2pal
 
 const (
-	debugLogModel = true
-	traceLocVal   = false
-	traceGenI9n   = false
+	debugLogModel    = true
+	traceGenValueLoc = false
+	traceGenExtract  = false
+	traceGenNext     = false
+	traceGenTuple    = false
+	traceGenI9n      = false
 )
