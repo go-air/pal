@@ -15,8 +15,9 @@
 package typeset
 
 import (
-	"fmt"
 	"io"
+
+	"github.com/go-air/pal/internal/plain"
 )
 
 type Type uint32
@@ -43,12 +44,15 @@ const (
 )
 
 func (t Type) PlainEncode(w io.Writer) error {
-	_, err := fmt.Fprintf(w, "%08x", t)
-	return err
-
+	return plain.EncodeUint64(w, uint64(t))
 }
 
 func (t *Type) PlainDecode(r io.Reader) error {
-	_, err := fmt.Fscanf(r, "%08x", t)
-	return err
+	u := uint64(0)
+	err := plain.DecodeUint64(r, &u)
+	if err != nil {
+		return err
+	}
+	*t = Type(u)
+	return nil
 }

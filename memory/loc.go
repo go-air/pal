@@ -33,12 +33,13 @@ type Loc uint32
 const NoLoc = Loc(0)
 
 func (m Loc) PlainEncode(w io.Writer) error {
-	return plain.EncodeUint32(w, uint32(m))
+	return plain.Uint(m).PlainEncode(w)
 }
 
 func (m *Loc) PlainDecode(r io.Reader) error {
-	n := uint32(0)
-	err := plain.DecodeUint32(r, &n)
+
+	n := uint64(0)
+	err := plain.DecodeUint64(r, &n)
 	if err != nil {
 		return err
 	}

@@ -84,64 +84,176 @@ func DecodeJoin(r io.Reader, sep string, ds ...Decoder) error {
 		}
 		err = d.PlainDecode(r)
 		if err != nil {
-			return err
+			return fmt.Errorf("decode joint elt %d: %w", i, err)
 		}
 	}
 	return nil
 }
 
-func isHexLower(b byte) bool {
-	return (b >= byte('0') && b <= byte('9')) || (b >= byte('a') && b <= byte('f'))
-}
-
-const Eoi = '|'
+var alpha = []byte{
+	'0': 'g',
+	'1': 'h',
+	'2': 'i',
+	'3': 'j',
+	'4': 'k',
+	'5': 'l',
+	'6': 'm',
+	'7': 'n',
+	'8': 'o',
+	'9': 'p',
+	'a': 'q',
+	'b': 'r',
+	'c': 's',
+	'd': 't',
+	'e': 'u',
+	'f': 'v',
+	'g': '0',
+	'h': '1',
+	'i': '2',
+	'j': '3',
+	'k': '4',
+	'l': '5',
+	'm': '6',
+	'n': '7',
+	'o': '8',
+	'p': '9',
+	'q': 'a',
+	'r': 'b',
+	's': 'c',
+	't': 'd',
+	'u': 'e',
+	'v': 'f'}
 
 func EncodeInt64(w io.Writer, v int64) error {
-	var buf [17]byte
+	const N = 17 // 16 + sign
+	var buf [N]byte
 	x := strconv.AppendInt(buf[:0], v, 16)
-	_, err := w.Write(x)
-	if err != nil {
-		return err
-	}
 	n := len(x)
-	x = x[:n+1]
-	x[n] = Eoi
+	x[n-1] = alpha[x[n-1]]
+	_, err := w.Write(x)
 	return err
+}
+
+func DecodeInt64From(r io.Reader) (int64, error) {
+	u := int64(0)
+	err := DecodeInt64(r, &u)
+	return u, err
 }
 
 func DecodeInt64(r io.Reader, p *int64) error {
 	var buf [17]byte
 	i := 0
 	var err error
+	var c byte
 	for i < 17 {
 		_, err = io.ReadFull(r, buf[i:i+1])
+		c = buf[i]
+		i++
 		if err != nil {
 			return err
 		}
-		if buf[i] == Eoi {
-			break
+		if c == '-' {
+			continue
 		}
-		if !isHexLower(buf[i]) {
+
+		if c < byte('0') {
 			return fmt.Errorf("not plain int fmt")
 		}
-		i++
+		if alpha[c] == 0 {
+			return fmt.Errorf("not plain int fmt")
+		}
+		if c > byte('f') {
+			buf[i-1] = alpha[buf[i-1]]
+			break
+		}
 	}
 	if i == 0 {
-		return fmt.Errorf("no plain i64 input")
+		panic("impossible")
 	}
-	v, _ := strconv.ParseInt(string(buf[:i]), 16, 64)
+	v, e := strconv.ParseInt(string(buf[:i]), 16, 64)
+	if e != nil {
+		panic(e)
+	}
 	*p = v
 	return nil
 }
 
-func EncodeUint32(w io.Writer, v uint32) error {
-	_, err := fmt.Fprintf(w, "%08x", v)
+type Int int64
+
+func (i Int) PlainEncode(w io.Writer) error {
+	return EncodeInt64(w, int64(i))
+}
+func (i *Int) PlainDecode(r io.Reader) error {
+	v := int64(*i)
+	err := DecodeInt64(r, &v)
+	if err != nil {
+		return err
+	}
+	*i = Int(v)
+	return nil
+}
+
+func EncodeUint64(w io.Writer, v uint64) error {
+	const N = 16
+	var buf [N]byte
+	x := strconv.AppendUint(buf[:0], v, 16)
+	n := len(x)
+	x[n-1] = alpha[x[n-1]]
+	_, err := w.Write(x)
 	return err
 }
 
-func DecodeUint32(r io.Reader, p *uint32) error {
-	_, err := fmt.Fscanf(r, "%08x", p)
-	return err
+func DecodeUint64From(r io.Reader) (uint64, error) {
+	u := uint64(0)
+	err := DecodeUint64(r, &u)
+	return u, err
+}
+
+func DecodeUint64(r io.Reader, p *uint64) error {
+	var buf [16]byte
+	i := 0
+	var err error
+	var c byte
+	for i < 16 {
+		_, err = io.ReadFull(r, buf[i:i+1])
+		if err != nil {
+			return err
+		}
+		c = buf[i]
+		i++
+
+		if c < byte('0') {
+			return fmt.Errorf("%d '%c' '%s' not plain int fmt", i, c, string(buf[:i]))
+		}
+		if alpha[c] == 0 {
+			return fmt.Errorf("%c not plain int fmt s", c)
+		}
+		if c > byte('f') {
+			buf[i-1] = alpha[buf[i-1]]
+			break
+		}
+	}
+	if i == 0 {
+		panic("impossible")
+	}
+	v, _ := strconv.ParseUint(string(buf[:i]), 16, 64)
+	*p = v
+	return nil
+}
+
+type Uint uint64
+
+func (u Uint) PlainEncode(w io.Writer) error {
+	return EncodeUint64(w, uint64(u))
+}
+func (u *Uint) PlainDecode(r io.Reader) error {
+	v := uint64(*u)
+	err := DecodeUint64(r, &v)
+	if err != nil {
+		return err
+	}
+	*u = Uint(v)
+	return nil
 }
 
 type Coder interface {

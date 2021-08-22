@@ -37,6 +37,20 @@ func TestTypeSetGrow(t *testing.T) {
 	}
 }
 
+func TestTypeSetStruct(t *testing.T) {
+	ts := New()
+	strukt := types.NewStruct([]*types.Var{
+		types.NewVar(token.NoPos, nil, "f1", types.Typ[types.Int64]),
+		types.NewVar(token.NoPos, nil, "f2", types.Typ[types.Float64])},
+		[]string{"", ""})
+	_ = ts.FromGoType(strukt)
+	//ts.PlainEncode(os.Stdout)
+	if err := plain.TestRoundTrip(ts, false); err != nil {
+		t.Error(err)
+	}
+
+}
+
 func TestTypeSetFunc(t *testing.T) {
 	ts := New()
 	params := types.NewTuple(

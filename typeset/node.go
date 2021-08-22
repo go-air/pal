@@ -44,15 +44,26 @@ type named struct {
 }
 
 func (n named) PlainEncode(w io.Writer) error {
-	_, err := fmt.Fprintf(w, "%s %08x", n.name, n.typ)
-	return err
+	_, err := fmt.Fprintf(w, "%s ", n.name)
+	if err != nil {
+		return err
+	}
+
+	return plain.EncodeJoin(w, " ", n.typ, plain.Uint(n.loff))
 }
 
 func (n *named) PlainDecode(r io.Reader) error {
-	m, err := fmt.Fscanf(r, "%s %08x", &n.name, &n.typ)
+	m, err := fmt.Fscanf(r, "%s", &n.name)
 	if err != nil {
 		return fmt.Errorf("decode named n=%d: %w", m, err)
 	}
+	o := plain.Uint(n.loff)
+	err = plain.DecodeJoin(r, " ", &n.typ, &o)
+	if err != nil {
+		return fmt.Errorf("decode join %w", err)
+	}
+	n.loff = int(o)
+
 	return nil
 }
 
@@ -61,18 +72,26 @@ func (n *node) PlainEncode(w io.Writer) error {
 	if err = n.kind.PlainEncode(w); err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(w, " %08x ", n.lsize)
+	err = plain.Put(w, " ")
+	if err != nil {
+		return err
+	}
+	err = plain.EncodeUint64(w, uint64(n.lsize))
+	if err != nil {
+		return err
+	}
+	err = plain.Put(w, " ")
 	if err != nil {
 		return err
 	}
 	switch n.kind {
 	case Basic:
-		_, err = fmt.Fprintf(w, "%08x", n.elem)
+		err = n.elem.PlainEncode(w)
 
 	case Pointer, Slice, Chan, Array:
-		_, err = fmt.Fprintf(w, "%08x", n.elem)
+		err = n.elem.PlainEncode(w)
 	case Map:
-		_, err = fmt.Fprintf(w, "%08x %08x", n.key, n.elem)
+		err = plain.EncodeJoin(w, " ", n.key, n.elem)
 	case Struct, Interface:
 		err = wrapJoinEncode(w, "{", ", ", "}", n.fields)
 
@@ -82,7 +101,17 @@ func (n *node) PlainEncode(w io.Writer) error {
 			variadicString = "+"
 		}
 		if n.key != NoType {
-			_, err = fmt.Fprintf(w, "m%s%08x.", variadicString, n.key)
+			_, err = fmt.Fprintf(w, "m%s", variadicString)
+			if err != nil {
+				return err
+			}
+			if err = n.key.PlainEncode(w); err != nil {
+				return err
+			}
+			if err = plain.Put(w, "."); err != nil {
+				return err
+			}
+
 		} else {
 			_, err = fmt.Fprintf(w, "f%s", variadicString)
 		}
@@ -104,19 +133,32 @@ func (n *node) PlainDecode(r io.Reader) error {
 	var err error
 	kp := &n.kind
 	if err = kp.PlainDecode(r); err != nil {
+		return fmt.Errorf("ekind: %w", err)
+	}
+	err = plain.Expect(r, " ")
+	if err != nil {
 		return err
 	}
-	lsz := &n.lsize
-	if _, err = fmt.Fscanf(r, " %08x ", lsz); err != nil {
+
+	lsz := plain.Uint(0)
+	err = plain.DecodeJoin(r, " ", &lsz)
+	if err != nil {
+		return fmt.Errorf("elsize: %w", err)
+	}
+	n.lsize = int(lsz)
+	err = plain.Expect(r, " ")
+	if err != nil {
 		return err
 	}
 	switch n.kind {
 	case Basic:
-		_, err = fmt.Fscanf(r, "%08x", &n.elem)
+		p := &n.elem
+		err = p.PlainDecode(r)
 	case Pointer, Slice, Chan, Array:
-		_, err = fmt.Fscanf(r, "%08x", &n.elem)
+		p := &n.elem
+		err = p.PlainDecode(r)
 	case Map:
-		_, err = fmt.Fscanf(r, "%08x %08x", &n.key, &n.elem)
+		err = plain.DecodeJoin(r, " ", &n.key, &n.elem)
 	case Struct, Interface:
 		err = wrapJoinDecode(r, "{", ", ", "}", &n.fields)
 	case Tuple:
@@ -137,7 +179,7 @@ func (n *node) decodeFunc(r io.Reader) error {
 	switch buf[0] {
 	case 'f':
 	case 'm':
-		_, err = fmt.Fscanf(r, "%08x", &n.key)
+		err = plain.DecodeJoin(r, " ", &n.key)
 		if err != nil {
 			return fmt.Errorf("key %w", err)
 		}
@@ -205,9 +247,9 @@ func (bb *bb) Read(d []byte) (int, error) {
 	if bb.buf && len(d) > 0 {
 		d[0] = bb.b[0]
 		bb.buf = false
-		d = d[1:]
+		dd := d[1:]
 		n++
-		nn, err = bb.r.Read(d)
+		nn, err = bb.r.Read(dd)
 	} else {
 		nn, err = bb.r.Read(d)
 	}
@@ -216,7 +258,7 @@ func (bb *bb) Read(d []byte) (int, error) {
 
 func (bb *bb) PeekByte() (byte, error) {
 	if bb.buf {
-		return 0, fmt.Errorf("already read %s", string(bb.b))
+		panic("peek")
 	}
 
 	_, err := io.ReadFull(bb.r, bb.b)
@@ -248,9 +290,12 @@ func wrapJoinDecode(r io.Reader, left, sep, right string, elts *[]named) error {
 			*elts = append(*elts, named{})
 			elt := &(*elts)[n]
 			err = elt.PlainDecode(br)
+			if err != nil {
+				return fmt.Errorf("decode named: %w (byte '%c', sep '%s', right '%s'", err, b, sep, right)
+			}
 		}
 		if err != nil {
-			return fmt.Errorf("sep or dec: %w\n", err)
+			return fmt.Errorf("sep: %w\n", err)
 		}
 	}
 }
