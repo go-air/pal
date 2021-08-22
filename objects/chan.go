@@ -17,6 +17,7 @@ package objects
 import (
 	"io"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
 
@@ -40,6 +41,10 @@ func (c *Chan) Send(src memory.Loc, mm *memory.Model) {
 
 func (c *Chan) PlainEncode(w io.Writer) error {
 	var err error
+	err = plain.Put(w, "c")
+	if err != nil {
+		return err
+	}
 	if err = c.object.plainEncode(w); err != nil {
 		return err
 	}
@@ -48,6 +53,10 @@ func (c *Chan) PlainEncode(w io.Writer) error {
 
 func (c *Chan) PlainDecode(r io.Reader) error {
 	var err error
+	err = plain.Expect(r, "c")
+	if err != nil {
+		return err
+	}
 	p := &c.object
 	if err = p.plainDecode(r); err != nil {
 		return err

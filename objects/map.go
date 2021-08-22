@@ -17,6 +17,7 @@ package objects
 import (
 	"io"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
 
@@ -45,9 +46,28 @@ func (m *Map) Lookup(dst memory.Loc, mm *memory.Model) {
 }
 
 func (m *Map) PlainEncode(w io.Writer) error {
-	return nil
+	var err error
+	err = plain.Put(w, "m")
+	if err != nil {
+		return err
+	}
+	err = m.object.plainEncode(w)
+	if err != nil {
+		return err
+	}
+	return plain.EncodeJoin(w, " ", m.key, m.elem)
 }
 
 func (m *Map) PlainDecode(r io.Reader) error {
-	return nil
+	var err error
+	err = plain.Expect(r, "m")
+	if err != nil {
+		return err
+	}
+	pobj := &m.object
+	err = pobj.plainDecode(r)
+	if err != nil {
+		return err
+	}
+	return plain.DecodeJoin(r, " ", &m.key, &m.elem)
 }
