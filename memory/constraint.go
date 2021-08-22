@@ -18,7 +18,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
 )
 
@@ -63,33 +62,33 @@ func (ck *ConstraintKind) PlainDecode(r io.Reader) error {
 	return nil
 }
 
-type Constraint struct {
+type Constraint[Index any] struct {
 	Kind  ConstraintKind
 	Dest  Loc
 	Src   Loc
-	Index indexing.I
+	Index Index
 }
 
-func AddressOf(dst, src Loc) Constraint {
-	return Constraint{Kind: KAddressOf, Dest: dst, Src: src}
+func AddressOf[Index any](dst, src Loc) Constraint[Index] {
+	return Constraint[Index]{Kind: KAddressOf, Dest: dst, Src: src}
 }
 
-func Load(dst, src Loc) Constraint {
-	return Constraint{Kind: KLoad, Dest: dst, Src: src}
+func Load[Index any](dst, src Loc) Constraint[Index] {
+	return Constraint[Index]{Kind: KLoad, Dest: dst, Src: src}
 }
 
-func Store(dst, src Loc) Constraint {
-	return Constraint{Kind: KStore, Dest: dst, Src: src}
+func Store[Index any](dst, src Loc) Constraint[Index] {
+	return Constraint[Index]{Kind: KStore, Dest: dst, Src: src}
 }
 
-func TransferIndex(dst, src Loc, i indexing.I) Constraint {
-	return Constraint{Kind: KTransfer, Dest: dst, Src: src, Index: i}
+func TransferIndex[Index any](dst, src Loc, i Index) Constraint[Index] {
+	return Constraint[Index]{Kind: KTransfer, Dest: dst, Src: src, Index: i}
 }
 
-func (c *Constraint) PlainEncode(w io.Writer) error {
+func (c *Constraint[Index]) PlainEncode(w io.Writer) error {
 	return plain.EncodeJoin(w, " ", c.Kind, c.Dest, c.Src)
 }
 
-func (c *Constraint) PlainDecode(r io.Reader) error {
+func (c *Constraint[Index]) PlainDecode(r io.Reader) error {
 	return plain.DecodeJoin(r, " ", &c.Kind, &c.Dest, &c.Src)
 }

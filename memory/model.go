@@ -28,23 +28,23 @@ import (
 )
 
 // Type Model represents a memory model for a package.
-type Model struct {
+type Model[Index any] struct {
 	locs        []loc
-	constraints []Constraint
-	indexing    indexing.T
+	constraints []Constraint[Index]
+	indexing    indexing.T[Index]
 }
 
 // NewModel generates a new memory model for a package.
 //
 // index parameterises the resulting model on numeric
 // (int) indexing.
-func NewModel(index indexing.T) *Model {
-	res := &Model{
+func NewModel[Index any](index indexing.T[Index]) *Model[Index] {
+	res := &Model[Index]{
 
 		// 0 -> NoLoc
 		// 1 -> Zero / nil/null
 		locs:        make([]loc, 2, 1024),
-		constraints: make([]Constraint, 0, 1024),
+		constraints: make([]Constraint[Index], 0, 1024),
 		indexing:    index}
 	zz := Loc(1)
 	z := &res.locs[1]
@@ -54,41 +54,41 @@ func NewModel(index indexing.T) *Model {
 	return res
 }
 
-func (mod *Model) Len() int {
+func (mod *Model[Index]) Len() int {
 	return len(mod.locs)
 }
 
-func (mod *Model) At(i int) Loc {
+func (mod *Model[Index]) At(i int) Loc {
 	return Loc(i)
 }
 
-func (mod *Model) IsRoot(m Loc) bool {
+func (mod *Model[Index]) IsRoot(m Loc) bool {
 	return mod.Parent(m) == m
 }
 
-func (mod *Model) Parent(m Loc) Loc {
+func (mod *Model[Index]) Parent(m Loc) Loc {
 	return mod.locs[m].parent
 }
 
-func (mod *Model) Root(m Loc) Loc {
+func (mod *Model[Index]) Root(m Loc) Loc {
 	return mod.locs[m].root
 }
 
-func (mod *Model) Obj(ptr Loc) Loc {
+func (mod *Model[Index]) Obj(ptr Loc) Loc {
 	return mod.locs[ptr].obj
 }
 
-func (mod *Model) SetObj(ptr, dst Loc) {
+func (mod *Model[Index]) SetObj(ptr, dst Loc) {
 	mod.locs[ptr].obj = dst
 }
 
-func (mod *Model) Pos(m Loc) token.Pos {
+func (mod *Model[Index]) Pos(m Loc) token.Pos {
 	return mod.locs[m].pos
 }
 
 // Access returns the T which results from
 // add vo to the virtual size of m.
-func (mod *Model) Field(m Loc, i int) Loc {
+func (mod *Model[Index]) Field(m Loc, i int) Loc {
 	// @wsc: this can be done with a fuzzy binary
 	// search
 	n := m + 1 // first field
@@ -100,7 +100,7 @@ func (mod *Model) Field(m Loc, i int) Loc {
 }
 
 // ArrayIndex returns the memory model location of `m` at index `i`.
-func (mod *Model) ArrayIndex(m Loc, i int) Loc {
+func (mod *Model[Index]) ArrayIndex(m Loc, i int) Loc {
 	n := m + 1
 	sz := mod.locs[n].lsz
 	n += Loc(i * sz)
@@ -113,11 +113,11 @@ func (mod *Model) ArrayIndex(m Loc, i int) Loc {
 // The virtual size is the size according to the model,
 // which is 1 + the sum of the the vsizes of all locations
 // n such that mod.Parent(n) == m.
-func (mod *Model) Lsize(m Loc) int {
+func (mod *Model[Index]) Lsize(m Loc) int {
 	return mod.locs[m].lsz
 }
 
-func (mod *Model) Overlaps(a, b Loc) xtruth.T {
+func (mod *Model[Index]) Overlaps(a, b Loc) xtruth.T {
 	if mod.Root(a) != mod.Root(b) {
 		return xtruth.False
 	}
@@ -127,28 +127,28 @@ func (mod *Model) Overlaps(a, b Loc) xtruth.T {
 	return xtruth.X
 }
 
-func (mod *Model) Equals(a, b Loc) xtruth.T {
+func (mod *Model[Index]) Equals(a, b Loc) xtruth.T {
 	if a != b {
 		return xtruth.False
 	}
 	return xtruth.X
 }
 
-func (mod *Model) Zero() Loc {
+func (mod *Model[Index]) Zero() Loc {
 	return Loc(1)
 }
 
-func (mod *Model) Type(m Loc) typeset.Type {
+func (mod *Model[Index]) Type(m Loc) typeset.Type {
 	return mod.locs[m].typ
 }
 
-func (mod *Model) Gen(gp *GenParams) Loc {
+func (mod *Model[Index]) Gen(gp *GenParams) Loc {
 	var sum int
 	p := Loc(uint32(len(mod.locs)))
 	return mod.p_add(gp, p, p, &sum)
 }
 
-func (mod *Model) WithPointer(gp *GenParams) (obj, ptr Loc) {
+func (mod *Model[Index]) WithPointer(gp *GenParams) (obj, ptr Loc) {
 	obj = mod.Gen(gp)
 	ptr = Loc(uint32(len(mod.locs)))
 	mod.locs = append(mod.locs, loc{
@@ -165,13 +165,13 @@ func (mod *Model) WithPointer(gp *GenParams) (obj, ptr Loc) {
 
 // PlainCoderAt returns a plain.Coder for the information
 // associated with memory at index i.
-func (mod *Model) PlainCoderAt(i int) plain.Coder {
+func (mod *Model[Index]) PlainCoderAt(i int) plain.Coder {
 	return &mod.locs[i]
 }
 
 // Cap destructively changes the total size of mod.
 //
-func (mod *Model) Cap(c int) {
+func (mod *Model[Index]) Cap(c int) {
 	if cap(mod.locs) < c {
 		tmp := make([]loc, c)
 		copy(tmp, mod.locs)
@@ -185,7 +185,7 @@ func (mod *Model) Cap(c int) {
 // add is responsible for setting the size, parent, class, attrs, typ, and root
 // of all added nodes.
 //
-func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
+func (mod *Model[Index]) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 	n := Loc(uint32(len(mod.locs)))
 	l := loc{
 		parent: p,
@@ -251,51 +251,51 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 	return NoLoc
 }
 
-func (mod *Model) Attrs(m Loc) Attrs {
+func (mod *Model[Index]) Attrs(m Loc) Attrs {
 	return mod.locs[m].attrs
 }
 
-func (mod *Model) AddAttrs(m Loc, a Attrs) {
+func (mod *Model[Index]) AddAttrs(m Loc, a Attrs) {
 	mm := &mod.locs[m]
 	mm.attrs |= a
 }
 
-func (mod *Model) SetAttrs(m Loc, a Attrs) {
+func (mod *Model[Index]) SetAttrs(m Loc, a Attrs) {
 	mm := &mod.locs[m]
 	mm.attrs = a
 }
 
 // a = &b
-func (mod *Model) AddAddressOf(a, b Loc) {
-	mod.constraints = append(mod.constraints, AddressOf(a, b))
+func (mod *Model[Index]) AddAddressOf(a, b Loc) {
+	mod.constraints = append(mod.constraints, AddressOf[Index](a, b))
 }
 
 // dst = *src
-func (mod *Model) AddLoad(dst, src Loc) {
-	mod.constraints = append(mod.constraints, Load(dst, src))
+func (mod *Model[Index]) AddLoad(dst, src Loc) {
+	mod.constraints = append(mod.constraints, Load[Index](dst, src))
 }
 
 // *dst = src
-func (mod *Model) AddStore(dst, src Loc) {
-	mod.constraints = append(mod.constraints, Store(dst, src))
+func (mod *Model[Index]) AddStore(dst, src Loc) {
+	mod.constraints = append(mod.constraints, Store[Index](dst, src))
 }
 
 // dst = src
-func (mod *Model) AddTransfer(dst, src Loc) {
+func (mod *Model[Index]) AddTransfer(dst, src Loc) {
 	mod.AddTransferIndex(dst, src, mod.indexing.Zero())
 }
 
-func (mod *Model) AddTransferIndex(dst, src Loc, i indexing.I) {
+func (mod *Model[Index]) AddTransferIndex(dst, src Loc, i Index) {
 	mod.constraints = append(mod.constraints, TransferIndex(dst, src, i))
 }
 
-func (mod *Model) Solve() {
+func (mod *Model[Index]) Solve() {
 	// apply constraints until fixed point.
 }
 
 // PointsTo places the points-to set of
 // p in dst and returns it.
-func (mod *Model) PointsToFor(dst []Loc, p Loc) []Loc {
+func (mod *Model[Index]) PointsToFor(dst []Loc, p Loc) []Loc {
 	return dst
 }
 
@@ -306,17 +306,17 @@ func (mod *Model) PointsToFor(dst []Loc, p Loc) []Loc {
 // Generally, after Export is called, 'mod' contains no local variables.  One
 // can retrieve points-to information for local variables using PoinstToFor,
 // before calling Export.
-func (mod *Model) Export(perm []Loc) []Loc {
+func (mod *Model[Index]) Export(perm []Loc) []Loc {
 	return perm
 }
 
 // Import imports 'other', merging it with
 // mod in place.
-func (mod *Model) Import(other *Model) {
+func (mod *Model[Index]) Import(other *Model[Index]) {
 
 }
 
-func (mod *Model) PlainEncodeConstraints(w io.Writer) error {
+func (mod *Model[Index]) PlainEncodeConstraints(w io.Writer) error {
 
 	_, err := fmt.Fprintf(w, "%d\n", len(mod.constraints))
 	if err != nil {
@@ -336,7 +336,7 @@ func (mod *Model) PlainEncodeConstraints(w io.Writer) error {
 	return nil
 }
 
-func (mod *Model) PlainDecodeConstraints(r io.Reader) error {
+func (mod *Model[Index]) PlainDecodeConstraints(r io.Reader) error {
 	var N int
 	var err error
 	_, err = fmt.Fscanf(r, "%d\n", &N)
@@ -345,7 +345,7 @@ func (mod *Model) PlainDecodeConstraints(r io.Reader) error {
 		return fmt.Errorf("mod:constraints:N: %d %w", N, err)
 	}
 	mod.constraints = nil
-	constraints := make([]Constraint, N)
+	constraints := make([]Constraint[Index], N)
 	buf := make([]byte, 1)
 	for i := 0; i < N; i++ {
 		c := &constraints[i]
@@ -367,7 +367,7 @@ func (mod *Model) PlainDecodeConstraints(r io.Reader) error {
 	return nil
 }
 
-func (mod *Model) PlainEncode(w io.Writer) error {
+func (mod *Model[Index]) PlainEncode(w io.Writer) error {
 	fmt.Fprintf(w, "%d locs\n", len(mod.locs))
 	var err error
 	for i := range mod.locs {
@@ -384,7 +384,7 @@ func (mod *Model) PlainEncode(w io.Writer) error {
 	return mod.PlainEncodeConstraints(w)
 }
 
-func (mod *Model) PlainDecode(r io.Reader) error {
+func (mod *Model[Index]) PlainDecode(r io.Reader) error {
 	br := bufio.NewReader(r)
 	nLocs, err := br.ReadString('\n')
 	if err != nil {

@@ -65,54 +65,53 @@ func (c C) PlainDecode(r io.Reader) error {
 	return nil
 }
 
-func ConstVals() T {
+func ConstVals() T[C] {
 	return consts{}
 }
 
 var zero int64 = 0
 var one int64 = 1
 
-func (c consts) Zero() I {
+func (c consts) Zero() C {
 	z := int64(0)
-	return I(C{&z})
+	return C{&z}
 }
 
-func (c consts) One() I {
+func (c consts) One() C {
 	o := int64(1)
-	return I(C{&o})
+	return C{&o}
 }
 
-func (c consts) IsVar(v I) bool {
-	return v.(C).p == nil
+func (c consts) IsVar(v C) bool {
+	return v.p == nil
 }
 
-func (c consts) Var() I {
+func (c consts) Var() C {
 	return C{nil}
 }
 
-func (c consts) FromInt64(v int64) I {
+func (c consts) FromInt64(v int64) C {
 	return C{&v}
 }
 
-func (c consts) ToInt64(v I) (int64, bool) {
-	p := v.(C).p
+func (c consts) ToInt64(v C) (int64, bool) {
+	p := v.p
 	if p == nil {
 		return 0, false
 	}
 	return *p, true
 }
 
-func (c consts) Plus(a, b I) I {
-	pa, pb := a.(C).p, b.(C).p
-	if pa == nil || pb == nil {
+func (c consts) Plus(a, b C) C {
+	if a.p == nil || b.p == nil {
 		return c.Var()
 	}
-	r := *pa + *pb
+	r := *a.p + *b.p
 	return c.FromInt64(r)
 }
 
-func (c consts) Times(a, b I) I {
-	pa, pb := a.(C).p, b.(C).p
+func (c consts) Times(a, b C) C {
+	pa, pb := a.p, b.p
 	if pa == nil || pb == nil {
 		return c.Var()
 	}
@@ -120,36 +119,38 @@ func (c consts) Times(a, b I) I {
 	return c.FromInt64(r)
 }
 
-func (c consts) Div(a, b I) (I, xtruth.T) {
+func (c consts) Div(a, b C) (C, xtruth.T) {
 	switch c.Equal(b, c.Zero()) {
 	case xtruth.True:
 		return c.Zero(), xtruth.False
 	case xtruth.False:
-		pa, pb := a.(C).p, b.(C).p
+		pa, pb := a.p, b.p
 		r := *pa / *pb
 		return c.FromInt64(r), xtruth.True
 	case xtruth.X:
 		return c.Var(), xtruth.X
+	default:
+		panic("xtruth")
 	}
-	return c.Zero(), xtruth.X
 }
 
-func (c consts) Rem(a, b I) (I, xtruth.T) {
+func (c consts) Rem(a, b C) (C, xtruth.T) {
 	switch c.Equal(b, c.Zero()) {
 	case xtruth.True:
 		return c.Zero(), xtruth.False
 	case xtruth.False:
-		pa, pb := a.(C).p, b.(C).p
+		pa, pb := a.p, b.p
 		r := *pa % *pb
 		return c.FromInt64(r), xtruth.True
 	case xtruth.X:
 		return c.Var(), xtruth.X
+	default:
+		panic("xtruth")
 	}
-	return c.Zero(), xtruth.X
 }
 
-func (c consts) Band(a, b I) I {
-	pa, pb := a.(C).p, b.(C).p
+func (c consts) Band(a, b C) C {
+	pa, pb := a.p, b.p
 	if pa == nil || pb == nil {
 		return c.Var()
 	}
@@ -157,8 +158,8 @@ func (c consts) Band(a, b I) I {
 	return c.FromInt64(z)
 }
 
-func (c consts) Bnot(a I) I {
-	pa := a.(C).p
+func (c consts) Bnot(a C) C {
+	pa := a.p
 	if pa == nil {
 		return c.Var()
 	}
@@ -166,16 +167,16 @@ func (c consts) Bnot(a I) I {
 	return c.FromInt64(z)
 }
 
-func (c consts) Lshift(a, s I) (I, xtruth.T) {
+func (c consts) Lshift(a, s C) (C, xtruth.T) {
 	panic("unimplemented")
 }
 
-func (c consts) Rshift(a, s I) (I, xtruth.T) {
+func (c consts) Rshift(a, s C) (C, xtruth.T) {
 	panic("unimplemented")
 }
 
-func (c consts) Less(a, b I) xtruth.T {
-	pa, pb := a.(C).p, b.(C).p
+func (c consts) Less(a, b C) xtruth.T {
+	pa, pb := a.p, b.p
 	if pa == nil || pb == nil {
 		return xtruth.X
 	}
@@ -185,8 +186,8 @@ func (c consts) Less(a, b I) xtruth.T {
 	return xtruth.False
 }
 
-func (c consts) Equal(a, b I) xtruth.T {
-	pa, pb := a.(C).p, b.(C).p
+func (c consts) Equal(a, b C) xtruth.T {
+	pa, pb := a.p, b.p
 	if pa == nil || pb == nil {
 		return xtruth.X
 	}
