@@ -15,10 +15,12 @@
 package objects
 
 import (
+	"fmt"
 	"go/token"
 	"go/types"
 
 	"github.com/go-air/pal/indexing"
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/typeset"
 )
@@ -200,7 +202,7 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 	N := params.Len()
 	for i := 0; i < N; i++ {
 		param := params.At(i)
-		pty := b.ts.FromGoType(param.Type())
+		pty := b.ts.FromGoType(param.Type().Underlying())
 		fn.params[i] =
 			b.Pos(param.Pos()).Type(pty).Attrs(memory.IsParam | opaque).Gen()
 		b.walkObj(fn.params[i])
@@ -224,6 +226,7 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 // everywhere...
 func (b *Builder) walkObj(m memory.Loc) {
 	ty := b.mmod.Type(m)
+	fmt.Printf("walkObj %s ty %s\n", plain.String(m), b.ts.String(ty))
 	ki := b.ts.Kind(ty)
 	switch ki {
 	case typeset.Basic:
@@ -322,6 +325,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 	case typeset.Interface:
 	case typeset.Func:
 	case typeset.Named:
+		panic("named foo")
 
 	case typeset.Tuple:
 		var tuple *Tuple

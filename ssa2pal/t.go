@@ -26,6 +26,7 @@ import (
 	"sort"
 
 	"github.com/go-air/pal/indexing"
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/objects"
 	"github.com/go-air/pal/results"
@@ -56,7 +57,6 @@ type T struct {
 func New(pass *analysis.Pass, vs indexing.T) (*T, error) {
 	palres := pass.Analyzer.FactTypes[0].(*results.T)
 	pkgPath := pass.Pkg.Path()
-	fmt.Printf("ssa2pal: %s\n", pkgPath)
 	pkgRes := results.NewPkgRes(pkgPath, vs)
 	for _, imp := range pass.Pkg.Imports() {
 		iPath := imp.Path()
@@ -84,6 +84,9 @@ func New(pass *analysis.Pass, vs indexing.T) (*T, error) {
 }
 
 func (p *T) GenResult() (*results.T, error) {
+	if tracePackage {
+		fmt.Printf("ssa2pal translating %s\n", p.pass.Pkg.Path())
+	}
 	var err error
 	mbrs := p.ssa.Pkg.Members
 	mbrKeys := make([]string, 0, len(mbrs))
@@ -145,6 +148,9 @@ func (p *T) genGlobal(name string, x *ssa.Global) {
 }
 
 func (p *T) addFuncDecl(name string, fn *ssa.Function) error {
+	if traceFunc {
+		fmt.Printf("ssa2pal adding \"%s\".%s\n", p.pass.Pkg.Path(), fn.Name())
+	}
 	opaque := memory.NoAttrs
 	if token.IsExported(name) {
 		opaque = memory.IsOpaque
@@ -154,6 +160,10 @@ func (p *T) addFuncDecl(name string, fn *ssa.Function) error {
 	p.vmap[fn] = memFn.Loc()
 
 	for i, param := range fn.Params {
+		if traceFunc {
+			fmt.Printf("setting param %s to %s\n", param, plain.String(memFn.ParamLoc(i)))
+
+		}
 		p.vmap[param] = memFn.ParamLoc(i)
 	}
 	// free vars not needed here -- top level func def
@@ -226,7 +236,6 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 	}
 	switch v := v.(type) {
 	case *ssa.Range, *ssa.Const:
-		fmt.Printf("no loc for range or const at %p: %s\n", v, v)
 		return memory.NoLoc
 	default:
 		p.buildr.Pos(v.Pos()).GoType(v.Type()).Class(memory.Local).Attrs(memory.NoAttrs)
@@ -367,20 +376,6 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 	return res
 }
 
-// genAlloc generates a memory.Loc associated with an *ssa.Alloc
-// we handle these specially because they generate the allocated
-// object but are associated with pointers to these objects.
-func (p *T) genAlloc(a *ssa.Alloc) memory.Loc {
-	if a.Heap {
-		p.buildr.Class(memory.Global)
-	}
-	p.buildr.GoType(a.Type().(*types.Pointer).Elem())
-	p.buildr.Pos(a.Pos())
-
-	_, ptr := p.buildr.WithPointer()
-	return ptr
-}
-
 // generate all constraints for blk
 // value nodes already have memory.Locs
 func (p *T) genBlockConstraints(fnName string, blk *ssa.BasicBlock) error {
@@ -449,6 +444,13 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 
 	case *ssa.Jump: // no-op
 	case *ssa.Lookup:
+		obj := p.buildr.Object(p.vmap[i9n.X])
+		switch ma := obj.(type) {
+		case *objects.Map:
+			ma.Lookup(p.vmap[i9n], p.buildr.Memory())
+		default:
+			// it is a string
+		}
 	case *ssa.MakeInterface: // constraints done in genLoc
 	case *ssa.MakeClosure: // constraints done in genLoc
 	case *ssa.MakeChan: // constraints done in genLoc
@@ -456,6 +458,17 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 	case *ssa.MakeMap: // constraints done in genLoc
 
 	case *ssa.MapUpdate:
+		mloc := p.vmap[i9n.Map]
+		if mloc == memory.NoLoc {
+			panic(fmt.Sprintf("no map %s %#v", i9n.Map, i9n.Map))
+		}
+		obj := p.buildr.Object(mloc)
+		switch ma := obj.(type) {
+		case *objects.Map:
+			ma.Update(p.vmap[i9n.Key], p.vmap[i9n.Value], p.buildr.Memory())
+		default:
+			panic("huh?")
+		}
 
 	case *ssa.Next: // either string iterator or map
 		if !i9n.IsString {

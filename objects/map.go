@@ -34,6 +34,16 @@ func (m *Map) Elem() memory.Loc {
 	return m.elem
 }
 
+func (m *Map) Update(k, v memory.Loc, mm *memory.Model) {
+	mm.AddTransfer(m.key, k)
+	mm.AddTransfer(m.elem, v)
+}
+
+func (m *Map) Lookup(dst memory.Loc, mm *memory.Model) {
+	// no key transfer, it is equality check under the hood
+	mm.AddTransfer(dst, m.elem)
+}
+
 func (m *Map) PlainEncode(w io.Writer) error {
 	return nil
 }
