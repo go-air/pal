@@ -14,17 +14,44 @@
 
 package objects
 
-import "io"
+import (
+	"io"
 
+	"github.com/go-air/pal/memory"
+)
+
+// Chan object
+//
+// c.loc represents pointer
+// c.slot represents things sent to
+// and received from the channel.
 type Chan struct {
 	object
+	slot memory.Loc
+}
+
+func (c *Chan) Recv(dst memory.Loc, mm *memory.Model) {
+	mm.AddLoad(dst, c.loc)
+}
+
+func (c *Chan) Send(src memory.Loc, mm *memory.Model) {
+	mm.AddStore(c.loc, src)
 }
 
 func (c *Chan) PlainEncode(w io.Writer) error {
-	return nil
+	var err error
+	if err = c.object.plainEncode(w); err != nil {
+		return err
+	}
+	return c.slot.PlainEncode(w)
 }
 
 func (c *Chan) PlainDecode(r io.Reader) error {
-	return nil
+	var err error
+	p := &c.object
+	if err = p.plainDecode(r); err != nil {
+		return err
+	}
+	ps := &c.slot
+	return ps.PlainDecode(r)
 }
-

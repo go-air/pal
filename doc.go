@@ -1,4 +1,4 @@
-// Package pal provides a pointer analysis library.
+// Package ⊧ pal provides a pointer analysis library.
 //
 // ⊧
 package pal

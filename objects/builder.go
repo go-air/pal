@@ -31,9 +31,9 @@ type Builder struct {
 	indexing indexing.T
 	mmod     *memory.Model
 	ts       *typeset.TypeSet
-	omap     map[memory.Loc]Object
-	start    memory.Loc
-	mgp      *memory.GenParams
+	omap     map[memory.Loc]Object // map memory locs to canonical objects
+	start    memory.Loc            // after import, what is our minimum?
+	mgp      *memory.GenParams     // memory loc generation parameters
 }
 
 // NewBuilder creates a new builder from a package Path
@@ -145,6 +145,13 @@ func (b *Builder) Map(gty *types.Map) *Map {
 	m := b.Type(ty).Gen()
 	b.walkObj(m)
 	return b.omap[m].(*Map)
+}
+
+func (b *Builder) Chan(gty *types.Chan) *Chan {
+	ty := b.ts.FromGoType(gty)
+	m := b.Type(ty).Gen()
+	b.walkObj(m)
+	return b.omap[m].(*Chan)
 }
 
 func (b *Builder) Object(m memory.Loc) Object {
@@ -269,6 +276,19 @@ func (b *Builder) walkObj(m memory.Loc) {
 		}
 
 	case typeset.Chan:
+		var ch *Chan
+		obj := b.omap[m]
+		if obj == nil {
+			ch = &Chan{}
+			ch.loc = m
+			ch.typ = ty
+			ch.slot = b.Type(b.ts.Elem(ty)).Gen()
+			b.mmod.AddAddressOf(ch.loc, ch.slot)
+			b.omap[m] = ch
+		} else {
+			ch = obj.(*Chan)
+		}
+		b.walkObj(ch.slot)
 	case typeset.Map:
 		var ma *Map
 		obj := b.omap[m]

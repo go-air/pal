@@ -349,9 +349,9 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			res = p.buildr.Func(ty, "", memory.NoAttrs).Loc()
 		case *types.Pointer:
 			res = p.buildr.Pointer(ty).Loc()
-		case *types.Basic:
-			res = p.buildr.Gen()
 		case *types.Chan:
+			res = p.buildr.Chan(ty).Loc()
+		case *types.Basic:
 			res = p.buildr.Gen()
 		case *types.Interface:
 			res = p.buildr.Gen()
@@ -493,6 +493,12 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		case token.MUL: // *p
 			p.buildr.AddLoad(p.vmap[i9n], p.vmap[i9n.X])
 		case token.ARROW: // <- TBD:
+			c := p.buildr.Object(p.vmap[i9n.X]).(*objects.Chan)
+			dst := p.vmap[i9n]
+			if dst == memory.NoLoc {
+				panic("no loc for <-")
+			}
+			c.Recv(dst, p.buildr.Memory())
 
 		default: // indexing
 		}
