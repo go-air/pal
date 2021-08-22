@@ -15,7 +15,6 @@
 package memory
 
 import (
-	"fmt"
 	"go/token"
 	"io"
 
@@ -65,12 +64,23 @@ type loc struct {
 type plainPos token.Pos
 
 func (p plainPos) PlainEncode(w io.Writer) error {
-	_, err := fmt.Fprintf(w, "@%08x", p)
-	return err
+	err := plain.Put(w, "@")
+	if err != nil {
+		return err
+	}
+	return plain.Uint(p).PlainEncode(w)
 }
 func (p *plainPos) PlainDecode(r io.Reader) error {
-	_, err := fmt.Fscanf(r, "@%08x", p)
-	return err
+	err := plain.Expect(r, "@")
+	if err != nil {
+		return err
+	}
+	u, err := plain.DecodeUint64From(r)
+	if err != nil {
+		return err
+	}
+	*p = plainPos(u)
+	return nil
 
 }
 
