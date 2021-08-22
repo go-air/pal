@@ -21,6 +21,13 @@ See [#33](https://github.com/go-air/pal/issues/33)
 
 -- 
 
+## Docs
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/go-air/pal.svg)](https://pkg.go.dev/github.com/go-air/pal)
+
+
+
+
 
 
 
