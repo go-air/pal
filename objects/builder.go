@@ -15,12 +15,10 @@
 package objects
 
 import (
-	"fmt"
 	"go/token"
 	"go/types"
 
 	"github.com/go-air/pal/indexing"
-	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/typeset"
 )
@@ -194,7 +192,7 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 	recv := sig.Recv()
 
 	if recv != nil {
-		b.mgp.Type(b.ts.FromGoType(recv.Type()))
+		b.mgp.Type(b.ts.FromGoType(recv.Type().Underlying()))
 		fn.recv = b.mmod.Gen(b.mgp)
 		b.walkObj(fn.recv)
 	}
@@ -211,7 +209,7 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 	N = rets.Len()
 	for i := 0; i < N; i++ {
 		ret := rets.At(i)
-		rty := b.ts.FromGoType(ret.Type())
+		rty := b.ts.FromGoType(ret.Type().Underlying())
 		fn.results[i] =
 			b.Pos(ret.Pos()).Type(rty).Attrs(memory.IsReturn | opaque).Gen()
 		b.walkObj(fn.results[i])
@@ -226,7 +224,7 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 // everywhere...
 func (b *Builder) walkObj(m memory.Loc) {
 	ty := b.mmod.Type(m)
-	fmt.Printf("walkObj %s ty %s\n", plain.String(m), b.ts.String(ty))
+	//fmt.Printf("walkObj %s ty %s\n", plain.String(m), b.ts.String(ty))
 	ki := b.ts.Kind(ty)
 	switch ki {
 	case typeset.Basic:
@@ -346,6 +344,5 @@ func (b *Builder) walkObj(m memory.Loc) {
 			tuple.fields[i] = floc
 			b.walkObj(floc)
 		}
-
 	}
 }

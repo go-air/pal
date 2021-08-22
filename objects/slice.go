@@ -18,6 +18,7 @@ import (
 	"io"
 
 	"github.com/go-air/pal/indexing"
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
 
@@ -42,17 +43,68 @@ type Slot struct {
 }
 
 func (slot *Slot) PlainEncode(w io.Writer) error {
-	return nil
+	return plain.EncodeJoin(w, " ", slot.I, &slot.Loc)
 }
 
 func (slot *Slot) PlainDecode(r io.Reader) error {
-	return nil
+	return plain.DecodeJoin(r, " ", slot.I, &slot.Loc)
 }
 
 func (slice *Slice) PlainEncode(w io.Writer) error {
+	var err error
+	err = plain.Put(w, "s")
+	if err != nil {
+		return err
+	}
+	err = slice.object.PlainEncode(w)
+	if err != nil {
+		return err
+	}
+	N := len(slice.slots)
+	err = plain.EncodeUint64(w, uint64(N))
+	if err != nil {
+		return err
+	}
+	for i := 0; i < len(slice.slots); i++ {
+		err = plain.Put(w, " ")
+		if err != nil {
+			return err
+		}
+		pslot := &slice.slots[i]
+		err = pslot.PlainEncode(w)
+		if err != nil {
+			return err
+		}
+
+	}
 	return nil
 }
 
 func (slice *Slice) PlainDecode(r io.Reader) error {
+	var err error
+	err = plain.Expect(r, "s")
+	if err != nil {
+		return err
+	}
+	pobj := &slice.object
+	err = pobj.PlainDecode(r)
+	if err != nil {
+		return err
+	}
+	N := uint64(0)
+	err = plain.DecodeUint64(r, &N)
+	n := int(N)
+	slice.slots = make([]Slot, n)
+	for i := 0; i < n; i++ {
+		pslot := &slice.slots[i]
+		err = plain.Expect(r, " ")
+		if err != nil {
+			return err
+		}
+		err = pslot.PlainDecode(r)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

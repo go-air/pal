@@ -36,10 +36,10 @@ type object struct {
 func (o *object) Loc() memory.Loc    { return o.loc }
 func (o *object) Type() typeset.Type { return o.typ }
 
-func (o *object) plainEncode(w io.Writer) error {
+func (o *object) PlainEncode(w io.Writer) error {
 	return plain.EncodeJoin(w, " ", o.loc, o.typ)
 }
 
-func (o *object) plainDecode(r io.Reader) error {
+func (o *object) PlainDecode(r io.Reader) error {
 	return plain.DecodeJoin(r, " ", &o.loc, &o.typ)
 }

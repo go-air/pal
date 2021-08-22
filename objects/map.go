@@ -51,7 +51,7 @@ func (m *Map) PlainEncode(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = m.object.plainEncode(w)
+	err = m.object.PlainEncode(w)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (m *Map) PlainDecode(r io.Reader) error {
 		return err
 	}
 	pobj := &m.object
-	err = pobj.plainDecode(r)
+	err = pobj.PlainDecode(r)
 	if err != nil {
 		return err
 	}

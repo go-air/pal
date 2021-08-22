@@ -36,7 +36,12 @@ func (t *Tuple) At(i int) memory.Loc {
 
 func (t *Tuple) PlainEncode(w io.Writer) error {
 	var err error
-	err = t.object.plainEncode(w)
+	err = plain.Put(w, "t")
+	if err != nil {
+		return err
+	}
+
+	err = t.object.PlainEncode(w)
 	if err != nil {
 		return err
 	}
@@ -55,8 +60,13 @@ func (t *Tuple) PlainEncode(w io.Writer) error {
 }
 
 func (t *Tuple) PlainDecode(r io.Reader) error {
+	var err error
+	err = plain.Expect(r, "t")
+	if err != nil {
+		return err
+	}
 	obj := &t.object
-	err := obj.plainDecode(r)
+	err = obj.PlainDecode(r)
 	if err != nil {
 		return err
 	}

@@ -45,7 +45,7 @@ func (c *Chan) PlainEncode(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if err = c.object.plainEncode(w); err != nil {
+	if err = c.object.PlainEncode(w); err != nil {
 		return err
 	}
 	return c.slot.PlainEncode(w)
@@ -58,7 +58,7 @@ func (c *Chan) PlainDecode(r io.Reader) error {
 		return err
 	}
 	p := &c.object
-	if err = p.plainDecode(r); err != nil {
+	if err = p.PlainDecode(r); err != nil {
 		return err
 	}
 	ps := &c.slot

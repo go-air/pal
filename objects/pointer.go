@@ -14,16 +14,31 @@
 
 package objects
 
-import "io"
+import (
+	"io"
+
+	"github.com/go-air/pal/internal/plain"
+)
 
 type Pointer struct {
 	object
 }
 
 func (p *Pointer) PlainEncode(w io.Writer) error {
-	return nil
+	var err error
+	err = plain.Put(w, "p")
+	if err != nil {
+		return err
+	}
+	return p.object.PlainEncode(w)
 }
 
 func (p *Pointer) PlainDecode(r io.Reader) error {
-	return nil
+	var err error
+	err = plain.Expect(r, " ")
+	if err != nil {
+		return err
+	}
+	po := &p.object
+	return po.PlainDecode(r)
 }
