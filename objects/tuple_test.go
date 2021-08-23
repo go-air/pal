@@ -15,48 +15,28 @@
 package objects
 
 import (
-	"io"
+	"testing"
 
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
 
-type Array struct {
-	object
-	elemSize int64
-	n        int64
-}
-
-func (a *Array) Len() int64 {
-	return a.n
-}
-
-func (a *Array) At(i int) memory.Loc {
-	z := a.loc + 1
-	return z + (memory.Loc(a.elemSize) * memory.Loc(i))
-}
-
-func (a *Array) PlainEncode(w io.Writer) error {
+func TestTuple(t *testing.T) {
+	u := &Tuple{}
+	u.loc = 11
+	u.typ = 14
+	u.fields = make([]memory.Loc, 2)
+	u.fields[0] = 555
+	u.fields[1] = 2
 	var err error
-	err = plain.Put(w, "a")
+	err = plain.TestRoundTripClobber(u, func(c plain.Coder) {
+		u := c.(*Tuple)
+		u.loc = 0
+		u.typ = 0
+		u.fields = nil
+	}, false)
 	if err != nil {
-		return err
+		t.Error(err)
 	}
-	return plain.EncodeJoin(w, " ", &a.object, plain.Uint(a.elemSize), plain.Uint(a.n))
-}
 
-func (a *Array) PlainDecode(r io.Reader) error {
-	var err error
-	err = plain.Expect(r, "a")
-	if err != nil {
-		return err
-	}
-	esz, n := plain.Uint(a.elemSize), plain.Uint(a.n)
-	err = plain.DecodeJoin(r, " ", &a.object, &esz, &n)
-	if err != nil {
-		return err
-	}
-	a.elemSize = int64(esz)
-	a.n = int64(n)
-	return nil
 }

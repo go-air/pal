@@ -29,7 +29,13 @@ func TestStruct(t *testing.T) {
 	u.fields[0] = 555
 	u.fields[1] = 2
 	var err error
-	err = plain.TestRoundTrip(u, true)
+	err = plain.TestRoundTripClobber(u, func(c plain.Coder) {
+
+		u := c.(*Struct)
+		u.loc = 0
+		u.typ = 0
+		u.fields = nil
+	}, false)
 	if err != nil {
 		t.Error(err)
 	}

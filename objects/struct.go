@@ -44,6 +44,14 @@ func (s *Struct) PlainEncode(w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	err = plain.Put(w, " ")
+	if err != nil {
+		return err
+	}
+	err = plain.Uint(len(s.fields)).PlainEncode(w)
+	if err != nil {
+		return err
+	}
 	for i := range s.fields {
 		err = plain.Put(w, " ")
 		if err != nil {
@@ -69,6 +77,17 @@ func (s *Struct) PlainDecode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	err = plain.Expect(r, " ")
+	if err != nil {
+		return err
+	}
+	u := plain.Uint(0)
+	pu := &u
+	err = pu.PlainDecode(r)
+	if err != nil {
+		return err
+	}
+	s.fields = make([]memory.Loc, u)
 	for i := range s.fields {
 		err = plain.Expect(r, " ")
 		if err != nil {
