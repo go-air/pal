@@ -84,7 +84,7 @@ func DecodeJoin(r io.Reader, sep string, ds ...Decoder) error {
 		}
 		err = d.PlainDecode(r)
 		if err != nil {
-			return fmt.Errorf("decode joint elt %d: %w", i, err)
+			return fmt.Errorf("decode join elt %d: %w", i, err)
 		}
 	}
 	return nil

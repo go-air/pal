@@ -127,17 +127,23 @@ func (b *Builder) Slice(gty *types.Slice, length, capacity indexing.I) *Slice {
 	sl := b.omap[m].(*Slice)
 	sl.Len = length
 	sl.Cap = capacity
-	b.AddSlot(sl, b.indexing.Var())
+	b.AddSlot(sl, b.indexing.Zero())
 	return sl
 }
 
 func (b *Builder) AddSlot(slice *Slice, i indexing.I) {
-	elem := b.ts.Elem(slice.typ)
-	loc := b.Type(elem).Gen()
+	elemTy := b.ts.Elem(slice.typ)
+	ptrTy := b.ts.PointerTo(elemTy)
+	ptr := b.Type(ptrTy).Gen()
+	obj := b.Type(elemTy).Gen()
+	b.walkObj(obj)
+	b.AddTransferIndex(ptr, slice.loc, i)
+	b.AddAddressOf(ptr, obj)
+
 	slice.slots = append(slice.slots, Slot{
-		Loc: loc,
+		Ptr: ptr,
+		Obj: obj,
 		I:   i})
-	b.walkObj(loc)
 }
 
 func (b *Builder) Map(gty *types.Map) *Map {
@@ -299,6 +305,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 			ma.typ = ty
 			ma.key = b.Type(b.ts.Key(ty)).Gen()
 			ma.elem = b.Type(b.ts.Elem(ty)).Gen()
+			b.mmod.AddAddressOf(ma.loc, ma.key)
 			b.mmod.AddAddressOf(ma.loc, ma.elem)
 			b.omap[m] = ma
 		} else {
@@ -313,11 +320,10 @@ func (b *Builder) walkObj(m memory.Loc) {
 			slice = &Slice{}
 			slice.loc = m
 			slice.typ = b.mmod.Type(m)
-			slice.Len = b.indexing.Var()
-			slice.Cap = b.indexing.Var()
+			slice.Len = b.indexing.Zero()
+			slice.Cap = b.indexing.Zero()
+			b.AddAddressOf(slice.loc, b.mmod.Zero())
 			b.omap[m] = slice
-		} else {
-			slice = obj.(*Slice)
 		}
 
 	case typeset.Interface:

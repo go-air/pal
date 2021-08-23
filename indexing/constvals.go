@@ -17,8 +17,8 @@ package indexing
 import (
 	"fmt"
 	"io"
-	"strconv"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/xtruth"
 )
 
@@ -30,15 +30,14 @@ func (c C) PlainEncode(w io.Writer) error {
 		_, err := fmt.Fprintf(w, ".")
 		return err
 	}
-	_, err := w.Write(strconv.AppendInt(nil, *c.p, 16))
-	return err
+	err := plain.Put(w, "c")
+	if err != nil {
+		return err
+	}
+	return plain.EncodeInt64(w, *c.p)
 }
 
-func isHexLower(b byte) bool {
-	return (b >= byte('0') && b <= byte('9')) || (b >= byte('a') && b <= byte('f'))
-}
-
-func (c C) PlainDecode(r io.Reader) error {
+func (c *C) PlainDecode(r io.Reader) error {
 	var buf [16]byte
 	_, err := io.ReadFull(r, buf[:1])
 	if err != nil {
@@ -48,20 +47,15 @@ func (c C) PlainDecode(r io.Reader) error {
 		c.p = nil
 		return nil
 	}
-	i := 1
-	for i < 16 {
-		_, err = io.ReadFull(r, buf[i:i+1])
-		if err != nil {
-			return err
-		}
-		if !isHexLower(buf[i]) {
-			break
-		}
-
-		i++
+	if buf[0] != byte('c') {
+		return fmt.Errorf("unexpected %c != c", buf[0])
 	}
-	v, _ := strconv.ParseInt(string(buf[:i]), 16, 64)
-	*c.p = v
+	var v int64
+	v, err = plain.DecodeInt64From(r)
+	if err != nil {
+		return err
+	}
+	c.p = &v
 	return nil
 }
 
@@ -74,28 +68,28 @@ var one int64 = 1
 
 func (c consts) Zero() I {
 	z := int64(0)
-	return I(C{&z})
+	return I(&C{&z})
 }
 
 func (c consts) One() I {
 	o := int64(1)
-	return I(C{&o})
+	return I(&C{&o})
 }
 
 func (c consts) IsVar(v I) bool {
-	return v.(C).p == nil
+	return v.(*C).p == nil
 }
 
 func (c consts) Var() I {
-	return C{nil}
+	return &C{nil}
 }
 
 func (c consts) FromInt64(v int64) I {
-	return C{&v}
+	return &C{&v}
 }
 
 func (c consts) ToInt64(v I) (int64, bool) {
-	p := v.(C).p
+	p := v.(*C).p
 	if p == nil {
 		return 0, false
 	}
@@ -103,7 +97,7 @@ func (c consts) ToInt64(v I) (int64, bool) {
 }
 
 func (c consts) Plus(a, b I) I {
-	pa, pb := a.(C).p, b.(C).p
+	pa, pb := a.(*C).p, b.(*C).p
 	if pa == nil || pb == nil {
 		return c.Var()
 	}
@@ -112,7 +106,7 @@ func (c consts) Plus(a, b I) I {
 }
 
 func (c consts) Times(a, b I) I {
-	pa, pb := a.(C).p, b.(C).p
+	pa, pb := a.(*C).p, b.(*C).p
 	if pa == nil || pb == nil {
 		return c.Var()
 	}
@@ -125,7 +119,7 @@ func (c consts) Div(a, b I) (I, xtruth.T) {
 	case xtruth.True:
 		return c.Zero(), xtruth.False
 	case xtruth.False:
-		pa, pb := a.(C).p, b.(C).p
+		pa, pb := a.(*C).p, b.(*C).p
 		r := *pa / *pb
 		return c.FromInt64(r), xtruth.True
 	case xtruth.X:
@@ -139,7 +133,7 @@ func (c consts) Rem(a, b I) (I, xtruth.T) {
 	case xtruth.True:
 		return c.Zero(), xtruth.False
 	case xtruth.False:
-		pa, pb := a.(C).p, b.(C).p
+		pa, pb := a.(*C).p, b.(*C).p
 		r := *pa % *pb
 		return c.FromInt64(r), xtruth.True
 	case xtruth.X:
@@ -149,7 +143,7 @@ func (c consts) Rem(a, b I) (I, xtruth.T) {
 }
 
 func (c consts) Band(a, b I) I {
-	pa, pb := a.(C).p, b.(C).p
+	pa, pb := a.(*C).p, b.(*C).p
 	if pa == nil || pb == nil {
 		return c.Var()
 	}
@@ -158,7 +152,7 @@ func (c consts) Band(a, b I) I {
 }
 
 func (c consts) Bnot(a I) I {
-	pa := a.(C).p
+	pa := a.(*C).p
 	if pa == nil {
 		return c.Var()
 	}
@@ -175,7 +169,7 @@ func (c consts) Rshift(a, s I) (I, xtruth.T) {
 }
 
 func (c consts) Less(a, b I) xtruth.T {
-	pa, pb := a.(C).p, b.(C).p
+	pa, pb := a.(*C).p, b.(*C).p
 	if pa == nil || pb == nil {
 		return xtruth.X
 	}
@@ -186,7 +180,7 @@ func (c consts) Less(a, b I) xtruth.T {
 }
 
 func (c consts) Equal(a, b I) xtruth.T {
-	pa, pb := a.(C).p, b.(C).p
+	pa, pb := a.(*C).p, b.(*C).p
 	if pa == nil || pb == nil {
 		return xtruth.X
 	}

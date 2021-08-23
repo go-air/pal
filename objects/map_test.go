@@ -20,21 +20,21 @@ import (
 	"github.com/go-air/pal/internal/plain"
 )
 
-func clobArray(c plain.Coder) {
-	a := c.(*Array)
+func clobMap(c plain.Coder) {
+	a := c.(*Map)
 	a.loc = 0
 	a.typ = 0
-	a.n = 0
-	a.elemSize = 0
+	a.key = 0
+	a.elem = 0
 }
 
-func TestArray(t *testing.T) {
-	a := &Array{}
+func TestMap(t *testing.T) {
+	a := &Map{}
 	a.loc = 3
 	a.typ = 7
-	a.n = 17
-	a.elemSize = 5
-	if err := plain.TestRoundTripClobber(a, clobArray, false); err != nil {
+	a.key = 17
+	a.elem = 5
+	if err := plain.TestRoundTripClobber(a, clobMap, false); err != nil {
 		t.Error(err)
 	}
 }

@@ -15,6 +15,7 @@
 package objects
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/go-air/pal/indexing"
@@ -22,11 +23,28 @@ import (
 	"github.com/go-air/pal/memory"
 )
 
+// Slices are modelled as follows.
+//
+// Each slice `s` has a principal pointer `ptr(s)` stored in object.loc, and a Len and a Cap
+// which are of type indexing.I, and a single memory.Loc "elem" representing
+// what is stored in the slice.
+//
+// Each slice has 0 or more slots.  A slot is a triple (p, m, i) such that
+//  1. p = &m
+//  2. p = ptr(s) + i
+//
+// For the moment, we set ptr(s) == &nil to guarantee that nil derefs
+// are considered possible.  When indexing gets richer, perhaps we
+// can do more.
 type Slice struct {
 	object
 	Len   indexing.I
 	Cap   indexing.I
 	slots []Slot
+}
+
+func (slice *Slice) Ptr() memory.Loc {
+	return slice.loc
 }
 
 func (slice *Slice) NumSlots() int {
@@ -39,24 +57,31 @@ func (slice *Slice) Slot(i int) Slot {
 
 type Slot struct {
 	I   indexing.I
-	Loc memory.Loc
+	Ptr memory.Loc
+	Obj memory.Loc
 }
 
 func (slot *Slot) PlainEncode(w io.Writer) error {
-	return plain.EncodeJoin(w, " ", slot.I, &slot.Loc)
+	return plain.EncodeJoin(w, " ", slot.I, &slot.Ptr, &slot.Obj)
 }
 
 func (slot *Slot) PlainDecode(r io.Reader) error {
-	return plain.DecodeJoin(r, " ", slot.I, &slot.Loc)
+	fmt.Printf("slot decode %p %p %p %p\n", slot, slot.I, &slot.Ptr, &slot.Obj)
+	return plain.DecodeJoin(r, " ", slot.I, &slot.Ptr, &slot.Obj)
 }
 
 func (slice *Slice) PlainEncode(w io.Writer) error {
 	var err error
-	err = plain.Put(w, "s")
+	err = plain.Put(w, "s ")
 	if err != nil {
 		return err
 	}
 	err = slice.object.PlainEncode(w)
+	if err != nil {
+		return err
+	}
+
+	err = plain.Put(w, " ")
 	if err != nil {
 		return err
 	}
@@ -65,7 +90,7 @@ func (slice *Slice) PlainEncode(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	for i := 0; i < len(slice.slots); i++ {
+	for i := 0; i < N; i++ {
 		err = plain.Put(w, " ")
 		if err != nil {
 			return err
@@ -75,14 +100,13 @@ func (slice *Slice) PlainEncode(w io.Writer) error {
 		if err != nil {
 			return err
 		}
-
 	}
 	return nil
 }
 
 func (slice *Slice) PlainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "s")
+	err = plain.Expect(r, "s ")
 	if err != nil {
 		return err
 	}
@@ -91,16 +115,21 @@ func (slice *Slice) PlainDecode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	err = plain.Expect(r, " ")
+	if err != nil {
+		return err
+	}
 	N := uint64(0)
 	err = plain.DecodeUint64(r, &N)
-	n := int(N)
-	slice.slots = make([]Slot, n)
-	for i := 0; i < n; i++ {
-		pslot := &slice.slots[i]
+	slice.slots = make([]Slot, N)
+	for i := uint64(0); i < N; i++ {
 		err = plain.Expect(r, " ")
 		if err != nil {
 			return err
 		}
+		pslot := &slice.slots[i]
+		// XXX
+		pslot.I = indexing.ConstVals().Var()
 		err = pslot.PlainDecode(r)
 		if err != nil {
 			return err

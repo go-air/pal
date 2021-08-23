@@ -31,17 +31,22 @@ type Chan struct {
 	slot memory.Loc
 }
 
+// Recv retrieves the data from the c and loads
+// it into dst.
 func (c *Chan) Recv(dst memory.Loc, mm *memory.Model) {
 	mm.AddLoad(dst, c.loc)
 }
 
+// Send sends the data at src to the channel c.
+//
+// Send is modeled as a store.
 func (c *Chan) Send(src memory.Loc, mm *memory.Model) {
 	mm.AddStore(c.loc, src)
 }
 
 func (c *Chan) PlainEncode(w io.Writer) error {
 	var err error
-	err = plain.Put(w, "c")
+	err = plain.Put(w, "c ")
 	if err != nil {
 		return err
 	}
@@ -53,7 +58,7 @@ func (c *Chan) PlainEncode(w io.Writer) error {
 
 func (c *Chan) PlainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "c")
+	err = plain.Expect(r, "c ")
 	if err != nil {
 		return err
 	}
