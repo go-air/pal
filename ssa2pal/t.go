@@ -136,7 +136,8 @@ func (p *T) genGlobal(name string, x *ssa.Global) {
 	}
 	switch ty := x.Type().Underlying().(type) {
 	case *types.Pointer:
-		p.vmap[x] = p.buildr.Pointer(ty).Loc()
+		_, ptr := p.buildr.GoType(ty.Elem().Underlying()).WithPointer()
+		p.vmap[x] = ptr
 	default:
 		msg := fmt.Sprintf(
 			"unexpected ssa global member type for %s %T\n",
@@ -160,7 +161,7 @@ func (p *T) addFuncDecl(name string, fn *ssa.Function) error {
 	p.vmap[fn] = memFn.Loc()
 
 	for i, param := range fn.Params {
-		if traceFunc {
+		if traceParam {
 			fmt.Printf("setting param %s to %s\n", param, plain.String(memFn.ParamLoc(i)))
 
 		}
