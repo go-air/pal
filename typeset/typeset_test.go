@@ -51,6 +51,16 @@ func TestTypeSetStruct(t *testing.T) {
 
 }
 
+func TestTypeSetNamed(t *testing.T) {
+	tynm := types.NewTypeName(token.NoPos, nil, "Name", types.Typ[types.Int])
+	nmty := types.NewNamed(tynm, types.Typ[types.Int], nil)
+	ts := New()
+	ts.FromGoType(nmty)
+	if err := plain.TestRoundTrip(ts, false); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestTypeSetFunc(t *testing.T) {
 	ts := New()
 	params := types.NewTuple(
