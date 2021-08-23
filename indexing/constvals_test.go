@@ -29,7 +29,10 @@ func TestConstVals(t *testing.T) {
 	w := idx.Var()
 	var err error
 	for _, i := range [...]I{z, o, v, w} {
-		err = plain.TestRoundTrip(i, true)
+		err = plain.TestRoundTripClobber(i, func(c plain.Coder) {
+			cc := c.(*C)
+			cc.p = nil
+		}, true)
 		if err != nil {
 			t.Error(err)
 		}
