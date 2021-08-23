@@ -395,6 +395,13 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 	switch i9n := i9n.(type) {
 	case *ssa.Alloc: // done in gen locs
 	case *ssa.BinOp: // tbd: indexing
+		switch i9n.Op {
+		case token.ARROW:
+			c := p.buildr.Object(p.vmap[i9n.X]).(*objects.Chan)
+			c.Send(p.vmap[i9n.Y], p.buildr.Memory())
+		default:
+
+		}
 	case *ssa.Call:
 		p.call(i9n.Call)
 	case *ssa.ChangeInterface:
@@ -506,6 +513,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		case token.MUL: // *p
 			p.buildr.AddLoad(p.vmap[i9n], p.vmap[i9n.X])
 		case token.ARROW: // <- TBD:
+			fmt.Printf("<-: %s %#v\n", i9n, i9n)
 			c := p.buildr.Object(p.vmap[i9n.X]).(*objects.Chan)
 			dst := p.vmap[i9n]
 			if dst == memory.NoLoc {
