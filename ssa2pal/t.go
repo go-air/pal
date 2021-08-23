@@ -300,7 +300,8 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			ptrTy := types.NewPointer(ty.Elem())
 			pelt := p.buildr.GoType(ptrTy).Gen()
 			qelt := p.buildr.Gen()
-			// it may crash if oob
+			// it may crash if oob, add address of nil
+			// TBD: see if with indexing we can constrain this.
 			p.buildr.AddAddressOf(qelt, p.buildr.Memory().Zero())
 			res = p.buildr.GoType(eltTy).Gen()
 			p.buildr.AddTransferIndex(qelt, pelt, p.indexing.Var())
@@ -398,8 +399,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 	case *ssa.BinOp: // tbd: indexing
 		switch i9n.Op {
 		case token.ARROW:
-			c := p.buildr.Object(p.vmap[i9n.X]).(*objects.Chan)
-			c.Send(p.vmap[i9n.Y], p.buildr.Memory())
+			panic("send binop")
 		default:
 
 		}
@@ -478,13 +478,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 			panic("huh?")
 		}
 
-	case *ssa.Next: // either string iterator or map
-		if !i9n.IsString {
-			// not addressable
-
-			return nil
-		}
-		// it is a map, type Tuple
+	case *ssa.Next: // handled in genLoc
 	case *ssa.Panic:
 	case *ssa.Phi:
 		v := p.vmap[i9n]
@@ -492,11 +486,13 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 			ev := p.vmap[x]
 			p.buildr.AddTransfer(v, ev)
 		}
-	case *ssa.Range:
+	case *ssa.Range: // everything is in ssa.Next, see genLoc
 	case *ssa.RunDefers:
 		// no-op b/c we treat defers like calls.
-	case *ssa.Select:
+	case *ssa.Select: // all comm clauses handled via <- unary and binary ops.
 	case *ssa.Send:
+		c := p.buildr.Object(p.vmap[i9n.Chan]).(*objects.Chan)
+		c.Send(p.vmap[i9n.X], p.buildr.Memory())
 	case *ssa.Return:
 		var ssaFn *ssa.Function = i9n.Parent()
 		var palFn *objects.Func
