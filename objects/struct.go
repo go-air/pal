@@ -36,7 +36,7 @@ func (s *Struct) Field(i int) memory.Loc {
 
 func (s *Struct) PlainEncode(w io.Writer) error {
 	var err error
-	err = plain.Put(w, "r")
+	err = plain.Put(w, "r ")
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func (s *Struct) PlainEncode(w io.Writer) error {
 
 func (s *Struct) PlainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "r")
+	err = plain.Expect(r, "r ")
 	if err != nil {
 		return err
 	}
