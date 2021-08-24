@@ -25,17 +25,19 @@ import (
 
 // Slices are modelled as follows.
 //
-// Each slice `s` has a principal pointer `ptr(s)` stored in object.loc, and a Len and a Cap
-// which are of type indexing.I, and a single memory.Loc "elem" representing
-// what is stored in the slice.
+// Each slice `s` has a principal pointer `ptr(s)` stored in object.loc, and a
+// Len and a Cap which are of type indexing.I.
 //
 // Each slice has 0 or more slots.  A slot is a triple (p, m, i) such that
-//  1. p = &m
-//  2. p = ptr(s) + i
+//   1. p = &m
+//   2. p = ptr(s) + i
 //
-// For the moment, we set ptr(s) == &nil to guarantee that nil derefs
-// are considered possible.  When indexing gets richer, perhaps we
-// can do more.
+// A lookup or update s[j] will have indexing.I type for j.  The semantics
+// are that if the indexing model `idx` is such that idx.Equal(i, j) is not
+// xtruth.False, for some slot (p, m, i), then &s[j] may point to m.
+//
+// For the moment, we set ptr(s) == &nil to guarantee that nil derefs are
+// considered possible.  When indexing gets richer, perhaps we can do more.
 type Slice struct {
 	object
 	Len   indexing.I
