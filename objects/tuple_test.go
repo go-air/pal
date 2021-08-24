@@ -15,30 +15,28 @@
 package objects
 
 import (
-	"io"
+	"testing"
 
 	"github.com/go-air/pal/internal/plain"
+	"github.com/go-air/pal/memory"
 )
 
-type Pointer struct {
-	object
-}
-
-func (p *Pointer) PlainEncode(w io.Writer) error {
+func TestTuple(t *testing.T) {
+	u := &Tuple{}
+	u.loc = 11
+	u.typ = 14
+	u.fields = make([]memory.Loc, 2)
+	u.fields[0] = 555
+	u.fields[1] = 2
 	var err error
-	err = plain.Put(w, "p")
+	err = plain.TestRoundTripClobber(u, func(c plain.Coder) {
+		u := c.(*Tuple)
+		u.loc = 0
+		u.typ = 0
+		u.fields = nil
+	}, false)
 	if err != nil {
-		return err
+		t.Error(err)
 	}
-	return p.object.PlainEncode(w)
-}
 
-func (p *Pointer) PlainDecode(r io.Reader) error {
-	var err error
-	err = plain.Expect(r, " ")
-	if err != nil {
-		return err
-	}
-	po := &p.object
-	return po.PlainDecode(r)
 }

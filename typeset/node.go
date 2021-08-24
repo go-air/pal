@@ -125,6 +125,13 @@ func (n *node) PlainEncode(w io.Writer) error {
 		err = wrapJoinEncode(w, "(", ", ", ")", n.results)
 	case Tuple:
 		err = wrapJoinEncode(w, "(", ", ", ")", n.fields)
+	case Named: // name in n.fields[0].name
+		err = plain.Put(w, n.fields[0].name+" ")
+		if err != nil {
+			return err
+		}
+		err = n.elem.PlainEncode(w)
+
 	}
 	return err
 }
@@ -165,6 +172,14 @@ func (n *node) PlainDecode(r io.Reader) error {
 		err = wrapJoinDecode(r, "(", ", ", ")", &n.fields)
 	case Func:
 		err = n.decodeFunc(r)
+	case Named:
+		n.fields = make([]named, 1)
+		_, err = fmt.Fscanf(r, "%s ", &n.fields[0].name)
+		if err != nil {
+			return err
+		}
+		p := &n.elem
+		err = p.PlainDecode(r)
 	}
 	return err
 }

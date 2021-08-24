@@ -36,7 +36,19 @@ func (s *Struct) Field(i int) memory.Loc {
 
 func (s *Struct) PlainEncode(w io.Writer) error {
 	var err error
-	err = s.object.plainEncode(w)
+	err = plain.Put(w, "r")
+	if err != nil {
+		return err
+	}
+	err = s.object.PlainEncode(w)
+	if err != nil {
+		return err
+	}
+	err = plain.Put(w, " ")
+	if err != nil {
+		return err
+	}
+	err = plain.Uint(len(s.fields)).PlainEncode(w)
 	if err != nil {
 		return err
 	}
@@ -55,11 +67,27 @@ func (s *Struct) PlainEncode(w io.Writer) error {
 }
 
 func (s *Struct) PlainDecode(r io.Reader) error {
-	obj := &s.object
-	err := obj.plainDecode(r)
+	var err error
+	err = plain.Expect(r, "r")
 	if err != nil {
 		return err
 	}
+	obj := &s.object
+	err = obj.PlainDecode(r)
+	if err != nil {
+		return err
+	}
+	err = plain.Expect(r, " ")
+	if err != nil {
+		return err
+	}
+	u := plain.Uint(0)
+	pu := &u
+	err = pu.PlainDecode(r)
+	if err != nil {
+		return err
+	}
+	s.fields = make([]memory.Loc, u)
 	for i := range s.fields {
 		err = plain.Expect(r, " ")
 		if err != nil {

@@ -34,18 +34,30 @@ func (t *Tuple) At(i int) memory.Loc {
 	return t.fields[i]
 }
 
-func (t *Tuple) PlainEncode(w io.Writer) error {
+func (tuple *Tuple) PlainEncode(w io.Writer) error {
 	var err error
-	err = t.object.plainEncode(w)
+	err = plain.Put(w, "r")
 	if err != nil {
 		return err
 	}
-	for i := range t.fields {
+	err = tuple.object.PlainEncode(w)
+	if err != nil {
+		return err
+	}
+	err = plain.Put(w, " ")
+	if err != nil {
+		return err
+	}
+	err = plain.Uint(len(tuple.fields)).PlainEncode(w)
+	if err != nil {
+		return err
+	}
+	for i := range tuple.fields {
 		err = plain.Put(w, " ")
 		if err != nil {
 			return err
 		}
-		f := &t.fields[i]
+		f := &tuple.fields[i]
 		err = f.PlainEncode(w)
 		if err != nil {
 			return err
@@ -54,18 +66,34 @@ func (t *Tuple) PlainEncode(w io.Writer) error {
 	return nil
 }
 
-func (t *Tuple) PlainDecode(r io.Reader) error {
-	obj := &t.object
-	err := obj.plainDecode(r)
+func (tuple *Tuple) PlainDecode(r io.Reader) error {
+	var err error
+	err = plain.Expect(r, "r")
 	if err != nil {
 		return err
 	}
-	for i := range t.fields {
+	obj := &tuple.object
+	err = obj.PlainDecode(r)
+	if err != nil {
+		return err
+	}
+	err = plain.Expect(r, " ")
+	if err != nil {
+		return err
+	}
+	u := plain.Uint(0)
+	pu := &u
+	err = pu.PlainDecode(r)
+	if err != nil {
+		return err
+	}
+	tuple.fields = make([]memory.Loc, u)
+	for i := range tuple.fields {
 		err = plain.Expect(r, " ")
 		if err != nil {
 			return err
 		}
-		f := &t.fields[i]
+		f := &tuple.fields[i]
 		err = f.PlainDecode(r)
 		if err != nil {
 			return err

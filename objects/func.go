@@ -46,7 +46,6 @@ func (f *Func) Loc() memory.Loc {
 
 func (f *Func) RecvLoc(i int) memory.Loc {
 	return f.recv
-
 }
 
 func (f *Func) ParamLoc(i int) memory.Loc {

@@ -84,7 +84,7 @@ func DecodeJoin(r io.Reader, sep string, ds ...Decoder) error {
 		}
 		err = d.PlainDecode(r)
 		if err != nil {
-			return fmt.Errorf("decode joint elt %d: %w", i, err)
+			return fmt.Errorf("decode join elt %d: %w", i, err)
 		}
 	}
 	return nil
@@ -262,6 +262,10 @@ type Coder interface {
 }
 
 func TestRoundTrip(c Coder, verbose bool) error {
+	return TestRoundTripClobber(c, nil, verbose)
+}
+
+func TestRoundTripClobber(c Coder, clob func(Coder), verbose bool) error {
 	var buf = new(bytes.Buffer)
 	if err := c.PlainEncode(buf); err != nil {
 		return fmt.Errorf("round trip, enc1: %w", err)
@@ -270,6 +274,9 @@ func TestRoundTrip(c Coder, verbose bool) error {
 	s1 := string(d)
 	if verbose {
 		fmt.Printf("encoded\n```\n%s```\n", s1)
+	}
+	if clob != nil {
+		clob(c)
 	}
 	buf = bytes.NewBuffer(d)
 	if err := c.PlainDecode(buf); err != nil {

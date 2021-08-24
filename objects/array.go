@@ -38,30 +38,25 @@ func (a *Array) At(i int) memory.Loc {
 
 func (a *Array) PlainEncode(w io.Writer) error {
 	var err error
-	err = a.object.plainEncode(w)
+	err = plain.Put(w, "a")
 	if err != nil {
 		return err
 	}
-	_, err = w.Write([]byte{byte(' ')})
-	if err != nil {
-		return err
-	}
-	err = plain.EncodeInt64(w, a.elemSize)
-	if err != nil {
-		return err
-	}
-	_, err = w.Write([]byte{byte(' ')})
-	if err != nil {
-		return err
-	}
-	return plain.EncodeInt64(w, a.n)
+	return plain.EncodeJoin(w, " ", &a.object, plain.Uint(a.elemSize), plain.Uint(a.n))
 }
 
 func (a *Array) PlainDecode(r io.Reader) error {
-	o := &a.object
-	err := o.plainDecode(r)
+	var err error
+	err = plain.Expect(r, "a")
 	if err != nil {
 		return err
 	}
+	esz, n := plain.Uint(a.elemSize), plain.Uint(a.n)
+	err = plain.DecodeJoin(r, " ", &a.object, &esz, &n)
+	if err != nil {
+		return err
+	}
+	a.elemSize = int64(esz)
+	a.n = int64(n)
 	return nil
 }

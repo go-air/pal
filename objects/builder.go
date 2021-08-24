@@ -31,9 +31,9 @@ type Builder struct {
 	indexing indexing.T
 	mmod     *memory.Model
 	ts       *typeset.TypeSet
-	omap     map[memory.Loc]Object
-	start    memory.Loc
-	mgp      *memory.GenParams
+	omap     map[memory.Loc]Object // map memory locs to canonical objects
+	start    memory.Loc            // after import, what is our minimum?
+	mgp      *memory.GenParams     // memory loc generation parameters
 }
 
 // NewBuilder creates a new builder from a package Path
@@ -127,17 +127,23 @@ func (b *Builder) Slice(gty *types.Slice, length, capacity indexing.I) *Slice {
 	sl := b.omap[m].(*Slice)
 	sl.Len = length
 	sl.Cap = capacity
-	b.AddSlot(sl, b.indexing.Var())
+	b.AddSlot(sl, b.indexing.Zero())
 	return sl
 }
 
 func (b *Builder) AddSlot(slice *Slice, i indexing.I) {
-	elem := b.ts.Elem(slice.typ)
-	loc := b.Type(elem).Gen()
+	elemTy := b.ts.Elem(slice.typ)
+	ptrTy := b.ts.PointerTo(elemTy)
+	ptr := b.Type(ptrTy).Gen()
+	obj := b.Type(elemTy).Gen()
+	b.walkObj(obj)
+	b.AddTransferIndex(ptr, slice.loc, i)
+	b.AddAddressOf(ptr, obj)
+
 	slice.slots = append(slice.slots, Slot{
-		Loc: loc,
+		Ptr: ptr,
+		Obj: obj,
 		I:   i})
-	b.walkObj(loc)
 }
 
 func (b *Builder) Map(gty *types.Map) *Map {
@@ -145,6 +151,13 @@ func (b *Builder) Map(gty *types.Map) *Map {
 	m := b.Type(ty).Gen()
 	b.walkObj(m)
 	return b.omap[m].(*Map)
+}
+
+func (b *Builder) Chan(gty *types.Chan) *Chan {
+	ty := b.ts.FromGoType(gty)
+	m := b.Type(ty).Gen()
+	b.walkObj(m)
+	return b.omap[m].(*Chan)
 }
 
 func (b *Builder) Object(m memory.Loc) Object {
@@ -193,7 +206,7 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 	N := params.Len()
 	for i := 0; i < N; i++ {
 		param := params.At(i)
-		pty := b.ts.FromGoType(param.Type())
+		pty := b.ts.FromGoType(param.Type().Underlying())
 		fn.params[i] =
 			b.Pos(param.Pos()).Type(pty).Attrs(memory.IsParam | opaque).Gen()
 		b.walkObj(fn.params[i])
@@ -217,6 +230,7 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 // everywhere...
 func (b *Builder) walkObj(m memory.Loc) {
 	ty := b.mmod.Type(m)
+	//fmt.Printf("walkObj %s ty %s\n", plain.String(m), b.ts.String(ty))
 	ki := b.ts.Kind(ty)
 	switch ki {
 	case typeset.Basic:
@@ -269,6 +283,19 @@ func (b *Builder) walkObj(m memory.Loc) {
 		}
 
 	case typeset.Chan:
+		var ch *Chan
+		obj := b.omap[m]
+		if obj == nil {
+			ch = &Chan{}
+			ch.loc = m
+			ch.typ = ty
+			ch.slot = b.Type(b.ts.Elem(ty)).Gen()
+			b.mmod.AddAddressOf(ch.loc, ch.slot)
+			b.omap[m] = ch
+		} else {
+			ch = obj.(*Chan)
+		}
+		b.walkObj(ch.slot)
 	case typeset.Map:
 		var ma *Map
 		obj := b.omap[m]
@@ -278,6 +305,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 			ma.typ = ty
 			ma.key = b.Type(b.ts.Key(ty)).Gen()
 			ma.elem = b.Type(b.ts.Elem(ty)).Gen()
+			b.mmod.AddAddressOf(ma.loc, ma.key)
 			b.mmod.AddAddressOf(ma.loc, ma.elem)
 			b.omap[m] = ma
 		} else {
@@ -292,16 +320,16 @@ func (b *Builder) walkObj(m memory.Loc) {
 			slice = &Slice{}
 			slice.loc = m
 			slice.typ = b.mmod.Type(m)
-			slice.Len = b.indexing.Var()
-			slice.Cap = b.indexing.Var()
+			slice.Len = b.indexing.Zero()
+			slice.Cap = b.indexing.Zero()
+			b.AddAddressOf(slice.loc, b.mmod.Zero())
 			b.omap[m] = slice
-		} else {
-			slice = obj.(*Slice)
 		}
 
 	case typeset.Interface:
 	case typeset.Func:
 	case typeset.Named:
+		panic("named foo")
 
 	case typeset.Tuple:
 		var tuple *Tuple
@@ -322,6 +350,5 @@ func (b *Builder) walkObj(m memory.Loc) {
 			tuple.fields[i] = floc
 			b.walkObj(floc)
 		}
-
 	}
 }

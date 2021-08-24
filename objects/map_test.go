@@ -15,30 +15,26 @@
 package objects
 
 import (
-	"io"
+	"testing"
 
 	"github.com/go-air/pal/internal/plain"
 )
 
-type Pointer struct {
-	object
+func clobMap(c plain.Coder) {
+	a := c.(*Map)
+	a.loc = 0
+	a.typ = 0
+	a.key = 0
+	a.elem = 0
 }
 
-func (p *Pointer) PlainEncode(w io.Writer) error {
-	var err error
-	err = plain.Put(w, "p")
-	if err != nil {
-		return err
+func TestMap(t *testing.T) {
+	a := &Map{}
+	a.loc = 3
+	a.typ = 7
+	a.key = 17
+	a.elem = 5
+	if err := plain.TestRoundTripClobber(a, clobMap, false); err != nil {
+		t.Error(err)
 	}
-	return p.object.PlainEncode(w)
-}
-
-func (p *Pointer) PlainDecode(r io.Reader) error {
-	var err error
-	err = plain.Expect(r, " ")
-	if err != nil {
-		return err
-	}
-	po := &p.object
-	return po.PlainDecode(r)
 }

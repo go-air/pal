@@ -17,6 +17,7 @@ package objects
 import (
 	"io"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
 
@@ -34,10 +35,39 @@ func (m *Map) Elem() memory.Loc {
 	return m.elem
 }
 
+func (m *Map) Update(k, v memory.Loc, mm *memory.Model) {
+	mm.AddTransfer(m.key, k)
+	mm.AddTransfer(m.elem, v)
+}
+
+func (m *Map) Lookup(dst memory.Loc, mm *memory.Model) {
+	// no key transfer, it is equality check under the hood
+	mm.AddTransfer(dst, m.elem)
+}
+
 func (m *Map) PlainEncode(w io.Writer) error {
-	return nil
+	var err error
+	err = plain.Put(w, "m")
+	if err != nil {
+		return err
+	}
+	err = m.object.PlainEncode(w)
+	if err != nil {
+		return err
+	}
+	return plain.EncodeJoin(w, " ", m.key, m.elem)
 }
 
 func (m *Map) PlainDecode(r io.Reader) error {
-	return nil
+	var err error
+	err = plain.Expect(r, "m")
+	if err != nil {
+		return err
+	}
+	pobj := &m.object
+	err = pobj.PlainDecode(r)
+	if err != nil {
+		return err
+	}
+	return plain.DecodeJoin(r, " ", &m.key, &m.elem)
 }

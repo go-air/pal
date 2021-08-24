@@ -12,8 +12,8 @@ things a few times already, and there are many sizeable holes
 still to be coded.
 
 We will use v0.0.X semtags for this stage of development,
-and move to v0.1.X when the whole chain works together 
-well enough to be used by others on our tests.
+treating it as "pre-alpha".  We will move to v0.1.X when the whole chain runs 
+on our own tests, well enough to be used by others in alpha testing.
 
 ## roadmap
 
