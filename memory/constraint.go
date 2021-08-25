@@ -101,6 +101,10 @@ func (c *Constraint) PlainDecode(r io.Reader) error {
 		return err
 	}
 	if c.Kind == KTransfer {
+		err = plain.Expect(r, " ")
+		if err != nil {
+			return err
+		}
 		err = c.Index.PlainDecode(r)
 	}
 	return err
