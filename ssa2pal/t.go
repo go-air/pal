@@ -282,33 +282,34 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			i := int(i64) // should be ok also b/c it is type checked.
 			res = x.At(i)
 		default:
-			// we have a variable or expression index.
-			// we
-			//  1. take address of the array, call it pa, in a new loc
-			//  2. create qa, same type as pa
-			//  3. add AddTransferIndex(qa, pa, p.indexing.Var())
-			//  4. create res, type of element of array
-			//  5. create res = load(qa)
-			// TBD:
-
-			ty, ok := v.X.Type().Underlying().(*types.Array)
-			if !ok {
-				panic(fmt.Sprintf("v type %s %#v\n", v.Type(), v.Type()))
-			}
-
-			eltTy := ty.Elem()
-			ptrTy := types.NewPointer(ty.Elem())
-			pelt := p.buildr.GoType(ptrTy).Gen()
-			if x.Len() != 0 {
+			if x.Len() == 0 {
+				// this should be type checked, but it is
+				// not.
+				res = p.buildr.Memory().Zero()
+			} else {
+				// we have a variable or expression index.
+				// we
+				//  1. take address of the array, call it pa, in a new loc
+				//  2. create qa, same type as pa
+				//  3. add AddTransferIndex(qa, pa, p.indexing.Var())
+				//  4. create res, type of element of array
+				//  5. create res = load(qa)
+				ty, ok := v.X.Type().Underlying().(*types.Array)
+				if !ok {
+					panic(fmt.Sprintf("v type %s %#v\n", v.Type(), v.Type()))
+				}
+				eltTy := ty.Elem()
+				ptrTy := types.NewPointer(ty.Elem())
+				pelt := p.buildr.GoType(ptrTy).Gen()
 				p.buildr.AddAddressOf(pelt, x.At(0))
+				qelt := p.buildr.Gen()
+				// it may crash if oob, add address of nil
+				// TBD: see if with indexing we can constrain this.
+				p.buildr.AddAddressOf(qelt, p.buildr.Memory().Zero())
+				res = p.buildr.GoType(eltTy).Gen()
+				p.buildr.AddTransferIndex(qelt, pelt, p.indexing.Var())
+				p.buildr.AddLoad(res, qelt)
 			}
-			qelt := p.buildr.Gen()
-			// it may crash if oob, add address of nil
-			// TBD: see if with indexing we can constrain this.
-			p.buildr.AddAddressOf(qelt, p.buildr.Memory().Zero())
-			res = p.buildr.GoType(eltTy).Gen()
-			p.buildr.AddTransferIndex(qelt, pelt, p.indexing.Var())
-			p.buildr.AddLoad(res, qelt)
 		}
 	case *ssa.Extract:
 		tloc := p.vmap[v.Tuple]
@@ -512,8 +513,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		switch i9n.Op {
 		case token.MUL: // *p
 			p.buildr.AddLoad(p.vmap[i9n], p.vmap[i9n.X])
-		case token.ARROW: // <- TBD:
-			fmt.Printf("<-: %s %#v\n", i9n, i9n)
+		case token.ARROW:
 			c := p.buildr.Object(p.vmap[i9n.X]).(*objects.Chan)
 			dst := p.vmap[i9n]
 			if dst == memory.NoLoc {
