@@ -17,7 +17,18 @@ package pal
 import (
 	"fmt"
 	"runtime/debug"
+	"strings"
 )
+
+const modPath = "github.com/go-air/pal"
+
+func tryMod(mod *debug.Module) string {
+	if strings.HasPrefix(mod.Path, modPath) {
+		return fmt.Sprintf("%s %s %s",
+			mod.Path, mod.Version, mod.Sum)
+	}
+	return ""
+}
 
 func Version() (string, error) {
 	// something around this will be needed once we put in
@@ -26,5 +37,15 @@ func Version() (string, error) {
 	if !ok {
 		return "", fmt.Errorf("couldn't read build info (are you running go test?)")
 	}
-	return fmt.Sprintf("%s %s %s\n%v\n", bi.Main.Path, bi.Main.Version, bi.Main.Sum, bi), nil
+	s := tryMod(&bi.Main)
+	if s != "" {
+		return s, nil
+	}
+	for _, dep := range bi.Deps {
+		s = tryMod(dep)
+		if s != "" {
+			return s, nil
+		}
+	}
+	return "", fmt.Errorf("could not find %s in debug modules", modPath)
 }
