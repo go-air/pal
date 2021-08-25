@@ -369,6 +369,7 @@ func hashNamed(named []named) uint32 {
 	result := uint32(1<<32 - 1)
 	for _, nd := range named {
 		result <<= 13
+		result = ^result
 		result *= uint32(nd.typ)
 		n := len(nd.name)
 		for i := 0; i < n; i++ {
