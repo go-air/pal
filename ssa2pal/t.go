@@ -299,6 +299,9 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			eltTy := ty.Elem()
 			ptrTy := types.NewPointer(ty.Elem())
 			pelt := p.buildr.GoType(ptrTy).Gen()
+			if x.Len() != 0 {
+				p.buildr.AddAddressOf(pelt, x.At(0))
+			}
 			qelt := p.buildr.Gen()
 			// it may crash if oob, add address of nil
 			// TBD: see if with indexing we can constrain this.
