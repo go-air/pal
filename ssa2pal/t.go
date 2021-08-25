@@ -411,7 +411,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 	case *ssa.DebugRef:
 	case *ssa.Defer:
 		p.call(i9n.Call)
-	case *ssa.Extract:
+	case *ssa.Extract: // done in gen locs
 	case *ssa.Field: // done in gen locs
 
 	case *ssa.FieldAddr:

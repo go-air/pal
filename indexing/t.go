@@ -20,6 +20,7 @@ import (
 )
 
 type I interface {
+	Gen() I
 	plain.Coder
 }
 

@@ -130,8 +130,7 @@ func (slice *Slice) PlainDecode(r io.Reader) error {
 			return err
 		}
 		pslot := &slice.slots[i]
-		// XXX
-		pslot.I = indexing.ConstVals().Var()
+		pslot.I = slice.Len.Gen()
 		err = pslot.PlainDecode(r)
 		if err != nil {
 			return err

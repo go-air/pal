@@ -59,6 +59,10 @@ func (c *C) PlainDecode(r io.Reader) error {
 	return nil
 }
 
+func (c *C) Gen() I {
+	return &C{}
+}
+
 func ConstVals() T {
 	return consts{}
 }
