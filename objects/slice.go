@@ -15,7 +15,6 @@
 package objects
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/go-air/pal/indexing"
@@ -68,7 +67,6 @@ func (slot *Slot) PlainEncode(w io.Writer) error {
 }
 
 func (slot *Slot) PlainDecode(r io.Reader) error {
-	fmt.Printf("slot decode %p %p %p %p\n", slot, slot.I, &slot.Ptr, &slot.Obj)
 	return plain.DecodeJoin(r, " ", slot.I, &slot.Ptr, &slot.Obj)
 }
 
