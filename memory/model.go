@@ -199,7 +199,7 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 	switch gp.ts.Kind(gp.typ) {
 	// these are added as pointers here indirect associattions (params,
 	// returns, ...) are done in github.com/go-air/objects.Builder
-	case typeset.Basic, typeset.Func, typeset.Pointer, typeset.Interface:
+	case typeset.Basic, typeset.Pointer, typeset.Interface:
 		mod.locs = append(mod.locs, l)
 		*sum++
 	case typeset.Slice, typeset.Chan, typeset.Map:
@@ -239,6 +239,26 @@ func (mod *Model) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		gp.typ = gp.ts.Underlying(gp.typ)
 		mod.p_add(gp, p, r, sum)
 		added = false
+	case typeset.Func:
+		mod.locs = append(mod.locs, l)
+		*sum++
+		fty := gp.typ
+		rcvty := gp.ts.Recv(fty)
+		if rcvty != typeset.NoType {
+			gp.typ = rcvty
+			mod.p_add(gp, n, r, sum)
+		}
+
+		np := gp.ts.NumParams(fty)
+		for i := 0; i < np; i++ {
+			_, gp.typ = gp.ts.Param(fty, i)
+			mod.p_add(gp, n, r, sum)
+		}
+		nr := gp.ts.NumResults(fty)
+		for i := 0; i < nr; i++ {
+			_, gp.typ = gp.ts.Result(fty, i)
+			mod.p_add(gp, n, r, sum)
+		}
 
 	default:
 		panic(fmt.Sprintf("%d: unexpected/unimplemented", gp.typ))
