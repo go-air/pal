@@ -26,7 +26,6 @@ import (
 	"sort"
 
 	"github.com/go-air/pal/indexing"
-	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/objects"
 	"github.com/go-air/pal/results"
@@ -159,13 +158,13 @@ func (p *T) addFuncDecl(name string, fn *ssa.Function) error {
 	memFn := p.buildr.Func(fn.Signature, name, opaque)
 
 	p.vmap[fn] = memFn.Loc()
+	fmt.Printf("built func %s at %d\n", name, memFn.Loc())
 
 	for i, param := range fn.Params {
+		p.vmap[param] = p.buildr.Memory().Obj(memFn.ParamLoc(i))
 		if traceParam {
-			fmt.Printf("setting param %s to %s\n", param, plain.String(memFn.ParamLoc(i)))
-
+			fmt.Printf("setting param %s to %s\n", param, p.vmap[param])
 		}
-		p.vmap[param] = memFn.ParamLoc(i)
 	}
 	// free vars not needed here -- top level func def
 
@@ -335,6 +334,7 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 		rxloc := p.vmap[iter.X]
 		if rxloc == memory.NoLoc {
 			rxloc = p.genValueLoc(iter.X)
+			fmt.Printf("gen value for %s iter.X of next\n", rxloc)
 			p.buildr.Pos(v.Pos()).Class(memory.Local).Attrs(memory.NoAttrs)
 		}
 		mgoty := iter.X.Type().Underlying().(*types.Map)
@@ -408,13 +408,13 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 
 		}
 	case *ssa.Call:
-		p.call(i9n.Call)
+		p.call(i9n.Call, p.vmap[i9n])
 	case *ssa.ChangeInterface:
 	case *ssa.ChangeType:
 	case *ssa.Convert:
 	case *ssa.DebugRef:
 	case *ssa.Defer:
-		p.call(i9n.Call)
+		p.call(i9n.Call, memory.NoLoc)
 	case *ssa.Extract: // done in gen locs
 	case *ssa.Field: // done in gen locs
 
@@ -439,7 +439,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 
 	case *ssa.Go:
 		// for now, treat as call
-		p.call(i9n.Call)
+		p.call(i9n.Call, memory.NoLoc)
 	case *ssa.If:
 	case *ssa.Index: // constraints done in gen locs
 	case *ssa.IndexAddr:
@@ -503,9 +503,10 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		palFn = p.funcs[ssaFn]
 		// copy results to palFn results...
 		for i, res := range i9n.Results {
-			resLoc := palFn.ResultLoc(i)
+			resptr := palFn.ResultLoc(i)
+			resobj := p.buildr.Memory().Obj(resptr)
 			vloc := p.vmap[res]
-			p.buildr.AddTransfer(resLoc, vloc)
+			p.buildr.AddTransfer(resobj, vloc)
 		}
 
 	case *ssa.UnOp:
@@ -517,9 +518,10 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 			c := p.buildr.Object(p.vmap[i9n.X]).(*objects.Chan)
 			dst := p.vmap[i9n]
 			if dst == memory.NoLoc {
-				panic("no loc for <-")
+				//panic(fmt.Sprintf("no loc for <- %#v\n", i9n))
+			} else {
+				c.Recv(dst, p.buildr.Memory())
 			}
-			c.Recv(dst, p.buildr.Memory())
 
 		default: // indexing
 		}
@@ -542,7 +544,7 @@ func (p *T) PkgPath() string {
 	return p.pass.Pkg.Path()
 }
 
-func (p *T) call(c ssa.CallCommon) {
+func (p *T) call(c ssa.CallCommon, dst memory.Loc) {
 	if c.IsInvoke() {
 		p.invoke(c)
 		return
@@ -551,7 +553,24 @@ func (p *T) call(c ssa.CallCommon) {
 	if callee == nil {
 		return
 	}
-
+	switch fssa := c.Value.(type) {
+	case *ssa.Function:
+		floc := p.vmap[fssa]
+		if floc == memory.NoLoc {
+			panic("wilma!")
+		}
+		fn := p.buildr.Object(floc).(*objects.Func)
+		fmt.Printf("calling '%s' loc %d\n", fssa.Name(), floc)
+		args := make([]memory.Loc, len(c.Args))
+		for i, argVal := range c.Args {
+			args[i] = p.vmap[argVal]
+		}
+		p.buildr.Call(fn, dst, args)
+	case *ssa.Builtin:
+	case *ssa.MakeClosure:
+	default:
+		// dynamic dispatch
+	}
 }
 
 func (p *T) invoke(c ssa.CallCommon) {
