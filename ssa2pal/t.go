@@ -163,7 +163,7 @@ func (p *T) addFuncDecl(name string, fn *ssa.Function) error {
 	for i, param := range fn.Params {
 		p.vmap[param] = p.buildr.Memory().Obj(memFn.ParamLoc(i))
 		if traceParam {
-			fmt.Printf("setting param %s to %s\n", param, p.vmap[param])
+			fmt.Printf("setting param %s to %d\n", param, p.vmap[param])
 		}
 	}
 	// free vars not needed here -- top level func def
@@ -334,7 +334,6 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 		rxloc := p.vmap[iter.X]
 		if rxloc == memory.NoLoc {
 			rxloc = p.genValueLoc(iter.X)
-			fmt.Printf("gen value for %s iter.X of next\n", rxloc)
 			p.buildr.Pos(v.Pos()).Class(memory.Local).Attrs(memory.NoAttrs)
 		}
 		mgoty := iter.X.Type().Underlying().(*types.Map)
