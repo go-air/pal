@@ -202,7 +202,7 @@ func (t *TypeSet) getInterface(meths []named) Type {
 func (t *TypeSet) getSignature(recv Type, params, results []named, variadic bool) Type {
 	ty, node := t.newNode()
 	node.kind = Func
-	node.lsize = 1
+	node.lsize = 1 + len(params) + len(results)
 	node.params = params
 	node.results = results
 	node.variadic = variadic
