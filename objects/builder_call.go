@@ -15,8 +15,6 @@
 package objects
 
 import (
-	"fmt"
-
 	"github.com/go-air/pal/memory"
 )
 
@@ -26,7 +24,6 @@ import (
 //
 // args indicate the arguments at the call site.
 func (b *Builder) Call(f *Func, dst memory.Loc, args []memory.Loc) {
-	fmt.Printf("n args %d n params %d\n", len(args), len(f.params))
 	start := 0
 	if f.recv != memory.NoLoc {
 		start = 1
@@ -36,6 +33,9 @@ func (b *Builder) Call(f *Func, dst memory.Loc, args []memory.Loc) {
 		b.AddStore(f.params[i], arg)
 	}
 	if dst == memory.NoLoc {
+		// this is for go and defer calls, the returns
+		// even if defined are by construction ignored
+		// at the call site.
 		return
 	}
 	switch len(f.results) {
