@@ -30,8 +30,9 @@ import (
 // Type Model represents a memory model for a package.
 type Model[Index any] struct {
 	locs        []loc
-	constraints []Constraint[Index]
-	indexing    indexing.T[Index]
+	constraints []Constraint
+	indexing    indexing.T
+	work        []Loc
 }
 
 // NewModel generates a new memory model for a package.
@@ -145,7 +146,17 @@ func (mod *Model[Index]) Type(m Loc) typeset.Type {
 func (mod *Model[Index]) Gen(gp *GenParams) Loc {
 	var sum int
 	p := Loc(uint32(len(mod.locs)))
-	return mod.p_add(gp, p, p, &sum)
+	result := mod.add(gp, p, p, &sum)
+	for _, ptr := range mod.work {
+		gp.typ = gp.ts.Elem(mod.Type(ptr))
+		sum := 0
+		p = Loc(uint32(len(mod.locs)))
+		obj := mod.add(gp, p, p, &sum)
+		mod.locs[ptr].obj = obj
+		mod.AddAddressOf(ptr, obj)
+	}
+	mod.work = mod.work[:0]
+	return result
 }
 
 func (mod *Model[Index]) WithPointer(gp *GenParams) (obj, ptr Loc) {
@@ -180,12 +191,12 @@ func (mod *Model[Index]) Cap(c int) {
 	mod.locs = mod.locs[:c]
 }
 
-// p_add adds a root recursively according to ty.
+// add adds a root recursively according to ty.
 //
 // add is responsible for setting the size, parent, class, attrs, typ, and root
 // of all added nodes.
 //
-func (mod *Model[Index]) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
+func (mod *Model) add(gp *GenParams, p, r Loc, sum *int) Loc {
 	n := Loc(uint32(len(mod.locs)))
 	l := loc{
 		parent: p,
@@ -199,7 +210,7 @@ func (mod *Model[Index]) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 	switch gp.ts.Kind(gp.typ) {
 	// these are added as pointers here indirect associattions (params,
 	// returns, ...) are done in github.com/go-air/objects.Builder
-	case typeset.Basic, typeset.Func, typeset.Pointer, typeset.Interface:
+	case typeset.Basic, typeset.Pointer, typeset.Interface:
 		mod.locs = append(mod.locs, l)
 		*sum++
 	case typeset.Slice, typeset.Chan, typeset.Map:
@@ -214,7 +225,7 @@ func (mod *Model[Index]) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		elemTy := gp.ts.Elem(gp.typ)
 		for i := 0; i < m; i++ {
 			gp.typ = elemTy
-			mod.p_add(gp, n, r, sum)
+			mod.add(gp, n, r, sum)
 		}
 	case typeset.Struct:
 		mod.locs = append(mod.locs, l)
@@ -223,7 +234,7 @@ func (mod *Model[Index]) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		styp := gp.typ
 		for i := 0; i < nf; i++ {
 			_, gp.typ, _ = gp.ts.Field(styp, i)
-			mod.p_add(gp, n, r, sum)
+			mod.add(gp, n, r, sum)
 		}
 
 	case typeset.Tuple:
@@ -233,12 +244,35 @@ func (mod *Model[Index]) p_add(gp *GenParams, p, r Loc, sum *int) Loc {
 		ttyp := gp.typ
 		for i := 0; i < tn; i++ {
 			_, gp.typ, _ = gp.ts.Field(ttyp, i)
-			mod.p_add(gp, n, r, sum)
+			mod.add(gp, n, r, sum)
 		}
 	case typeset.Named:
 		gp.typ = gp.ts.Underlying(gp.typ)
-		mod.p_add(gp, p, r, sum)
+		mod.add(gp, p, r, sum)
 		added = false
+	case typeset.Func:
+		mod.locs = append(mod.locs, l)
+		*sum++
+		fty := gp.typ
+		rcvty := gp.ts.Recv(fty)
+		if rcvty != typeset.NoType {
+			gp.typ = gp.ts.PointerTo(rcvty)
+			mod.work = append(mod.work, mod.add(gp, n, r, sum))
+		}
+		// TBD FreeVars
+
+		np := gp.ts.NumParams(fty)
+		for i := 0; i < np; i++ {
+			_, gp.typ = gp.ts.Param(fty, i)
+			gp.typ = gp.ts.PointerTo(gp.typ)
+			mod.work = append(mod.work, mod.add(gp, n, r, sum))
+		}
+		nr := gp.ts.NumResults(fty)
+		for i := 0; i < nr; i++ {
+			_, gp.typ = gp.ts.Result(fty, i)
+			gp.typ = gp.ts.PointerTo(gp.typ)
+			mod.work = append(mod.work, mod.add(gp, n, r, sum))
+		}
 
 	default:
 		panic(fmt.Sprintf("%d: unexpected/unimplemented", gp.typ))

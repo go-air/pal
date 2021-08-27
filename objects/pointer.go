@@ -26,7 +26,7 @@ type Pointer struct {
 
 func (p *Pointer) PlainEncode(w io.Writer) error {
 	var err error
-	err = plain.Put(w, "p")
+	err = plain.Put(w, "p ")
 	if err != nil {
 		return err
 	}
@@ -35,7 +35,7 @@ func (p *Pointer) PlainEncode(w io.Writer) error {
 
 func (p *Pointer) PlainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, " ")
+	err = plain.Expect(r, "p ")
 	if err != nil {
 		return err
 	}

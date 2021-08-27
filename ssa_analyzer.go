@@ -16,6 +16,8 @@ package pal
 
 import (
 	"flag"
+	"fmt"
+	"os"
 	"reflect"
 
 	"github.com/go-air/pal/indexing"
@@ -26,6 +28,7 @@ import (
 )
 
 var flagSet = flag.NewFlagSet("pal", flag.ExitOnError)
+var palVersion = flagSet.Bool("V", false, "print out pal version")
 
 type resultType int
 
@@ -51,6 +54,15 @@ func SSAAnalyzer() *analysis.Analyzer {
 }
 
 func run(pass *analysis.Pass) (interface{}, error) {
+	//flagSet.Parse(pass.Analyzer.Flags.Args())
+	if *palVersion {
+		v, e := Version()
+		if e != nil {
+			return nil, e
+		}
+		fmt.Printf("%s\n", v)
+		os.Exit(0)
+	}
 	pal, err := ssa2pal.New(pass, indexing.ConstVals())
 	if err != nil {
 		return nil, err

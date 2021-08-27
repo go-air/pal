@@ -38,7 +38,7 @@ func (a *Array) At(i int) memory.Loc {
 
 func (a *Array) PlainEncode(w io.Writer) error {
 	var err error
-	err = plain.Put(w, "a")
+	err = plain.Put(w, "a ")
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (a *Array) PlainEncode(w io.Writer) error {
 
 func (a *Array) PlainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "a")
+	err = plain.Expect(r, "a ")
 	if err != nil {
 		return err
 	}

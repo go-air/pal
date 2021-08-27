@@ -187,7 +187,9 @@ func (b *Builder) Pointer(gtype *types.Pointer) *Pointer {
 func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attrs) *Func {
 	fn := &Func{declName: declName}
 	fn.typ = b.ts.FromGoType(sig)
-	fn.loc = b.Type(fn.typ).Gen()
+	_, fn.loc = b.Type(fn.typ).WithPointer()
+
+	b.mmod.AddAddressOf(fn.loc, fn.loc)
 
 	fn.params = make([]memory.Loc, sig.Params().Len())
 	fn.variadic = sig.Variadic()
@@ -196,29 +198,30 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 	b.Class(memory.Local) // for all params and returns
 
 	recv := sig.Recv()
+	var obj memory.Loc
 
 	if recv != nil {
 		b.mgp.Type(b.ts.FromGoType(recv.Type()))
-		fn.recv = b.mmod.Gen(b.mgp)
-		b.walkObj(fn.recv)
+		obj, fn.recv = b.mmod.WithPointer(b.mgp)
+		b.walkObj(obj)
 	}
 	params := sig.Params()
 	N := params.Len()
 	for i := 0; i < N; i++ {
 		param := params.At(i)
 		pty := b.ts.FromGoType(param.Type().Underlying())
-		fn.params[i] =
-			b.Pos(param.Pos()).Type(pty).Attrs(memory.IsParam | opaque).Gen()
-		b.walkObj(fn.params[i])
+		obj, fn.params[i] =
+			b.Pos(param.Pos()).Type(pty).Attrs(memory.IsParam | opaque).WithPointer()
+		b.walkObj(obj)
 	}
 	rets := sig.Results()
 	N = rets.Len()
 	for i := 0; i < N; i++ {
 		ret := rets.At(i)
 		rty := b.ts.FromGoType(ret.Type())
-		fn.results[i] =
-			b.Pos(ret.Pos()).Type(rty).Attrs(memory.IsReturn | opaque).Gen()
-		b.walkObj(fn.results[i])
+		obj, fn.results[i] =
+			b.Pos(ret.Pos()).Type(rty).Attrs(memory.IsReturn | opaque).WithPointer()
+		b.walkObj(obj)
 	}
 	// TBD: FreeVars
 	b.omap[fn.loc] = fn

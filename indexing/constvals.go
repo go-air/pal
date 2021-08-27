@@ -63,6 +63,10 @@ func ConstVals() T[*C] {
 	return consts{}
 }
 
+func (c *C) Gen() I {
+	return &C{}
+}
+
 var zero int64 = 0
 var one int64 = 1
 

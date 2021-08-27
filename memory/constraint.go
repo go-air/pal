@@ -85,10 +85,26 @@ func TransferIndex[Index any](dst, src Loc, i Index) Constraint[Index] {
 	return Constraint[Index]{Kind: KTransfer, Dest: dst, Src: src, Index: i}
 }
 
-func (c *Constraint[Index]) PlainEncode(w io.Writer) error {
-	return plain.EncodeJoin(w, " ", c.Kind, c.Dest, c.Src)
+func (c *Constraint) PlainEncode(w io.Writer) error {
+	switch c.Kind {
+	case KTransfer:
+		return plain.EncodeJoin(w, " ", c.Kind, c.Dest, c.Src, c.Index)
+	default:
+		return plain.EncodeJoin(w, " ", c.Kind, c.Dest, c.Src)
+	}
 }
 
-func (c *Constraint[Index]) PlainDecode(r io.Reader) error {
-	return plain.DecodeJoin(r, " ", &c.Kind, &c.Dest, &c.Src)
+func (c *Constraint) PlainDecode(r io.Reader) error {
+	err := plain.DecodeJoin(r, " ", &c.Kind, &c.Dest, &c.Src)
+	if err != nil {
+		return err
+	}
+	if c.Kind == KTransfer {
+		err = plain.Expect(r, " ")
+		if err != nil {
+			return err
+		}
+		err = c.Index.PlainDecode(r)
+	}
+	return err
 }

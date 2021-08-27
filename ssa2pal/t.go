@@ -26,7 +26,6 @@ import (
 	"sort"
 
 	"github.com/go-air/pal/indexing"
-	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/objects"
 	"github.com/go-air/pal/results"
@@ -159,13 +158,13 @@ func (p *T) addFuncDecl(name string, fn *ssa.Function) error {
 	memFn := p.buildr.Func(fn.Signature, name, opaque)
 
 	p.vmap[fn] = memFn.Loc()
+	fmt.Printf("built func %s at %d\n", name, memFn.Loc())
 
 	for i, param := range fn.Params {
+		p.vmap[param] = p.buildr.Memory().Obj(memFn.ParamLoc(i))
 		if traceParam {
-			fmt.Printf("setting param %s to %s\n", param, plain.String(memFn.ParamLoc(i)))
-
+			fmt.Printf("setting param %s to %d\n", param, p.vmap[param])
 		}
-		p.vmap[param] = memFn.ParamLoc(i)
 	}
 	// free vars not needed here -- top level func def
 
@@ -282,30 +281,34 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			i := int(i64) // should be ok also b/c it is type checked.
 			res = x.At(i)
 		default:
-			// we have a variable or expression index.
-			// we
-			//  1. take address of the array, call it pa, in a new loc
-			//  2. create qa, same type as pa
-			//  3. add AddTransferIndex(qa, pa, p.indexing.Var())
-			//  4. create res, type of element of array
-			//  5. create res = load(qa)
-			// TBD:
-
-			ty, ok := v.X.Type().Underlying().(*types.Array)
-			if !ok {
-				panic(fmt.Sprintf("v type %s %#v\n", v.Type(), v.Type()))
+			if x.Len() == 0 {
+				// this should be type checked, but it is
+				// not.
+				res = p.buildr.Memory().Zero()
+			} else {
+				// we have a variable or expression index.
+				// we
+				//  1. take address of the array, call it pa, in a new loc
+				//  2. create qa, same type as pa
+				//  3. add AddTransferIndex(qa, pa, p.indexing.Var())
+				//  4. create res, type of element of array
+				//  5. create res = load(qa)
+				ty, ok := v.X.Type().Underlying().(*types.Array)
+				if !ok {
+					panic(fmt.Sprintf("v type %s %#v\n", v.Type(), v.Type()))
+				}
+				eltTy := ty.Elem()
+				ptrTy := types.NewPointer(ty.Elem())
+				pelt := p.buildr.GoType(ptrTy).Gen()
+				p.buildr.AddAddressOf(pelt, x.At(0))
+				qelt := p.buildr.Gen()
+				// it may crash if oob, add address of nil
+				// TBD: see if with indexing we can constrain this.
+				p.buildr.AddAddressOf(qelt, p.buildr.Memory().Zero())
+				res = p.buildr.GoType(eltTy).Gen()
+				p.buildr.AddTransferIndex(qelt, pelt, p.indexing.Var())
+				p.buildr.AddLoad(res, qelt)
 			}
-
-			eltTy := ty.Elem()
-			ptrTy := types.NewPointer(ty.Elem())
-			pelt := p.buildr.GoType(ptrTy).Gen()
-			qelt := p.buildr.Gen()
-			// it may crash if oob, add address of nil
-			// TBD: see if with indexing we can constrain this.
-			p.buildr.AddAddressOf(qelt, p.buildr.Memory().Zero())
-			res = p.buildr.GoType(eltTy).Gen()
-			p.buildr.AddTransferIndex(qelt, pelt, p.indexing.Var())
-			p.buildr.AddLoad(res, qelt)
 		}
 	case *ssa.Extract:
 		tloc := p.vmap[v.Tuple]
@@ -404,14 +407,14 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 
 		}
 	case *ssa.Call:
-		p.call(i9n.Call)
+		p.call(i9n.Call, p.vmap[i9n])
 	case *ssa.ChangeInterface:
 	case *ssa.ChangeType:
 	case *ssa.Convert:
 	case *ssa.DebugRef:
 	case *ssa.Defer:
-		p.call(i9n.Call)
-	case *ssa.Extract:
+		p.call(i9n.Call, memory.NoLoc)
+	case *ssa.Extract: // done in gen locs
 	case *ssa.Field: // done in gen locs
 
 	case *ssa.FieldAddr:
@@ -435,7 +438,7 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 
 	case *ssa.Go:
 		// for now, treat as call
-		p.call(i9n.Call)
+		p.call(i9n.Call, memory.NoLoc)
 	case *ssa.If:
 	case *ssa.Index: // constraints done in gen locs
 	case *ssa.IndexAddr:
@@ -499,9 +502,10 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		palFn = p.funcs[ssaFn]
 		// copy results to palFn results...
 		for i, res := range i9n.Results {
-			resLoc := palFn.ResultLoc(i)
+			resptr := palFn.ResultLoc(i)
+			resobj := p.buildr.Memory().Obj(resptr)
 			vloc := p.vmap[res]
-			p.buildr.AddTransfer(resLoc, vloc)
+			p.buildr.AddTransfer(resobj, vloc)
 		}
 
 	case *ssa.UnOp:
@@ -509,14 +513,14 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		switch i9n.Op {
 		case token.MUL: // *p
 			p.buildr.AddLoad(p.vmap[i9n], p.vmap[i9n.X])
-		case token.ARROW: // <- TBD:
-			fmt.Printf("<-: %s %#v\n", i9n, i9n)
+		case token.ARROW:
 			c := p.buildr.Object(p.vmap[i9n.X]).(*objects.Chan)
 			dst := p.vmap[i9n]
 			if dst == memory.NoLoc {
-				panic("no loc for <-")
+				//panic(fmt.Sprintf("no loc for <- %#v\n", i9n))
+			} else {
+				c.Recv(dst, p.buildr.Memory())
 			}
-			c.Recv(dst, p.buildr.Memory())
 
 		default: // indexing
 		}
@@ -539,7 +543,7 @@ func (p *T) PkgPath() string {
 	return p.pass.Pkg.Path()
 }
 
-func (p *T) call(c ssa.CallCommon) {
+func (p *T) call(c ssa.CallCommon, dst memory.Loc) {
 	if c.IsInvoke() {
 		p.invoke(c)
 		return
@@ -548,7 +552,24 @@ func (p *T) call(c ssa.CallCommon) {
 	if callee == nil {
 		return
 	}
-
+	switch fssa := c.Value.(type) {
+	case *ssa.Function:
+		floc := p.vmap[fssa]
+		if floc == memory.NoLoc {
+			panic("wilma!")
+		}
+		fn := p.buildr.Object(floc).(*objects.Func)
+		fmt.Printf("calling '%s' loc %d\n", fssa.Name(), floc)
+		args := make([]memory.Loc, len(c.Args))
+		for i, argVal := range c.Args {
+			args[i] = p.vmap[argVal]
+		}
+		p.buildr.Call(fn, dst, args)
+	case *ssa.Builtin:
+	case *ssa.MakeClosure:
+	default:
+		// dynamic dispatch
+	}
 }
 
 func (p *T) invoke(c ssa.CallCommon) {
