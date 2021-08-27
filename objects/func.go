@@ -15,8 +15,10 @@
 package objects
 
 import (
+	"fmt"
 	"io"
 
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/typeset"
 )
@@ -65,9 +67,106 @@ func (f *Func) NumResults() int {
 }
 
 func (f *Func) PlainEncode(w io.Writer) error {
+	err := plain.Put(w, "f ")
+	if err != nil {
+		return err
+	}
+	err = plain.EncodeJoin(w, " ", f.fnobj, f.recv, plain.Uint(len(f.params)))
+	if f.variadic {
+		err = plain.Put(w, "*")
+	} else {
+		err = plain.Put(w, ".")
+	}
+	if err != nil {
+		return err
+	}
+	for _, p := range f.params {
+		err = plain.Put(w, " ")
+		if err != nil {
+			return err
+		}
+		err = p.PlainEncode(w)
+		if err != nil {
+			return err
+		}
+	}
+	// results
+	err = plain.Put(w, " ")
+	if err != nil {
+		return err
+	}
+	err = plain.Uint(len(f.results)).PlainEncode(w)
+	if err != nil {
+		return err
+	}
+	for _, res := range f.results {
+		err = plain.Put(w, " ")
+		if err != nil {
+			return err
+		}
+		err = res.PlainEncode(w)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (f *Func) PlainDecode(r io.Reader) error {
+	err := plain.Expect(r, "f ")
+	if err != nil {
+		return err
+	}
+	n := plain.Uint(0)
+	err = plain.DecodeJoin(r, " ", &f.fnobj, &f.recv, &n)
+	if err != nil {
+		return err
+	}
+	var buf [1]byte
+	_, err = io.ReadFull(r, buf[:])
+	if err != nil {
+		return err
+	}
+	switch buf[0] {
+	case '*':
+		f.variadic = true
+	case '.':
+		f.variadic = false
+	default:
+		return fmt.Errorf("unexpected '%c'", buf[0])
+	}
+	f.params = make([]memory.Loc, n)
+	for i := plain.Uint(0); i < n; i++ {
+		err = plain.Expect(r, " ")
+		if err != nil {
+			return err
+		}
+		p := &f.params[i]
+		err = p.PlainDecode(r)
+		if err != nil {
+			return err
+		}
+	}
+	err = plain.Expect(r, " ")
+	if err != nil {
+		return err
+	}
+	err = (&n).PlainDecode(r)
+	if err != nil {
+		return err
+	}
+
+	f.results = make([]memory.Loc, n)
+	for i := plain.Uint(0); i < n; i++ {
+		err = plain.Expect(r, " ")
+		if err != nil {
+			return err
+		}
+		p := &f.results[i]
+		err = p.PlainDecode(r)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
