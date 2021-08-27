@@ -348,32 +348,7 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 		p.buildr.AddTransfer(tuple.At(2), m.Elem())
 
 	default:
-		switch ty := v.Type().Underlying().(type) {
-		case *types.Tuple:
-			res = p.buildr.Tuple(ty).Loc()
-		case *types.Struct:
-			res = p.buildr.Struct(ty).Loc()
-		case *types.Array:
-			res = p.buildr.Array(ty).Loc()
-		case *types.Slice:
-			res = p.buildr.Slice(ty, nil, nil).Loc()
-		case *types.Map:
-			res = p.buildr.Map(ty).Loc()
-		case *types.Signature:
-			res = p.buildr.Func(ty, "", memory.NoAttrs).Loc()
-		case *types.Pointer:
-			res = p.buildr.Pointer(ty).Loc()
-		case *types.Chan:
-			res = p.buildr.Chan(ty).Loc()
-		case *types.Basic:
-			res = p.buildr.Gen()
-		case *types.Interface:
-			res = p.buildr.Gen()
-
-		default:
-			fmt.Printf("genValueLoc: default switch ty: %s\n", ty)
-			res = p.buildr.Gen()
-		}
+		res = p.buildr.FromGoType(v.Type())
 
 	}
 	p.vmap[v] = res

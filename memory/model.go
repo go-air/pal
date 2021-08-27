@@ -52,6 +52,8 @@ func NewModel(index indexing.T) *Model {
 	z.class = Zero
 	z.parent = zz
 	z.root = zz
+	z.obj = z
+	res.AddPointsTo(z, z)
 	return res
 }
 

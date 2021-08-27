@@ -15,6 +15,7 @@
 package objects
 
 import (
+	"fmt"
 	"go/token"
 	"go/types"
 
@@ -226,6 +227,38 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 	// TBD: FreeVars
 	b.omap[fn.loc] = fn
 	return fn
+}
+
+func (b *Builder) FromGoType(gt types.Type) memory.Loc {
+	var res memory.Loc
+	switch ty := gt.Underlying().(type) {
+	case *types.Tuple:
+		res = b.Tuple(ty).Loc()
+	case *types.Struct:
+		res = b.Struct(ty).Loc()
+	case *types.Array:
+		res = b.Array(ty).Loc()
+	case *types.Slice:
+		res = b.Slice(ty, nil, nil).Loc()
+	case *types.Map:
+		res = b.Map(ty).Loc()
+	case *types.Signature:
+		res = b.Func(ty, "", memory.NoAttrs).Loc()
+	case *types.Pointer:
+		res = b.Pointer(ty).Loc()
+	case *types.Chan:
+		res = b.Chan(ty).Loc()
+	case *types.Basic:
+		res = b.Gen()
+	case *types.Interface:
+		res = b.Gen()
+
+	default:
+		fmt.Printf("genValueLoc: default switch ty: %s\n", ty)
+		res = b.Gen()
+	}
+	return res
+
 }
 
 // second pass to associate objects with all object like memory locations...
