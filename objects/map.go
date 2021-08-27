@@ -19,12 +19,17 @@ import (
 
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/typeset"
 )
 
 type Map struct {
 	object
 	key  memory.Loc
 	elem memory.Loc
+}
+
+func newMap(loc memory.Loc, typ typeset.Type) *Map {
+	return &Map{object: object{kind: kmap, loc: loc, typ: typ}}
 }
 
 func (m *Map) Key() memory.Loc {
@@ -46,26 +51,12 @@ func (m *Map) Lookup(dst memory.Loc, mm *memory.Model) {
 }
 
 func (m *Map) PlainEncode(w io.Writer) error {
-	var err error
-	err = plain.Put(w, "m")
-	if err != nil {
-		return err
-	}
-	err = m.object.PlainEncode(w)
-	if err != nil {
-		return err
-	}
-	return plain.EncodeJoin(w, " ", m.key, m.elem)
+	return plain.EncodeJoin(w, " ", hdr{&m.object}, m.key, m.elem)
 }
 
-func (m *Map) PlainDecode(r io.Reader) error {
+func (m *Map) plainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "m")
-	if err != nil {
-		return err
-	}
-	pobj := &m.object
-	err = pobj.PlainDecode(r)
+	err = plain.Expect(r, " ")
 	if err != nil {
 		return err
 	}

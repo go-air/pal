@@ -16,12 +16,10 @@ package objects
 
 import (
 	"testing"
-
-	"github.com/go-air/pal/internal/plain"
 )
 
-func clobArray(c plain.Coder) {
-	a := c.(*Array)
+func clobArray(o Object) {
+	a := o.(*Array)
 	a.loc = 0
 	a.typ = 0
 	a.n = 0
@@ -29,12 +27,10 @@ func clobArray(c plain.Coder) {
 }
 
 func TestArray(t *testing.T) {
-	a := &Array{}
-	a.loc = 3
-	a.typ = 7
+	a := newArray(3, 7)
 	a.n = 17
 	a.elemSize = 5
-	if err := plain.TestRoundTripClobber(a, clobArray, false); err != nil {
+	if err := testRoundTrip(a, clobArray, false); err != nil {
 		t.Error(err)
 	}
 }

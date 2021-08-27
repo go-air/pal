@@ -34,6 +34,10 @@ type Func struct {
 	variadic bool
 }
 
+func newFunc(loc memory.Loc, typ typeset.Type) *Func {
+	return &Func{object: object{kind: kfunc, loc: loc, typ: typ}}
+}
+
 func (f *Func) Declared() bool {
 	return f.declName != ""
 }
@@ -67,11 +71,8 @@ func (f *Func) NumResults() int {
 }
 
 func (f *Func) PlainEncode(w io.Writer) error {
-	err := plain.Put(w, "f ")
-	if err != nil {
-		return err
-	}
-	err = plain.EncodeJoin(w, " ", f.fnobj, f.recv, plain.Uint(len(f.params)))
+	err := plain.EncodeJoin(w, " ", hdr{&f.object},
+		f.fnobj, f.recv, plain.Uint(len(f.params)))
 	if f.variadic {
 		err = plain.Put(w, "*")
 	} else {
@@ -112,8 +113,8 @@ func (f *Func) PlainEncode(w io.Writer) error {
 	return nil
 }
 
-func (f *Func) PlainDecode(r io.Reader) error {
-	err := plain.Expect(r, "f ")
+func (f *Func) plainDecode(r io.Reader) error {
+	err := plain.Expect(r, " ")
 	if err != nil {
 		return err
 	}
@@ -133,7 +134,7 @@ func (f *Func) PlainDecode(r io.Reader) error {
 	case '.':
 		f.variadic = false
 	default:
-		return fmt.Errorf("unexpected '%c'", buf[0])
+		return fmt.Errorf("unexpected modifier '%c'", buf[0])
 	}
 	f.params = make([]memory.Loc, n)
 	for i := plain.Uint(0); i < n; i++ {
@@ -149,7 +150,7 @@ func (f *Func) PlainDecode(r io.Reader) error {
 	}
 	err = plain.Expect(r, " ")
 	if err != nil {
-		return err
+		return fmt.Errorf("unexpected space 2: %w\n", err)
 	}
 	err = (&n).PlainDecode(r)
 	if err != nil {

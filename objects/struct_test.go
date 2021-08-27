@@ -17,21 +17,18 @@ package objects
 import (
 	"testing"
 
-	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
 
 func TestStruct(t *testing.T) {
-	u := &Struct{}
-	u.loc = 11
-	u.typ = 14
+	u := newStruct(11, 16)
 	u.fields = make([]memory.Loc, 2)
 	u.fields[0] = 555
 	u.fields[1] = 2
 	var err error
-	err = plain.TestRoundTripClobber(u, func(c plain.Coder) {
+	err = testRoundTrip(u, func(o Object) {
 
-		u := c.(*Struct)
+		u := o.(*Struct)
 		u.loc = 0
 		u.typ = 0
 		u.fields = nil

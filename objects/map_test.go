@@ -16,16 +16,14 @@ package objects
 
 import (
 	"testing"
-
-	"github.com/go-air/pal/internal/plain"
 )
 
-func clobMap(c plain.Coder) {
-	a := c.(*Map)
-	a.loc = 0
-	a.typ = 0
-	a.key = 0
-	a.elem = 0
+func clobMap(o Object) {
+	m := o.(*Map)
+	m.loc = 0
+	m.typ = 0
+	m.key = 0
+	m.elem = 0
 }
 
 func TestMap(t *testing.T) {
@@ -34,7 +32,7 @@ func TestMap(t *testing.T) {
 	a.typ = 7
 	a.key = 17
 	a.elem = 5
-	if err := plain.TestRoundTripClobber(a, clobMap, false); err != nil {
+	if err := testRoundTrip(a, clobMap, false); err != nil {
 		t.Error(err)
 	}
 }

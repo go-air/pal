@@ -19,6 +19,7 @@ import (
 
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/typeset"
 )
 
 // Chan object
@@ -29,6 +30,10 @@ import (
 type Chan struct {
 	object
 	slot memory.Loc
+}
+
+func newChan(loc memory.Loc, ty typeset.Type) *Chan {
+	return &Chan{object: object{kind: kchan, loc: loc, typ: ty}}
 }
 
 // Recv retrieves the data from the c and loads
@@ -45,25 +50,13 @@ func (c *Chan) Send(src memory.Loc, mm *memory.Model) {
 }
 
 func (c *Chan) PlainEncode(w io.Writer) error {
-	var err error
-	err = plain.Put(w, "c ")
-	if err != nil {
-		return err
-	}
-	if err = c.object.PlainEncode(w); err != nil {
-		return err
-	}
-	return c.slot.PlainEncode(w)
+	return plain.EncodeJoin(w, " ", hdr{&c.object}, c.slot)
 }
 
-func (c *Chan) PlainDecode(r io.Reader) error {
+func (c *Chan) plainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "c ")
+	err = plain.Expect(r, " ")
 	if err != nil {
-		return err
-	}
-	p := &c.object
-	if err = p.PlainDecode(r); err != nil {
 		return err
 	}
 	ps := &c.slot

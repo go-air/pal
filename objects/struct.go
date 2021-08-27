@@ -19,11 +19,16 @@ import (
 
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/typeset"
 )
 
 type Struct struct {
 	object
 	fields []memory.Loc
+}
+
+func newStruct(loc memory.Loc, typ typeset.Type) *Struct {
+	return &Struct{object: object{kind: kstruct, loc: loc, typ: typ}}
 }
 
 func (s *Struct) NumFields(i int) int {
@@ -36,11 +41,7 @@ func (s *Struct) Field(i int) memory.Loc {
 
 func (s *Struct) PlainEncode(w io.Writer) error {
 	var err error
-	err = plain.Put(w, "r ")
-	if err != nil {
-		return err
-	}
-	err = s.object.PlainEncode(w)
+	err = hdr{&s.object}.plainEncode(w)
 	if err != nil {
 		return err
 	}
@@ -66,17 +67,8 @@ func (s *Struct) PlainEncode(w io.Writer) error {
 	return nil
 }
 
-func (s *Struct) PlainDecode(r io.Reader) error {
+func (s *Struct) plainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "r ")
-	if err != nil {
-		return err
-	}
-	obj := &s.object
-	err = obj.PlainDecode(r)
-	if err != nil {
-		return err
-	}
 	err = plain.Expect(r, " ")
 	if err != nil {
 		return err

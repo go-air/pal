@@ -186,9 +186,10 @@ func (b *Builder) Pointer(gtype *types.Pointer) *Pointer {
 // which may or may not be declared.  `declName` must be empty
 // iff the associated function is not declared.
 func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attrs) *Func {
-	fn := &Func{declName: declName}
-	fn.typ = b.ts.FromGoType(sig)
-	_, fn.loc = b.Type(fn.typ).WithPointer()
+	typ := b.ts.FromGoType(sig)
+	_, obj := b.Type(typ).WithPointer()
+	fn := newFunc(obj, typ)
+	fn.declName = declName
 
 	b.mmod.AddAddressOf(fn.loc, fn.loc)
 
@@ -199,7 +200,6 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 	b.Class(memory.Local) // for all params and returns
 
 	recv := sig.Recv()
-	var obj memory.Loc
 
 	if recv != nil {
 		b.mgp.Type(b.ts.FromGoType(recv.Type()))
@@ -273,9 +273,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 		switch ty {
 		case typeset.Pointer:
 			if b.omap[m] == nil {
-				ptr := &Pointer{}
-				ptr.loc = m
-				ptr.typ = ty
+				ptr := newPointer(m, ty)
 				b.omap[m] = ptr
 			}
 		}
@@ -283,9 +281,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 		var arr *Array
 		obj := b.omap[m]
 		if obj == nil {
-			arr = &Array{}
-			arr.loc = m
-			arr.typ = ty
+			arr = newArray(m, ty)
 			arr.n = int64(b.ts.ArrayLen(ty))
 			arr.elemSize = int64(b.ts.Lsize(b.ts.Elem(ty)))
 			b.omap[m] = arr
@@ -302,9 +298,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 		var strukt *Struct
 		obj := b.omap[m]
 		if obj == nil {
-			strukt = &Struct{}
-			strukt.loc = m
-			strukt.typ = ty
+			strukt = newStruct(m, ty)
 			b.omap[m] = strukt
 		} else {
 			strukt = obj.(*Struct)
@@ -322,9 +316,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 		var ch *Chan
 		obj := b.omap[m]
 		if obj == nil {
-			ch = &Chan{}
-			ch.loc = m
-			ch.typ = ty
+			ch = newChan(m, ty)
 			ch.slot = b.Type(b.ts.Elem(ty)).Gen()
 			b.mmod.AddAddressOf(ch.loc, ch.slot)
 			b.omap[m] = ch
@@ -336,9 +328,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 		var ma *Map
 		obj := b.omap[m]
 		if obj == nil {
-			ma = &Map{}
-			ma.loc = m
-			ma.typ = ty
+			ma = newMap(m, ty)
 			ma.key = b.Type(b.ts.Key(ty)).Gen()
 			ma.elem = b.Type(b.ts.Elem(ty)).Gen()
 			b.mmod.AddAddressOf(ma.loc, ma.key)
@@ -353,9 +343,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 		var slice *Slice
 		obj := b.omap[m]
 		if obj == nil {
-			slice = &Slice{}
-			slice.loc = m
-			slice.typ = b.mmod.Type(m)
+			slice = newSlice(m, ty)
 			slice.Len = b.indexing.Zero()
 			slice.Cap = b.indexing.Zero()
 			b.AddAddressOf(slice.loc, b.mmod.Zero())
@@ -371,9 +359,7 @@ func (b *Builder) walkObj(m memory.Loc) {
 		var tuple *Tuple
 		obj := b.omap[m]
 		if obj == nil {
-			tuple = &Tuple{}
-			tuple.loc = m
-			tuple.typ = ty
+			tuple = newTuple(m, ty)
 			b.omap[m] = tuple
 		} else {
 			tuple = obj.(*Tuple)

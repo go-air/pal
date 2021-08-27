@@ -21,8 +21,8 @@ import (
 	"github.com/go-air/pal/internal/plain"
 )
 
-func clobSlice(c plain.Coder) {
-	s := c.(*Slice)
+func clobSlice(o Object) {
+	s := o.(*Slice)
 	s.loc = 0
 	s.typ = 0
 	s.slots = nil
@@ -41,21 +41,11 @@ func TestSlot(t *testing.T) {
 }
 
 func TestSlice(t *testing.T) {
-
 	idx := indexing.ConstVals()
 	b := NewBuilder("testslice", idx)
 	s := b.Slice(types.NewSlice(types.Typ[types.Int]), idx.Var(), idx.Var())
 	b.AddSlot(s, idx.Var())
-	//s := &Slice{}
-	//s.loc = 3
-	//s.typ = 7
-	//var v1 indexing.I = idx.Var()
-	//var v2 indexing.I = idx.Var()
-	//fmt.Printf("v1 %p v2 %p\n", v1, v2)
-	//s.slots = []Slot{
-	//	{Ptr: 17, Obj: 3, I: v1},
-	//	{Ptr: 18, Obj: 1, I: v2}}
-	if err := plain.TestRoundTripClobber(s, clobSlice, true); err != nil {
+	if err := testRoundTrip(s, clobSlice, true); err != nil {
 		t.Error(err)
 	}
 }

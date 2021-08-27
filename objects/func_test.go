@@ -20,12 +20,11 @@ import (
 	"testing"
 
 	"github.com/go-air/pal/indexing"
-	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 )
 
-func clobber(c plain.Coder) {
-	f := c.(*Func)
+func fclob(o Object) {
+	f := o.(*Func)
 	f.declName = ""
 	f.fnobj = 0
 	f.recv = 0
@@ -43,7 +42,7 @@ func TestFuncPlain(t *testing.T) {
 	sig := types.NewSignature(nil, parms, ress, false)
 	b := NewBuilder("pkg", indexing.ConstVals())
 	f := b.Func(sig, "declName", memory.IsOpaque)
-	err := plain.TestRoundTripClobber(f, clobber, true)
+	err := testRoundTrip(f, fclob, true)
 	if err != nil {
 		t.Error(err)
 	}

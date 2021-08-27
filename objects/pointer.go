@@ -17,28 +17,22 @@ package objects
 import (
 	"io"
 
-	"github.com/go-air/pal/internal/plain"
+	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/typeset"
 )
 
 type Pointer struct {
 	object
 }
 
-func (p *Pointer) PlainEncode(w io.Writer) error {
-	var err error
-	err = plain.Put(w, "p ")
-	if err != nil {
-		return err
-	}
-	return p.object.PlainEncode(w)
+func newPointer(loc memory.Loc, typ typeset.Type) *Pointer {
+	return &Pointer{object: object{kind: kpointer, loc: loc, typ: typ}}
 }
 
-func (p *Pointer) PlainDecode(r io.Reader) error {
-	var err error
-	err = plain.Expect(r, "p ")
-	if err != nil {
-		return err
-	}
-	po := &p.object
-	return po.PlainDecode(r)
+func (p *Pointer) PlainEncode(w io.Writer) error {
+	return (&p.object).plainEncode(w)
+}
+
+func (p *Pointer) plainDecode(r io.Reader) error {
+	return nil
 }

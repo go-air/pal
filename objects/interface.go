@@ -29,6 +29,6 @@ func (i *Interface) PlainEncode(w io.Writer) error {
 	return nil
 }
 
-func (i *Interface) PlainDecode(r io.Reader) error {
+func (i *Interface) plainDecode(r io.Reader) error {
 	return nil
 }

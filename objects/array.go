@@ -19,12 +19,17 @@ import (
 
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/typeset"
 )
 
 type Array struct {
 	object
 	elemSize int64
 	n        int64
+}
+
+func newArray(loc memory.Loc, ty typeset.Type) *Array {
+	return &Array{object: object{kind: karray, loc: loc, typ: ty}}
 }
 
 func (a *Array) Len() int64 {
@@ -37,22 +42,17 @@ func (a *Array) At(i int) memory.Loc {
 }
 
 func (a *Array) PlainEncode(w io.Writer) error {
-	var err error
-	err = plain.Put(w, "a ")
-	if err != nil {
-		return err
-	}
-	return plain.EncodeJoin(w, " ", &a.object, plain.Uint(a.elemSize), plain.Uint(a.n))
+	return plain.EncodeJoin(w, " ", hdr{&a.object}, plain.Uint(a.elemSize), plain.Uint(a.n))
 }
 
-func (a *Array) PlainDecode(r io.Reader) error {
+func (a *Array) plainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "a ")
+	err = plain.Expect(r, " ")
 	if err != nil {
 		return err
 	}
 	esz, n := plain.Uint(a.elemSize), plain.Uint(a.n)
-	err = plain.DecodeJoin(r, " ", &a.object, &esz, &n)
+	err = plain.DecodeJoin(r, " ", &esz, &n)
 	if err != nil {
 		return err
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/go-air/pal/indexing"
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/typeset"
 )
 
 // Slices are modelled as follows.
@@ -42,6 +43,10 @@ type Slice struct {
 	Len   indexing.I
 	Cap   indexing.I
 	slots []Slot
+}
+
+func newSlice(loc memory.Loc, typ typeset.Type) *Slice {
+	return &Slice{object: object{kind: kslice, loc: loc, typ: typ}}
 }
 
 func (slice *Slice) Ptr() memory.Loc {
@@ -72,15 +77,10 @@ func (slot *Slot) PlainDecode(r io.Reader) error {
 
 func (slice *Slice) PlainEncode(w io.Writer) error {
 	var err error
-	err = plain.Put(w, "s ")
+	err = (&slice.object).plainEncode(w)
 	if err != nil {
 		return err
 	}
-	err = slice.object.PlainEncode(w)
-	if err != nil {
-		return err
-	}
-
 	err = plain.Put(w, " ")
 	if err != nil {
 		return err
@@ -104,17 +104,9 @@ func (slice *Slice) PlainEncode(w io.Writer) error {
 	return nil
 }
 
-func (slice *Slice) PlainDecode(r io.Reader) error {
+func (slice *Slice) plainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "s ")
-	if err != nil {
-		return err
-	}
-	pobj := &slice.object
-	err = pobj.PlainDecode(r)
-	if err != nil {
-		return err
-	}
+
 	err = plain.Expect(r, " ")
 	if err != nil {
 		return err
@@ -128,7 +120,7 @@ func (slice *Slice) PlainDecode(r io.Reader) error {
 			return err
 		}
 		pslot := &slice.slots[i]
-		pslot.I = slice.Len.Gen()
+		pslot.I = indexing.ConstVals().Var() //slice.Len.Gen()
 		err = pslot.PlainDecode(r)
 		if err != nil {
 			return err

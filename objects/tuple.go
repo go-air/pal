@@ -15,15 +15,21 @@
 package objects
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
+	"github.com/go-air/pal/typeset"
 )
 
 type Tuple struct {
 	object
 	fields []memory.Loc
+}
+
+func newTuple(loc memory.Loc, typ typeset.Type) *Tuple {
+	return &Tuple{object: object{kind: ktuple, loc: loc, typ: typ}}
 }
 
 func (t *Tuple) NumFields(i int) int {
@@ -36,11 +42,7 @@ func (t *Tuple) At(i int) memory.Loc {
 
 func (tuple *Tuple) PlainEncode(w io.Writer) error {
 	var err error
-	err = plain.Put(w, "t ")
-	if err != nil {
-		return err
-	}
-	err = tuple.object.PlainEncode(w)
+	err = (&tuple.object).plainEncode(w)
 	if err != nil {
 		return err
 	}
@@ -52,6 +54,7 @@ func (tuple *Tuple) PlainEncode(w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("tuple encoded %d fields\n", len(tuple.fields))
 	for i := range tuple.fields {
 		err = plain.Put(w, " ")
 		if err != nil {
@@ -66,17 +69,8 @@ func (tuple *Tuple) PlainEncode(w io.Writer) error {
 	return nil
 }
 
-func (tuple *Tuple) PlainDecode(r io.Reader) error {
+func (tuple *Tuple) plainDecode(r io.Reader) error {
 	var err error
-	err = plain.Expect(r, "t ")
-	if err != nil {
-		return err
-	}
-	obj := &tuple.object
-	err = obj.PlainDecode(r)
-	if err != nil {
-		return err
-	}
 	err = plain.Expect(r, " ")
 	if err != nil {
 		return err
@@ -87,6 +81,7 @@ func (tuple *Tuple) PlainDecode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("decode %d tuple fields\n", u)
 	tuple.fields = make([]memory.Loc, u)
 	for i := range tuple.fields {
 		err = plain.Expect(r, " ")
