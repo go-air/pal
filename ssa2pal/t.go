@@ -353,18 +353,18 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 			// reset bld cfg for genLoc below
 			p.buildr.GoType(v.Type())
 		}
+		res = p.vmap[v]
+		if res == memory.NoLoc {
+
+			res = p.buildr.FromGoType(v.Type())
+		}
 		// Load, Recv<-
 		switch v.Op {
 		case token.MUL: // *p
-			p.buildr.AddLoad(p.vmap[v], p.vmap[v.X])
+			p.buildr.AddLoad(res, p.vmap[v.X])
 		case token.ARROW:
 			c := p.buildr.Object(p.vmap[v.X]).(*objects.Chan)
-			dst := p.vmap[v]
-			if dst == memory.NoLoc {
-				panic(fmt.Sprintf("no loc for <- %#v\n", v))
-			} else {
-				c.Recv(dst, p.buildr.Memory())
-			}
+			c.Recv(res, p.buildr.Memory())
 
 		default: // indexing
 		}
@@ -532,6 +532,7 @@ func (p *T) call(c ssa.CallCommon, dst memory.Loc) {
 	}
 	callee := c.StaticCallee()
 	if callee == nil {
+		fmt.Printf("dst %d not static %#v\n", dst, c)
 		return
 	}
 	switch fssa := c.Value.(type) {
