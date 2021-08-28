@@ -25,7 +25,7 @@ import (
 // - otherwise it is a tuple.
 //
 // args indicate the arguments at the call site.
-func (b *Builder) Call(f *Func, dst memory.Loc, args []memory.Loc) {
+func (b *Builder[Index]) Call(f *Func, dst memory.Loc, args []memory.Loc) {
 	fmt.Printf("n args %d n params %d\n", len(args), len(f.params))
 	start := 0
 	if f.recv != memory.NoLoc {

@@ -24,7 +24,7 @@ type I interface {
 	plain.Coder
 }
 
-type T[I any] interface {
+type T[I plain.Coder] interface {
 	// replace with go/constant.
 	Zero() I
 	One() I

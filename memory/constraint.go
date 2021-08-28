@@ -62,30 +62,30 @@ func (ck *ConstraintKind) PlainDecode(r io.Reader) error {
 	return nil
 }
 
-type Constraint[Index any] struct {
+type Constraint[Index plain.Coder] struct {
 	Kind  ConstraintKind
 	Dest  Loc
 	Src   Loc
 	Index Index
 }
 
-func AddressOf[Index any](dst, src Loc) Constraint[Index] {
+func AddressOf[Index plain.Coder](dst, src Loc) Constraint[Index] {
 	return Constraint[Index]{Kind: KAddressOf, Dest: dst, Src: src}
 }
 
-func Load[Index any](dst, src Loc) Constraint[Index] {
+func Load[Index plain.Coder](dst, src Loc) Constraint[Index] {
 	return Constraint[Index]{Kind: KLoad, Dest: dst, Src: src}
 }
 
-func Store[Index any](dst, src Loc) Constraint[Index] {
+func Store[Index plain.Coder](dst, src Loc) Constraint[Index] {
 	return Constraint[Index]{Kind: KStore, Dest: dst, Src: src}
 }
 
-func TransferIndex[Index any](dst, src Loc, i Index) Constraint[Index] {
+func TransferIndex[Index plain.Coder](dst, src Loc, i Index) Constraint[Index] {
 	return Constraint[Index]{Kind: KTransfer, Dest: dst, Src: src, Index: i}
 }
 
-func (c *Constraint) PlainEncode(w io.Writer) error {
+func (c *Constraint[Index]) PlainEncode(w io.Writer) error {
 	switch c.Kind {
 	case KTransfer:
 		return plain.EncodeJoin(w, " ", c.Kind, c.Dest, c.Src, c.Index)
@@ -94,7 +94,7 @@ func (c *Constraint) PlainEncode(w io.Writer) error {
 	}
 }
 
-func (c *Constraint) PlainDecode(r io.Reader) error {
+func (c *Constraint[Index]) PlainDecode(r io.Reader) error {
 	err := plain.DecodeJoin(r, " ", &c.Kind, &c.Dest, &c.Src)
 	if err != nil {
 		return err

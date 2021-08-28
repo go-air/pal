@@ -28,10 +28,10 @@ import (
 )
 
 // Type Model represents a memory model for a package.
-type Model[Index any] struct {
+type Model[Index plain.Coder] struct {
 	locs        []loc
-	constraints []Constraint
-	indexing    indexing.T
+	constraints []Constraint[Index]
+	indexing    indexing.T[Index]
 	work        []Loc
 }
 
@@ -39,7 +39,7 @@ type Model[Index any] struct {
 //
 // index parameterises the resulting model on numeric
 // (int) indexing.
-func NewModel[Index any](index indexing.T[Index]) *Model[Index] {
+func NewModel[Index plain.Coder](index indexing.T[Index]) *Model[Index] {
 	res := &Model[Index]{
 
 		// 0 -> NoLoc
@@ -196,7 +196,7 @@ func (mod *Model[Index]) Cap(c int) {
 // add is responsible for setting the size, parent, class, attrs, typ, and root
 // of all added nodes.
 //
-func (mod *Model) add(gp *GenParams, p, r Loc, sum *int) Loc {
+func (mod *Model[Index]) add(gp *GenParams, p, r Loc, sum *int) Loc {
 	n := Loc(uint32(len(mod.locs)))
 	l := loc{
 		parent: p,

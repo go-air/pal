@@ -25,23 +25,23 @@ import (
 )
 
 // PkgRes represents results for a package.
-type PkgRes struct {
+type PkgRes[Index plain.Coder] struct {
 	PkgPath  string
-	indexing indexing.T
+	indexing indexing.T[Index]
 	Start    memory.Loc
-	MemModel *memory.Model // provides memory.Loc operations
+	MemModel *memory.Model[Index] // provides memory.Loc operations
 }
 
-func NewPkgRes(pkgPath string, vs indexing.T) *PkgRes {
+func NewPkgRes[Index plain.Coder](pkgPath string, vs indexing.T[Index]) *PkgRes[Index] {
 	mdl := memory.NewModel(vs)
-	return &PkgRes{
+	return &PkgRes[Index]{
 		PkgPath:  pkgPath,
 		indexing: vs,
 		Start:    memory.Loc(1),
 		MemModel: mdl}
 }
 
-func (pkg *PkgRes) PlainEncode(w io.Writer) error {
+func (pkg *PkgRes[Index]) PlainEncode(w io.Writer) error {
 	if _, e := fmt.Fprintf(w, "%s:%s:%d\n", pkg.PkgPath, plain.String(pkg.Start), pkg.MemModel.Len()); e != nil {
 		return e
 	}
@@ -55,7 +55,7 @@ func (pkg *PkgRes) PlainEncode(w io.Writer) error {
 	return pkg.MemModel.PlainEncodeConstraints(w)
 }
 
-func (pkg *PkgRes) PlainDecode(r io.Reader) error {
+func (pkg *PkgRes[Index]) PlainDecode(r io.Reader) error {
 	br := bufio.NewReader(r)
 	var err error
 	pkg.PkgPath, err = br.ReadString(':')

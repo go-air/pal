@@ -15,35 +15,36 @@
 package results
 
 import (
+	"github.com/go-air/pal/internal/plain"
 	"sync"
 )
 
-type T struct {
+type T[Index plain.Coder] struct {
 	mu   sync.Mutex
-	d    map[string]*PkgRes
+	d    map[string]*PkgRes[Index]
 	perm []int
 }
 
 // New generates a new results.T object for managing pointer analysis
 // results.
-func New() (*T, error) {
-	return &T{d: make(map[string]*PkgRes)}, nil
+func New[Index plain.Coder]() (*T[Index], error) {
+	return &T[Index]{d: make(map[string]*PkgRes[Index])}, nil
 }
 
 // AFact satisfying golang.org/x/tools/go/analysis's Facts.
 //
 // Using this in that framework makes it analyse package dependencies before
 // analyzing the respective package.
-func (t *T) AFact() {}
+func (t *T[Index]) AFact() {}
 
-func (t *T) Lookup(pkgPath string) *PkgRes {
+func (t *T[Index]) Lookup(pkgPath string) *PkgRes[Index] {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	res, _ := t.d[pkgPath]
 	return res
 }
 
-func (t *T) Put(pkgName string, pkgR *PkgRes) error {
+func (t *T[Index]) Put(pkgName string, pkgR *PkgRes[Index]) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.d[pkgName] = pkgR

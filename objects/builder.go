@@ -19,6 +19,7 @@ import (
 	"go/types"
 
 	"github.com/go-air/pal/indexing"
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/typeset"
 )
@@ -26,10 +27,10 @@ import (
 // Builder is a type which supports coordinating
 // higher level Go objects (funcs, slices, maps, ...)
 // with the lower level memory model and typeset.
-type Builder struct {
+type Builder[Index plain.Coder] struct {
 	pkgPath  string
-	indexing indexing.T
-	mmod     *memory.Model
+	indexing indexing.T[Index]
+	mmod     *memory.Model[Index]
 	ts       *typeset.TypeSet
 	omap     map[memory.Loc]Object // map memory locs to canonical objects
 	start    memory.Loc            // after import, what is our minimum?
@@ -39,8 +40,8 @@ type Builder struct {
 // NewBuilder creates a new builder from a package Path
 // and an indexing.T which manages representing indexing
 // expressiosn.
-func NewBuilder(pkgPath string, ind indexing.T) *Builder {
-	b := &Builder{}
+func NewBuilder[Index plain.Coder](pkgPath string, ind indexing.T[Index]) *Builder[Index] {
+	b := &Builder[Index]{}
 	b.pkgPath = pkgPath
 	b.indexing = ind
 	b.mmod = memory.NewModel(ind)
@@ -50,77 +51,77 @@ func NewBuilder(pkgPath string, ind indexing.T) *Builder {
 	return b
 }
 
-func (b *Builder) Memory() *memory.Model {
+func (b *Builder[Index]) Memory() *memory.Model[Index] {
 	return b.mmod
 }
 
-func (b *Builder) TypeSet() *typeset.TypeSet {
+func (b *Builder[Index]) TypeSet() *typeset.TypeSet {
 	return b.ts
 }
 
-func (b *Builder) AddAddressOf(ptr, obj memory.Loc) {
+func (b *Builder[Index]) AddAddressOf(ptr, obj memory.Loc) {
 	b.mmod.AddAddressOf(ptr, obj)
 }
 
-func (b *Builder) AddLoad(dst, src memory.Loc) {
+func (b *Builder[Index]) AddLoad(dst, src memory.Loc) {
 	b.mmod.AddLoad(dst, src)
 }
 
-func (b *Builder) AddStore(dst, src memory.Loc) {
+func (b *Builder[Index]) AddStore(dst, src memory.Loc) {
 	b.mmod.AddStore(dst, src)
 }
 
-func (b *Builder) AddTransfer(dst, src memory.Loc) {
+func (b *Builder[Index]) AddTransfer(dst, src memory.Loc) {
 	b.mmod.AddTransfer(dst, src)
 }
 
-func (b *Builder) AddTransferIndex(dst, src memory.Loc, i indexing.I) {
+func (b *Builder[Index]) AddTransferIndex(dst, src memory.Loc, i Index) {
 	b.mmod.AddTransferIndex(dst, src, i)
 }
 
-func (b *Builder) Pos(pos token.Pos) *Builder {
+func (b *Builder[Index]) Pos(pos token.Pos) *Builder[Index] {
 	b.mgp.Pos(pos)
 	return b
 }
 
-func (b *Builder) Class(c memory.Class) *Builder {
+func (b *Builder[Index]) Class(c memory.Class) *Builder[Index] {
 	b.mgp.Class(c)
 	return b
 }
 
-func (b *Builder) Attrs(as memory.Attrs) *Builder {
+func (b *Builder[Index]) Attrs(as memory.Attrs) *Builder[Index] {
 	b.mgp.Attrs(as)
 	return b
 }
 
-func (b *Builder) GoType(ty types.Type) *Builder {
+func (b *Builder[Index]) GoType(ty types.Type) *Builder[Index] {
 	return b.Type(b.ts.FromGoType(ty))
 }
 
-func (b *Builder) Type(ty typeset.Type) *Builder {
+func (b *Builder[Index]) Type(ty typeset.Type) *Builder[Index] {
 	b.mgp.Type(ty)
 	return b
 }
 
-func (b *Builder) Struct(gty *types.Struct) *Struct {
+func (b *Builder[Index]) Struct(gty *types.Struct) *Struct {
 	m := b.GoType(gty).Gen()
 	b.walkObj(m)
 	return b.omap[m].(*Struct)
 }
 
-func (b *Builder) Tuple(ty *types.Tuple) *Tuple {
+func (b *Builder[Index]) Tuple(ty *types.Tuple) *Tuple {
 	m := b.GoType(ty).Gen()
 	b.walkObj(m)
 	return b.omap[m].(*Tuple)
 }
 
-func (b *Builder) Array(gty *types.Array) *Array {
+func (b *Builder[Index]) Array(gty *types.Array) *Array {
 	m := b.GoType(gty).Gen()
 	b.walkObj(m)
 	return b.omap[m].(*Array)
 }
 
-func (b *Builder) Slice(gty *types.Slice, length, capacity indexing.I) *Slice {
+func (b *Builder[Index]) Slice(gty *types.Slice, length, capacity indexing.I) *Slice {
 	ty := b.ts.FromGoType(gty)
 	m := b.Type(ty).Gen()
 	b.walkObj(m)
@@ -131,7 +132,7 @@ func (b *Builder) Slice(gty *types.Slice, length, capacity indexing.I) *Slice {
 	return sl
 }
 
-func (b *Builder) AddSlot(slice *Slice, i indexing.I) {
+func (b *Builder[Index]) AddSlot(slice *Slice, i Index) {
 	elemTy := b.ts.Elem(slice.typ)
 	ptrTy := b.ts.PointerTo(elemTy)
 	ptr := b.Type(ptrTy).Gen()
@@ -146,34 +147,34 @@ func (b *Builder) AddSlot(slice *Slice, i indexing.I) {
 		I:   i})
 }
 
-func (b *Builder) Map(gty *types.Map) *Map {
+func (b *Builder[Index]) Map(gty *types.Map) *Map {
 	ty := b.ts.FromGoType(gty)
 	m := b.Type(ty).Gen()
 	b.walkObj(m)
 	return b.omap[m].(*Map)
 }
 
-func (b *Builder) Chan(gty *types.Chan) *Chan {
+func (b *Builder[Index]) Chan(gty *types.Chan) *Chan {
 	ty := b.ts.FromGoType(gty)
 	m := b.Type(ty).Gen()
 	b.walkObj(m)
 	return b.omap[m].(*Chan)
 }
 
-func (b *Builder) Object(m memory.Loc) Object {
+func (b *Builder[Index]) Object(m memory.Loc) Object {
 	return b.omap[m]
 }
 
-func (b *Builder) Gen() memory.Loc {
+func (b *Builder[Index]) Gen() memory.Loc {
 	return b.mmod.Gen(b.mgp)
 }
 
-func (b *Builder) WithPointer() (obj, ptr memory.Loc) {
+func (b *Builder[Index]) WithPointer() (obj, ptr memory.Loc) {
 	obj, ptr = b.mmod.WithPointer(b.mgp)
 	return
 }
 
-func (b *Builder) Pointer(gtype *types.Pointer) *Pointer {
+func (b *Builder[Index]) Pointer(gtype *types.Pointer) *Pointer {
 	ptr := &Pointer{}
 	ptr.typ = b.ts.FromGoType(gtype)
 	ptr.loc = b.Type(ptr.typ).Gen()
@@ -184,7 +185,7 @@ func (b *Builder) Pointer(gtype *types.Pointer) *Pointer {
 // Func makes a function object.  It is for top level functions
 // which may or may not be declared.  `declName` must be empty
 // iff the associated function is not declared.
-func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attrs) *Func {
+func (b *Builder[Index]) Func(sig *types.Signature, declName string, opaque memory.Attrs) *Func {
 	fn := &Func{declName: declName}
 	fn.typ = b.ts.FromGoType(sig)
 	_, fn.loc = b.Type(fn.typ).WithPointer()
@@ -231,7 +232,7 @@ func (b *Builder) Func(sig *types.Signature, declName string, opaque memory.Attr
 // second pass to associate objects with all object like memory locations...
 // the input is likely to just create roots at variables, but we need objects
 // everywhere...
-func (b *Builder) walkObj(m memory.Loc) {
+func (b *Builder[Index]) walkObj(m memory.Loc) {
 	ty := b.mmod.Type(m)
 	//fmt.Printf("walkObj %s ty %s\n", plain.String(m), b.ts.String(ty))
 	ki := b.ts.Kind(ty)
