@@ -18,8 +18,10 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
+	"io"
 
 	"github.com/go-air/pal/indexing"
+	"github.com/go-air/pal/internal/plain"
 	"github.com/go-air/pal/memory"
 	"github.com/go-air/pal/typeset"
 )
@@ -373,4 +375,54 @@ func (b *Builder) walkObj(m memory.Loc) {
 			b.walkObj(floc)
 		}
 	}
+}
+
+func (b *Builder) PlainEncodeObjects(dst io.Writer) error {
+	n := len(b.omap)
+	err := plain.Uint(n).PlainEncode(dst)
+	if err != nil {
+		return err
+	}
+	plain.Put(dst, "\n")
+	keys := make([]memory.Loc, 0, len(b.omap))
+	for k, _ := range b.omap {
+		keys = append(keys, k)
+	}
+	for _, k := range keys {
+		o := b.omap[k]
+		err := o.PlainEncode(dst)
+		if err != nil {
+			return err
+		}
+		err = plain.Put(dst, "\n")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *Builder) PlainDecodeObjects(src io.Reader) error {
+	n := plain.Uint(0)
+	err := (&n).PlainDecode(src)
+	if err != nil {
+		return err
+	}
+	err = plain.Expect(src, "\n")
+	if err != nil {
+		return err
+	}
+	b.omap = make(map[memory.Loc]Object, n)
+	for i := plain.Uint(0); i < n; i++ {
+		obj, err := PlainDecodeObject(src)
+		if err != nil {
+			return err
+		}
+		b.omap[obj.Loc()] = obj
+		err = plain.Expect(src, "\n")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

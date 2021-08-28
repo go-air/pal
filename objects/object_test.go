@@ -35,7 +35,7 @@ func testRoundTrip(o Object, clobbr func(o Object), verbose bool) error {
 		fmt.Printf("objects.testRoundTrip enc1: '%s'\n", s1)
 	}
 	io = bytes.NewBuffer(io.Bytes())
-	obj, err := PlainDecode(io)
+	obj, err := PlainDecodeObject(io)
 	if err != nil {
 		return err
 	}

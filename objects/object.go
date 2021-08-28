@@ -106,7 +106,7 @@ func (o *object) plainDecode(r io.Reader) error {
 	return plain.DecodeJoin(r, " ", &o.kind, &o.loc, &o.typ)
 }
 
-func PlainDecode(r io.Reader) (Object, error) {
+func PlainDecodeObject(r io.Reader) (Object, error) {
 	obj := &object{}
 	err := obj.plainDecode(r)
 	if err != nil {
