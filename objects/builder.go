@@ -385,7 +385,7 @@ func (b *Builder) PlainEncodeObjects(dst io.Writer) error {
 	}
 	plain.Put(dst, "\n")
 	keys := make([]memory.Loc, 0, len(b.omap))
-	for k, _ := range b.omap {
+	for k := range b.omap {
 		keys = append(keys, k)
 	}
 	for _, k := range keys {

@@ -555,6 +555,7 @@ func (p *T) putResults() {
 		fmt.Printf("built pal model for %s\n", p.pkgres.PkgPath)
 		p.buildr.TypeSet().PlainEncode(os.Stdout)
 		p.buildr.Memory().PlainEncode(os.Stdout)
+		p.buildr.PlainEncodeObjects(os.Stdout)
 	}
 	p.results.Put(p.pass.Pkg.Path(), p.pkgres)
 }

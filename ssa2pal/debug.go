@@ -19,7 +19,7 @@ const (
 	traceFunc    = true
 	traceParam   = false
 
-	debugLogModel    = false
+	debugLogModel    = true
 	traceGenValueLoc = false
 	traceGenExtract  = false
 	traceGenNext     = false
