@@ -346,6 +346,28 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 		res = tuple.Loc()
 		p.buildr.AddTransfer(tuple.At(1), m.Key())
 		p.buildr.AddTransfer(tuple.At(2), m.Elem())
+	case *ssa.UnOp:
+		xloc := p.vmap[v.X]
+		if xloc == memory.NoLoc {
+			xloc = p.genValueLoc(v.X)
+			// reset bld cfg for genLoc below
+			p.buildr.GoType(v.Type())
+		}
+		// Load, Recv<-
+		switch v.Op {
+		case token.MUL: // *p
+			p.buildr.AddLoad(p.vmap[v], p.vmap[v.X])
+		case token.ARROW:
+			c := p.buildr.Object(p.vmap[v.X]).(*objects.Chan)
+			dst := p.vmap[v]
+			if dst == memory.NoLoc {
+				panic(fmt.Sprintf("no loc for <- %#v\n", v))
+			} else {
+				c.Recv(dst, p.buildr.Memory())
+			}
+
+		default: // indexing
+		}
 
 	default:
 		res = p.buildr.FromGoType(v.Type())
@@ -484,21 +506,6 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		}
 
 	case *ssa.UnOp:
-		// Load
-		switch i9n.Op {
-		case token.MUL: // *p
-			p.buildr.AddLoad(p.vmap[i9n], p.vmap[i9n.X])
-		case token.ARROW:
-			c := p.buildr.Object(p.vmap[i9n.X]).(*objects.Chan)
-			dst := p.vmap[i9n]
-			if dst == memory.NoLoc {
-				//panic(fmt.Sprintf("no loc for <- %#v\n", i9n))
-			} else {
-				c.Recv(dst, p.buildr.Memory())
-			}
-
-		default: // indexing
-		}
 
 	case *ssa.Slice:
 		p.buildr.AddTransfer(p.vmap[i9n], p.vmap[i9n.X])
