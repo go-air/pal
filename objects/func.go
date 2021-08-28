@@ -71,8 +71,31 @@ func (f *Func) NumResults() int {
 }
 
 func (f *Func) PlainEncode(w io.Writer) error {
-	err := plain.EncodeJoin(w, " ", hdr{&f.object},
-		f.fnobj, f.recv, plain.Uint(len(f.params)))
+	var err error
+	h := hdr{&f.object}
+	err = h.PlainEncode(w)
+	if err != nil {
+		return err
+	}
+	err = plain.Put(w, " ")
+	if err != nil {
+		return err
+	}
+	if f.declName != "" {
+		_, err = fmt.Fprintf(w, "%s ", f.declName)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err = w.Write([]byte(". "))
+		if err != nil {
+			return err
+		}
+	}
+	err = plain.EncodeJoin(w, " ", f.fnobj, f.recv, plain.Uint(len(f.params)))
+	if err != nil {
+		return err
+	}
 	if f.variadic {
 		err = plain.Put(w, "*")
 	} else {
@@ -114,14 +137,18 @@ func (f *Func) PlainEncode(w io.Writer) error {
 }
 
 func (f *Func) plainDecode(r io.Reader) error {
-	err := plain.Expect(r, " ")
+	_, err := fmt.Fscanf(r, "%s ", &f.declName)
 	if err != nil {
 		return err
 	}
+	if f.declName == "." {
+		f.declName = ""
+	}
+	fmt.Printf("got declName '%s'\n", f.declName)
 	n := plain.Uint(0)
 	err = plain.DecodeJoin(r, " ", &f.fnobj, &f.recv, &n)
 	if err != nil {
-		return err
+		return fmt.Errorf("func decode join [obj recv n]: %w", err)
 	}
 	var buf [1]byte
 	_, err = io.ReadFull(r, buf[:])
@@ -140,7 +167,7 @@ func (f *Func) plainDecode(r io.Reader) error {
 	for i := plain.Uint(0); i < n; i++ {
 		err = plain.Expect(r, " ")
 		if err != nil {
-			return err
+			return fmt.Errorf("func decode param %d: %w\n", i, err)
 		}
 		p := &f.params[i]
 		err = p.PlainDecode(r)
@@ -166,7 +193,7 @@ func (f *Func) plainDecode(r io.Reader) error {
 		p := &f.results[i]
 		err = p.PlainDecode(r)
 		if err != nil {
-			return err
+			return fmt.Errorf("func decode result %d: %w", i, err)
 		}
 	}
 	return nil

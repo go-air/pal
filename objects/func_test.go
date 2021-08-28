@@ -41,7 +41,7 @@ func TestFuncPlain(t *testing.T) {
 		types.NewVar(token.NoPos, nil, "r1", types.Typ[types.Int8]))
 	sig := types.NewSignature(nil, parms, ress, false)
 	b := NewBuilder("pkg", indexing.ConstVals())
-	f := b.Func(sig, "declName", memory.IsOpaque)
+	f := b.Func(sig, "fname", memory.IsOpaque)
 	err := testRoundTrip(f, fclob, true)
 	if err != nil {
 		t.Error(err)

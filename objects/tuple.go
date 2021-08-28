@@ -15,7 +15,6 @@
 package objects
 
 import (
-	"fmt"
 	"io"
 
 	"github.com/go-air/pal/internal/plain"
@@ -54,7 +53,6 @@ func (tuple *Tuple) PlainEncode(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("tuple encoded %d fields\n", len(tuple.fields))
 	for i := range tuple.fields {
 		err = plain.Put(w, " ")
 		if err != nil {
@@ -81,7 +79,6 @@ func (tuple *Tuple) plainDecode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("decode %d tuple fields\n", u)
 	tuple.fields = make([]memory.Loc, u)
 	for i := range tuple.fields {
 		err = plain.Expect(r, " ")
