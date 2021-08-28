@@ -321,6 +321,7 @@ func (mod *Model) AddTransfer(dst, src Loc) {
 	mod.AddTransferIndex(dst, src, mod.indexing.Zero())
 }
 
+// dst = src + i
 func (mod *Model) AddTransferIndex(dst, src Loc, i indexing.I) {
 	mod.constraints = append(mod.constraints, TransferIndex(dst, src, i))
 }
