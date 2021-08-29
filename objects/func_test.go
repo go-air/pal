@@ -26,7 +26,9 @@ import (
 func fclob(o Object) {
 	f := o.(*Func)
 	f.declName = ""
-	f.fnobj = 0
+	f.loc = 0
+	f.typ = 0
+
 	f.recv = 0
 	f.variadic = false
 	f.params = nil

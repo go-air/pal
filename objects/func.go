@@ -25,9 +25,7 @@ import (
 
 type Func struct {
 	object
-	sig      typeset.Type
 	declName string
-	fnobj    memory.Loc
 	recv     memory.Loc
 	params   []memory.Loc
 	results  []memory.Loc
@@ -87,19 +85,19 @@ func (f *Func) PlainEncode(w io.Writer) error {
 			return err
 		}
 	} else {
-		_, err = w.Write([]byte(". "))
+		_, err = w.Write([]byte("- "))
 		if err != nil {
 			return err
 		}
 	}
-	err = plain.EncodeJoin(w, " ", f.fnobj, f.recv, plain.Uint(len(f.params)))
+	err = plain.EncodeJoin(w, " ", f.recv, plain.Uint(len(f.params)))
 	if err != nil {
 		return err
 	}
 	if f.variadic {
 		err = plain.Put(w, "*")
 	} else {
-		err = plain.Put(w, ".")
+		err = plain.Put(w, "-")
 	}
 	if err != nil {
 		return err
@@ -146,7 +144,7 @@ func (f *Func) plainDecode(r io.Reader) error {
 	}
 	fmt.Printf("got declName '%s'\n", f.declName)
 	n := plain.Uint(0)
-	err = plain.DecodeJoin(r, " ", &f.fnobj, &f.recv, &n)
+	err = plain.DecodeJoin(r, " ", &f.recv, &n)
 	if err != nil {
 		return fmt.Errorf("func decode join [obj recv n]: %w", err)
 	}
@@ -158,7 +156,7 @@ func (f *Func) plainDecode(r io.Reader) error {
 	switch buf[0] {
 	case '*':
 		f.variadic = true
-	case '.':
+	case '-':
 		f.variadic = false
 	default:
 		return fmt.Errorf("unexpected modifier '%c'", buf[0])

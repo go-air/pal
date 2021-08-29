@@ -477,7 +477,6 @@ func (p *T) genI9nConstraints(fnName string, i9n ssa.Instruction) error {
 		default:
 			panic("huh?")
 		}
-
 	case *ssa.Next: // handled in genLoc
 	case *ssa.Panic:
 	case *ssa.Phi:
@@ -531,27 +530,29 @@ func (p *T) call(c ssa.CallCommon, dst memory.Loc) {
 		return
 	}
 	callee := c.StaticCallee()
-	if callee == nil {
+	if false && callee == nil {
 		fmt.Printf("dst %d not static %#v\n", dst, c)
 		return
 	}
 	switch fssa := c.Value.(type) {
-	case *ssa.Function:
+	case *ssa.Builtin:
+	case *ssa.MakeClosure:
+	default: // eg *Function (static call)
+		// dynamic dispatch
 		floc := p.vmap[fssa]
 		if floc == memory.NoLoc {
 			panic("wilma!")
 		}
-		fn := p.buildr.Object(floc).(*objects.Func)
-		fmt.Printf("calling '%s' loc %d\n", fssa.Name(), floc)
+		fn, ok := p.buildr.Object(floc).(*objects.Func)
+		if !ok {
+			fmt.Printf(" could not call '%s' loc %d type %s\n", fssa.Name(), floc, p.buildr.TypeSet().String(p.buildr.Memory().Type(floc)))
+			return
+		}
 		args := make([]memory.Loc, len(c.Args))
 		for i, argVal := range c.Args {
 			args[i] = p.vmap[argVal]
 		}
 		p.buildr.Call(fn, dst, args)
-	case *ssa.Builtin:
-	case *ssa.MakeClosure:
-	default:
-		// dynamic dispatch
 	}
 }
 

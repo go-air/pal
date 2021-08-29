@@ -145,22 +145,30 @@ func DecodeInt64(r io.Reader, p *int64) error {
 	i := 0
 	var err error
 	var c byte
-	for i < 17 {
+	lim := 17
+	for {
+		if i == lim {
+			return fmt.Errorf("overflow")
+		}
 		_, err = io.ReadFull(r, buf[i:i+1])
 		c = buf[i]
 		i++
 		if err != nil {
 			return err
 		}
-		if c == '-' {
-			continue
+		if i == 1 {
+			if c == '-' {
+				continue
+			} else {
+				lim = 16
+			}
 		}
 
 		if c < byte('0') {
-			return fmt.Errorf("not plain int fmt")
+			return fmt.Errorf("char %d: not plain int fmt: '%c'", i, c)
 		}
 		if alpha[c] == 0 {
-			return fmt.Errorf("not plain int fmt")
+			return fmt.Errorf("not plain int fmt: '%c'", c)
 		}
 		if c > byte('f') {
 			buf[i-1] = alpha[buf[i-1]]
@@ -214,7 +222,10 @@ func DecodeUint64(r io.Reader, p *uint64) error {
 	i := 0
 	var err error
 	var c byte
-	for i < 16 {
+	for {
+		if i == 16 {
+			return fmt.Errorf("overflow")
+		}
 		_, err = io.ReadFull(r, buf[i:i+1])
 		if err != nil {
 			return err

@@ -98,7 +98,7 @@ func (n *node) PlainEncode(w io.Writer) error {
 	case Func:
 		var variadicString = "-"
 		if n.variadic {
-			variadicString = "+"
+			variadicString = "*"
 		}
 		if n.key != NoType {
 			_, err = fmt.Fprintf(w, "m%s", variadicString)
@@ -202,7 +202,7 @@ func (n *node) decodeFunc(r io.Reader) error {
 		return fmt.Errorf("unexpected '%s'", string(buf))
 	}
 	switch buf[1] {
-	case '+':
+	case '*':
 		n.variadic = true
 	case '-':
 		n.variadic = false
