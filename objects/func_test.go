@@ -29,6 +29,7 @@ func fclob(o Object) {
 	f.loc = 0
 	f.typ = 0
 
+	f.free = nil
 	f.recv = 0
 	f.variadic = false
 	f.params = nil

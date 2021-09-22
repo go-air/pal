@@ -26,6 +26,7 @@ import (
 type Func struct {
 	object
 	declName string
+	free     []memory.Loc
 	recv     memory.Loc
 	params   []memory.Loc
 	results  []memory.Loc
@@ -90,6 +91,30 @@ func (f *Func) PlainEncode(w io.Writer) error {
 			return err
 		}
 	}
+	err = plain.Put(w, " ")
+	if err != nil {
+		return err
+	}
+
+	err = plain.Uint(len(f.free)).PlainEncode(w)
+	if err != nil {
+		return err
+
+	}
+	for _, free := range f.free {
+		err = plain.Put(w, " ")
+		if err != nil {
+			return err
+		}
+		err = free.PlainEncode(w)
+		if err != nil {
+			return err
+		}
+	}
+	err = plain.Put(w, " ")
+	if err != nil {
+		return err
+	}
 	err = plain.EncodeJoin(w, " ", f.recv, plain.Uint(len(f.params)))
 	if err != nil {
 		return err
@@ -139,11 +164,30 @@ func (f *Func) plainDecode(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	if f.declName == "." {
+	if f.declName == "-" {
 		f.declName = ""
 	}
-	fmt.Printf("got declName '%s'\n", f.declName)
 	n := plain.Uint(0)
+	err = (&n).PlainDecode(r)
+	if err != nil {
+		return err
+	}
+	f.free = make([]memory.Loc, n)
+	for i := range f.free {
+		err = plain.Expect(r, " ")
+		if err != nil {
+			return err
+		}
+		fp := &f.free[i]
+		err = fp.PlainDecode(r)
+		if err != nil {
+			return err
+		}
+	}
+	err = plain.Expect(r, " ")
+	if err != nil {
+		return err
+	}
 	err = plain.DecodeJoin(r, " ", &f.recv, &n)
 	if err != nil {
 		return fmt.Errorf("func decode join [obj recv n]: %w", err)

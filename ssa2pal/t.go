@@ -355,7 +355,6 @@ func (p *T) genValueLoc(v ssa.Value) memory.Loc {
 		}
 		res = p.vmap[v]
 		if res == memory.NoLoc {
-
 			res = p.buildr.FromGoType(v.Type())
 		}
 		// Load, Recv<-
